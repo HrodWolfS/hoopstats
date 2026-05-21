@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>hoopstats — La NBA en français</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    color-scheme: dark;
+  }
+  html, body {
+    background: #0A0A0B;
+    color: #fff;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+  .font-mono, code, kbd { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  ::selection { background: #7C3AED; color: #fff; }
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #ffffff14; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #ffffff22; }
+  /* fade in app */
+  .app-enter { animation: appIn 240ms ease-out; }
+  @keyframes appIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @keyframes shimmer { 0%,100% { opacity: .6 } 50% { opacity: 1 } }
+</style>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+          display: ['Space Grotesk', 'Inter', 'sans-serif'],
+          mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        },
+      }
+    }
+  }
+</script>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="home.jsx"></script>
+<script type="text/babel" src="team.jsx"></script>
+<script type="text/babel" src="player.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef } = React;
+
+function App() {
+  const [page, setPage] = useState("home");      // home | team | player
+  const [payload, setPayload] = useState(null);  // team abbr OR player id
+  const [season, setSeason] = useState("2024–25");
+  const [showCmdK, setShowCmdK] = useState(false);
+
+  const nav = (p, pl) => {
+    setPage(p);
+    setPayload(pl);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setShowCmdK((v) => !v);
+      } else if (e.key === "Escape") {
+        setShowCmdK(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <div className="min-h-screen flex">
+      <Sidebar page={page} onNav={nav} />
+      <main className="flex-1 min-w-0 pl-[220px]">
+        <TopBar season={season} setSeason={setSeason} onSearch={() => setShowCmdK(true)} />
+        <div className="px-8 lg:px-12 py-8 max-w-[1400px] mx-auto app-enter" key={page + (payload || "")}>
+          {page === "home" && <window.Home onNav={nav} />}
+          {page === "team" && <window.TeamPage teamAbbr={payload || "LAL"} onNav={nav} />}
+          {page === "player" && <window.PlayerPage playerId={payload || "p1"} onNav={nav} />}
+        </div>
+      </main>
+      {showCmdK && <CmdK onClose={() => setShowCmdK(false)} onNav={nav} />}
+    </div>
+  );
+}
+
+function Sidebar({ page, onNav }) {
+  const items = [
+    { id: "home", label: "Accueil", icon: <IconHome /> },
+    { id: "teams", label: "Équipes", icon: <IconTeams />, action: () => onNav("home") },
+    { id: "players", label: "Joueurs", icon: <IconPlayers />, action: () => onNav("player", "p1") },
+    { id: "compare", label: "Comparer", icon: <IconCompare />, disabled: true },
+    { id: "seasons", label: "Saisons", icon: <IconSeasons />, disabled: true },
+  ];
+  return (
+    <aside className="fixed inset-y-0 left-0 w-[220px] border-r border-white/[0.06] bg-[#0A0A0B] flex flex-col z-30">
+      <div className="px-5 pt-6 pb-7">
+        <button onClick={() => onNav("home")} className="flex items-center gap-2 group">
+          <div className="h-7 w-7 rounded-md bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center font-display font-bold text-[12px] text-white">
+            h.
+          </div>
+          <span className="font-display font-semibold tracking-tight text-[15px]">hoopstats</span>
+        </button>
+      </div>
+      <nav className="px-3 space-y-0.5">
+        <div className="px-2 pb-2 text-[10px] uppercase tracking-[0.18em] text-white/30 font-medium">
+          Naviguer
+        </div>
+        {items.map((it) => {
+          const isActive =
+            (it.id === "home" && page === "home") ||
+            (it.id === "players" && page === "player") ||
+            (it.id === "teams" && page === "team");
+          return (
+            <button
+              key={it.id}
+              onClick={() => {
+                if (it.disabled) return;
+                if (it.action) it.action();
+                else onNav(it.id);
+              }}
+              disabled={it.disabled}
+              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition ${
+                isActive
+                  ? "bg-white/[0.06] text-white"
+                  : it.disabled
+                  ? "text-white/30 cursor-not-allowed"
+                  : "text-white/60 hover:bg-white/[0.04] hover:text-white"
+              }`}
+            >
+              <span className={isActive ? "text-violet-400" : ""}>{it.icon}</span>
+              {it.label}
+              {it.disabled && (
+                <span className="ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.04] text-white/30">
+                  Bientôt
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="mt-auto p-4 space-y-3 border-t border-white/[0.06]">
+        <div className="text-[10px] text-white/30 uppercase tracking-[0.18em] font-medium">
+          Mise à jour
+        </div>
+        <div className="text-xs text-white/60 leading-relaxed">
+          Stats rafraîchies <span className="text-white/90">il y a 4 min</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" style={{ animation: "shimmer 1.6s ease-in-out infinite" }} />
+          <span className="text-[11px] text-white/40 font-mono">live · 6 matchs</span>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function TopBar({ season, setSeason, onSearch }) {
+  const [open, setOpen] = useState(false);
+  const seasons = ["2024–25", "2023–24", "2022–23", "2021–22", "2020–21", "2019–20"];
+  return (
+    <header className="sticky top-0 z-20 backdrop-blur-xl bg-[#0A0A0B]/70 border-b border-white/[0.06]">
+      <div className="px-8 lg:px-12 max-w-[1400px] mx-auto h-14 flex items-center gap-3">
+        <button
+          onClick={onSearch}
+          className="flex items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-white/40 hover:border-white/20 hover:text-white/80 transition w-[280px]"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <span className="flex-1 text-left">Chercher…</span>
+          <kbd className="text-[10px] font-mono px-1 py-0 rounded bg-white/[0.06] text-white/40">⌘K</kbd>
+        </button>
+
+        <div className="flex-1" />
+
+        {/* Season switcher */}
+        <div className="relative">
+          <button
+            onClick={() => setOpen(!open)}
+            className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-white/80 hover:border-white/20 transition"
+          >
+            <span className="font-mono">SAISON</span>
+            <span className="font-display font-semibold text-white">{season}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          {open && (
+            <div className="absolute right-0 top-full mt-1.5 w-44 rounded-lg border border-white/10 bg-[#111114] shadow-2xl py-1 z-30">
+              {seasons.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => { setSeason(s); setOpen(false); }}
+                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.05] transition ${
+                    s === season ? "text-violet-400" : "text-white/70"
+                  } flex items-center justify-between`}
+                >
+                  <span className="font-mono">{s}</span>
+                  {s === season && <span className="text-[10px]">●</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button className="flex items-center justify-center h-8 w-8 rounded-md border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition text-white/60">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+        </button>
+        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center text-[10px] font-display font-bold">
+          ME
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function CmdK({ onClose, onNav }) {
+  const [q, setQ] = useState("");
+  const inputRef = useRef(null);
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const results = useMemo(() => {
+    const lower = q.toLowerCase().trim();
+    const teams = window.TEAMS.filter((t) =>
+      !lower ||
+      t.abbr.toLowerCase().includes(lower) ||
+      t.name.toLowerCase().includes(lower) ||
+      t.city.toLowerCase().includes(lower)
+    ).slice(0, 6);
+    const players = window.HOT_PLAYERS.filter((p) =>
+      !lower ||
+      `${p.first} ${p.last}`.toLowerCase().includes(lower)
+    ).slice(0, 4);
+    return { teams, players };
+  }, [q]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-xl rounded-xl border border-white/10 bg-[#111114] shadow-2xl overflow-hidden"
+        style={{ boxShadow: "0 30px 60px -20px rgba(124,58,237,0.3)" }}
+      >
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/40">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Tapez le nom d'une équipe, d'un joueur, d'une saison…"
+            className="flex-1 bg-transparent outline-none text-sm placeholder:text-white/30"
+          />
+          <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-white/40">esc</kbd>
+        </div>
+        <div className="max-h-[55vh] overflow-y-auto py-2">
+          {results.teams.length > 0 && (
+            <div className="px-2">
+              <div className="px-2 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white/30 font-medium">
+                Équipes
+              </div>
+              {results.teams.map((t) => (
+                <button
+                  key={t.abbr}
+                  onClick={() => { onNav("team", t.abbr); onClose(); }}
+                  className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-white/[0.05] transition text-left"
+                >
+                  <window.TeamMono team={t} size="xs" />
+                  <div className="flex-1">
+                    <div className="text-sm">{t.city} {t.name}</div>
+                    <div className="text-[11px] text-white/40 font-mono">{t.w}–{t.l} · Conf. {t.conf}</div>
+                  </div>
+                  <span className="text-white/30 text-xs">↵</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {results.players.length > 0 && (
+            <div className="px-2 mt-2">
+              <div className="px-2 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white/30 font-medium">
+                Joueurs
+              </div>
+              {results.players.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => { onNav("player", p.id); onClose(); }}
+                  className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-white/[0.05] transition text-left"
+                >
+                  <window.PlayerAvatar player={p} size="xs" />
+                  <div className="flex-1">
+                    <div className="text-sm">{p.first} {p.last}</div>
+                    <div className="text-[11px] text-white/40 font-mono">{p.team} · {p.pos} · #{p.num}</div>
+                  </div>
+                  <span className="text-white/30 text-xs">↵</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {results.teams.length === 0 && results.players.length === 0 && (
+            <div className="text-center text-white/40 text-sm py-10">
+              Aucun résultat pour <span className="text-white">"{q}"</span>
+            </div>
+          )}
+        </div>
+        <div className="border-t border-white/[0.06] px-4 py-2 flex items-center gap-4 text-[10px] text-white/40 font-mono">
+          <span>↑ ↓ naviguer</span>
+          <span>↵ ouvrir</span>
+          <span className="ml-auto">propulsé par hoopstats</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IconHome() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>; }
+function IconTeams() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>; }
+function IconPlayers() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>; }
+function IconCompare() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 3v18M16 3v18M3 8h5M16 8h5M3 16h5M16 16h5"/></svg>; }
+function IconSeasons() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>; }
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
