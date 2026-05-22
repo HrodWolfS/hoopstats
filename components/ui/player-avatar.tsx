@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import { readable } from "@/lib/color";
 
@@ -57,6 +60,23 @@ const SIZES: Record<
   },
 };
 
+/** Retourne true si l'URL ressemble à un logo/icône/drapeau plutôt qu'une photo. */
+function isBadPhotoUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return (
+    lower.endsWith(".svg") ||
+    lower.includes("favicon") ||
+    lower.includes("-icon") ||
+    lower.includes("_icon") ||
+    lower.includes("-logo") ||
+    lower.includes("_logo") ||
+    lower.includes("-flag") ||
+    lower.includes("_flag") ||
+    // Miniatures Wikipedia trop petites (ex: "20px-", "40px-")
+    /\/\d{1,2}px-/.test(lower)
+  );
+}
+
 export function PlayerAvatar({
   firstName,
   lastName,
@@ -68,16 +88,21 @@ export function PlayerAvatar({
   showNum = true,
   className = "",
 }: PlayerAvatarProps) {
+  const [imgError, setImgError] = useState(false);
+
   const s = SIZES[size];
   const initials = `${firstName[0] ?? ""}${lastName[0] ?? ""}`;
   const fg = readable(secondaryColor);
+
+  // Utiliser la photo seulement si l'URL est valide et pas un logo
+  const usePhoto = !!photoUrl && !isBadPhotoUrl(photoUrl) && !imgError;
 
   return (
     <div className={`relative inline-block flex-shrink-0 ${className}`}>
       <div
         className={`rounded-full overflow-hidden flex items-center justify-center font-display font-bold tracking-tight ${s.box} ${s.text}`}
         style={
-          photoUrl
+          usePhoto
             ? { background: "#1A1A1F" }
             : {
                 background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
@@ -85,14 +110,15 @@ export function PlayerAvatar({
               }
         }
       >
-        {photoUrl ? (
+        {usePhoto ? (
           <Image
-            src={photoUrl}
+            src={photoUrl!}
             alt={`${firstName} ${lastName}`}
             width={s.px}
             height={s.px}
             className="w-full h-full object-cover object-top"
-            unoptimized={false}
+            onError={() => setImgError(true)}
+            unoptimized
           />
         ) : (
           <span>{initials}</span>
