@@ -14,14 +14,18 @@ export const revalidate = 21600;
 
 export default async function PlayersPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ saison?: string }>;
 }) {
   const { locale } = await params;
+  const { saison } = await searchParams;
+  const season = saison ?? CURRENT_SEASON;
 
-  // Top 100 scoreurs de la saison courante
+  // Top 100 scoreurs de la saison sélectionnée
   const rows = await prisma.playerSeason.findMany({
-    where: { season: CURRENT_SEASON, gamesPlayed: { gte: 10 } },
+    where: { season, gamesPlayed: { gte: 10 } },
     orderBy: { pointsPerGame: "desc" },
     take: 100,
     include: {
@@ -51,7 +55,7 @@ export default async function PlayersPage({
           Joueurs NBA
         </h1>
         <p className="text-white/40 text-sm">
-          Top 100 scoreurs — Saison {CURRENT_SEASON}
+          Top 100 scoreurs — Saison {season}
         </p>
       </div>
 

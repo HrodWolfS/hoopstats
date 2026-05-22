@@ -42,10 +42,14 @@ export async function generateMetadata({
 
 export default async function PlayerPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; slug: string }>;
+  searchParams: Promise<{ saison?: string }>;
 }) {
   const { locale, slug } = await params;
+  const { saison } = await searchParams;
+  const season = saison ?? CURRENT_SEASON;
 
   const player = await prisma.player.findUnique({
     where: { slug },
@@ -58,9 +62,9 @@ export default async function PlayerPage({
   });
   if (!player) notFound();
 
-  // Saison courante (ou la plus récente dispo)
+  // Saison sélectionnée (ou la plus récente dispo)
   const currentSeason =
-    player.seasons.find((s) => s.season === CURRENT_SEASON) ??
+    player.seasons.find((s) => s.season === season) ??
     player.seasons[player.seasons.length - 1] ??
     null;
 
