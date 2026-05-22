@@ -67,8 +67,19 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-20 backdrop-blur-xl bg-bg-base/70 border-b border-white/[0.06]">
       <div className="px-8 lg:px-12 max-w-[1400px] mx-auto h-14 flex items-center gap-3">
-        {/* Search */}
-        <button className="flex items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-white/40 hover:border-white/20 hover:text-white/80 transition w-[280px]">
+        {/* Search — opens CommandPalette via ⌘K */}
+        <button
+          onClick={() =>
+            document.dispatchEvent(
+              new KeyboardEvent("keydown", {
+                key: "k",
+                metaKey: true,
+                bubbles: true,
+              }),
+            )
+          }
+          className="flex items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-white/40 hover:border-white/20 hover:text-white/80 transition w-[280px]"
+        >
           <svg
             width="12"
             height="12"

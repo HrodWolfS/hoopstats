@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { Footer } from "@/components/layout/footer";
+import { CommandPalette } from "@/components/ui/command-palette";
 
 export function generateStaticParams() {
   return [{ locale: "fr" }];
@@ -26,6 +27,7 @@ export default function LocaleLayout({
         </div>
         <Footer />
       </main>
+      <CommandPalette />
     </div>
   );
 }
