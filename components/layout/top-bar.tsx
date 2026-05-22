@@ -1,18 +1,10 @@
 "use client";
 
 import { useState } from "react";
-
-const SEASONS = [
-  "2024–25",
-  "2023–24",
-  "2022–23",
-  "2021–22",
-  "2020–21",
-  "2019–20",
-];
+import { ALL_SEASONS, CURRENT_SEASON } from "@/lib/nba";
 
 export function TopBar() {
-  const [season, setSeason] = useState("2024–25");
+  const [season, setSeason] = useState(CURRENT_SEASON);
   const [open, setOpen] = useState(false);
 
   return (
@@ -62,7 +54,7 @@ export function TopBar() {
           </button>
           {open && (
             <div className="absolute right-0 top-full mt-1.5 w-44 rounded-lg border border-white/10 bg-bg-card shadow-2xl py-1 z-30">
-              {SEASONS.map((s) => (
+              {ALL_SEASONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => {
