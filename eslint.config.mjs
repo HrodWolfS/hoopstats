@@ -14,8 +14,6 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Maquette de référence (JSX standalone, pas du code de prod)
     "project/**",
-    // Scripts Node.js (pas de règles React/Next.js)
-    "scripts/**",
   ]),
 ]);
 

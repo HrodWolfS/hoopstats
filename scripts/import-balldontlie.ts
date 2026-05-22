@@ -92,9 +92,11 @@ type BdlSeasonAverage = {
 
 // ─── Fetch helpers ────────────────────────────────────────────────────────────
 
+// Retry avec backoff exponentiel sur 429
 async function bdlGet<T>(
   path: string,
   params: Record<string, string | number | string[]> = {},
+  retries = 5,
 ): Promise<T> {
   const url = new URL(`${BASE_URL}${path}`);
 
@@ -106,15 +108,29 @@ async function bdlGet<T>(
     }
   }
 
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: API_KEY },
-  });
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: API_KEY },
+    });
 
-  if (!res.ok) {
+    if (res.ok) {
+      return res.json() as Promise<T>;
+    }
+
+    if (res.status === 429) {
+      // Rate limited — backoff exponentiel : 5s, 10s, 20s, 40s, 80s
+      const wait = 5000 * Math.pow(2, attempt);
+      process.stdout.write(
+        `\n  ⏳ 429 rate limit — retry ${attempt + 1}/${retries} dans ${wait / 1000}s…\n`,
+      );
+      await sleep(wait);
+      continue;
+    }
+
     throw new Error(`BDL ${res.status} on ${url.toString()}`);
   }
 
-  return res.json() as Promise<T>;
+  throw new Error(`BDL — trop de retries 429 sur ${url.toString()}`);
 }
 
 // Fetch toutes les pages avec cursor pagination
@@ -145,8 +161,9 @@ async function bdlGetAll<T>(
       `\r  fetched ${results.length} records (cursor: ${cursor ?? "done"})    `,
     );
 
+    // 2s entre chaque page (rate limit : 60 req/min = 1/sec, on reste à 0.5/sec)
     if (cursor !== null) {
-      await sleep(1100); // rate limit
+      await sleep(2000);
     }
   } while (cursor !== null);
 

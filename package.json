@@ -6,7 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "prisma": "prisma",
+    "seed:teams": "tsx scripts/seed-teams.ts",
+    "import:bdl": "tsx scripts/import-balldontlie.ts",
+    "import:player-stats": "tsx scripts/import-player-stats.ts",
+    "import:advanced": "tsx scripts/import-advanced.ts",
+    "import:standings": "tsx scripts/import-standings.ts",
+    "import:photos": "tsx scripts/import-photos.ts",
+    "generate:summaries": "tsx scripts/generate-summaries.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
