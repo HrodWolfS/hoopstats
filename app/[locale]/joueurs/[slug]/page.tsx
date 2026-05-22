@@ -123,6 +123,7 @@ export default async function PlayerPage({
         primaryColor={primaryColor}
         secondaryColor={secondaryColor}
         photoUrl={player.photoUrl}
+        summaryFr={player.summaryFr}
         ppg={currentSeason?.pointsPerGame ?? null}
         rpg={currentSeason?.reboundsPerGame ?? null}
         apg={currentSeason?.assistsPerGame ?? null}

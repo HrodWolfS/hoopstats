@@ -1,151 +1,255 @@
 /**
- * Sprint 5 — Génération de résumés joueurs via Anthropic Claude
+ * Sprint 5 — Génération de résumés joueurs en français
  *
- * Pour chaque joueur avec au moins une saison en DB,
- * génère un résumé en français (~150 mots) basé sur ses stats carrière.
+ * Génère un résumé factuel et contextualisé pour chaque joueur
+ * actif en 2025-26, basé sur ses stats carrière.
+ * Aucune API externe requise.
  *
- * Prérequis: ANTHROPIC_API_KEY dans .env
  * Run: npm run generate:summaries
- * Run (test 5 joueurs): npm run generate:summaries -- --limit 5
+ * Run (test): npm run generate:summaries -- --limit 10
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
+import { CURRENT_SEASON } from "@/lib/nba";
 
 const LIMIT_ARG = process.argv.includes("--limit")
   ? parseInt(process.argv[process.argv.indexOf("--limit") + 1] ?? "10")
   : null;
 
-async function buildPrompt(
-  firstName: string,
-  lastName: string,
-  position: string | null,
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function positionFr(pos: string | null): string {
+  if (!pos) return "joueur";
+  const map: Record<string, string> = {
+    G: "meneur/arrière",
+    F: "ailier",
+    C: "pivot",
+    "G-F": "arrière-ailier",
+    "F-G": "ailier-arrière",
+    "F-C": "ailier-pivot",
+    "C-F": "pivot-ailier",
+    PG: "meneur",
+    SG: "arrière",
+    SF: "ailier",
+    PF: "ailier fort",
+  };
+  return map[pos] ?? pos.toLowerCase();
+}
+
+function countryFr(country: string | null): string {
+  if (!country) return "";
+  const map: Record<string, string> = {
+    USA: "américain",
+    France: "français",
+    Serbia: "serbe",
+    Greece: "grec",
+    Slovenia: "slovène",
+    Canada: "canadien",
+    Australia: "australien",
+    Germany: "allemand",
+    Latvia: "letton",
+    Lithuania: "lituanien",
+    Croatia: "croate",
+    Spain: "espagnol",
+    Nigeria: "nigérian",
+    Cameroon: "camerounais",
+    Turkey: "turc",
+    "Democratic Republic of the Congo": "congolais",
+    DRC: "congolais",
+    Finland: "finlandais",
+    "Bosnia and Herzegovina": "bosnien",
+    Czech: "tchèque",
+    Poland: "polonais",
+    Italy: "italien",
+    Argentina: "argentin",
+    Brazil: "brésilien",
+    "United Kingdom": "britannique",
+    Scotland: "écossais",
+    Montenegro: "monténégrin",
+    Portugal: "portugais",
+    Israel: "israélien",
+    "South Sudan": "sud-soudanais",
+    Sudan: "soudanais",
+    Ukraine: "ukrainien",
+    Georgia: "géorgien",
+    "New Zealand": "néo-zélandais",
+    Senegal: "sénégalais",
+    Switzerland: "suisse",
+    "Cape Verde": "cap-verdien",
+    China: "chinois",
+    "South Korea": "sud-coréen",
+    Japan: "japonais",
+  };
+  return map[country] ?? "";
+}
+
+/** Qualifie le scoring d'un joueur */
+function scoringLabel(pts: number): string {
+  if (pts >= 25) return "l'un des meilleurs scoreurs de la ligue";
+  if (pts >= 20) return "un scoreur de premier plan";
+  if (pts >= 15) return "un apport offensif fiable";
+  if (pts >= 10) return "un contributeur offensif régulier";
+  if (pts >= 5) return "un joueur de rotation";
+  return "un élément de fond de banc";
+}
+
+/** Qualifie l'efficacité (True Shooting %) */
+function efficiencyNote(ts: number | null): string {
+  if (ts == null) return "";
+  const pct = ts * 100;
+  if (pct >= 62) return "une efficacité remarquable au tir";
+  if (pct >= 57) return "une bonne efficacité au tir";
+  if (pct >= 52) return "une efficacité correcte au tir";
+  return "des difficultés d'efficacité";
+}
+
+/** Qualifie l'experience carrière */
+function experienceNote(seasons: number, gp: number): string {
+  if (seasons <= 1) return "recrue NBA";
+  if (seasons <= 3) return `joueur en développement (${seasons} saisons)`;
+  if (seasons <= 7)
+    return `joueur expérimenté (${seasons} saisons, ${gp} matchs au total)`;
+  return `vétéran de la ligue (${seasons} saisons, ${gp} matchs en carrière)`;
+}
+
+/** Génère le résumé complet */
+function buildSummary(player: {
+  firstName: string;
+  lastName: string;
+  position: string | null;
+  country: string | null;
   seasons: Array<{
     season: string;
-    teamAbbr: string;
+    team: { abbr: string; city: string; name: string };
     gamesPlayed: number;
     pointsPerGame: number;
     reboundsPerGame: number;
     assistsPerGame: number;
+    stealsPerGame: number;
+    blocksPerGame: number;
     trueShooting: number | null;
-  }>,
-): Promise<string> {
-  const sorted = [...seasons].sort((a, b) => b.season.localeCompare(a.season));
+    usageRate: number | null;
+  }>;
+}): string {
+  const sorted = [...player.seasons].sort((a, b) =>
+    b.season.localeCompare(a.season),
+  );
   const latest = sorted[0];
-  const careerGp = seasons.reduce((s, r) => s + r.gamesPlayed, 0);
+  if (!latest) return "";
 
-  const statsLines = sorted
-    .slice(0, 5)
-    .map(
-      (s) =>
-        `  ${s.season} (${s.teamAbbr}): ${s.gamesPlayed} matchs — ${s.pointsPerGame.toFixed(1)} pts, ${s.reboundsPerGame.toFixed(1)} reb, ${s.assistsPerGame.toFixed(1)} ast`,
-    )
-    .join("\n");
+  const pos = positionFr(player.position);
+  const nat = countryFr(player.country);
+  const team = `${latest.team.city} ${latest.team.name}`;
+  const totalGp = player.seasons.reduce((s, r) => s + r.gamesPlayed, 0);
 
-  return `Tu es un rédacteur sportif français spécialisé en NBA.
-Rédige un résumé court et factuel (~120-150 mots) en français sur le joueur NBA suivant.
-Parle de son poste, son style de jeu, ses forces et ses statistiques récentes.
-Ton sobre, informatif, sans superlatifs excessifs. Pas de titre, juste le texte.
+  // Phrase d'intro
+  const intro = nat
+    ? `${player.firstName} ${player.lastName} est un ${pos} ${nat} évoluant actuellement avec les ${team}.`
+    : `${player.firstName} ${player.lastName} est un ${pos} des ${team}.`;
 
-Joueur: ${firstName} ${lastName}
-Poste: ${position ?? "inconnu"}
-Saisons en DB: ${seasons.length} (${careerGp} matchs au total)
-Équipe actuelle: ${latest?.teamAbbr ?? "inconnue"}
+  // Stats saison actuelle
+  const pts = latest.pointsPerGame.toFixed(1);
+  const reb = latest.reboundsPerGame.toFixed(1);
+  const ast = latest.assistsPerGame.toFixed(1);
+  const gp = latest.gamesPlayed;
+  const tsNote = efficiencyNote(latest.trueShooting);
 
-Stats récentes (5 dernières saisons):
-${statsLines}`;
-}
+  const statsLine = `En ${gp} matchs lors de la saison ${latest.season}, il contribue à hauteur de ${pts} points, ${reb} rebonds et ${ast} passes décisives par rencontre${tsNote ? `, affichant ${tsNote}` : ""}.`;
 
-async function main() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.error(
-      "❌  ANTHROPIC_API_KEY manquant dans .env\n   Ajoute: ANTHROPIC_API_KEY=sk-ant-...",
-    );
-    process.exit(1);
+  // Contexte carrière
+  const expNote = experienceNote(player.seasons.length, totalGp);
+  const scoringCtx = scoringLabel(latest.pointsPerGame);
+
+  // Stats défensives notables
+  const defParts: string[] = [];
+  if (latest.stealsPerGame >= 1.5)
+    defParts.push(`${latest.stealsPerGame.toFixed(1)} interceptions`);
+  if (latest.blocksPerGame >= 1.5)
+    defParts.push(`${latest.blocksPerGame.toFixed(1)} contres`);
+  const defLine = defParts.length
+    ? ` Sur le plan défensif, il se distingue avec ${defParts.join(" et ")} par match.`
+    : "";
+
+  // Usage
+  const usageLine =
+    latest.usageRate && latest.usageRate > 0.28
+      ? ` Son taux d'utilisation élevé (${(latest.usageRate * 100).toFixed(0)}%) confirme son rôle central dans le système offensif.`
+      : "";
+
+  // Saisons précédentes (si pertinent)
+  let careerLine = "";
+  if (player.seasons.length > 1) {
+    careerLine = ` ${player.firstName.split(" ")[0]} est ${expNote}.`;
+  } else {
+    careerLine = ` Il fait partie des recrues les plus en vue de cette saison.`;
   }
 
-  const client = new Anthropic({ apiKey });
+  // Contexte de niveau
+  const levelLine = ` Considéré comme ${scoringCtx}, il apporte une contribution précieuse à son équipe.`;
 
-  // Joueurs sans résumé avec au moins une saison
+  return `${intro} ${statsLine}${defLine}${usageLine}${careerLine}${levelLine}`.trim();
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+async function main() {
   const players = await prisma.player.findMany({
     where: {
       summaryFr: null,
-      seasons: { some: {} },
+      seasons: { some: { season: CURRENT_SEASON } },
     },
     include: {
       seasons: {
-        include: { team: { select: { abbr: true } } },
+        include: {
+          team: { select: { abbr: true, city: true, name: true } },
+        },
         orderBy: { season: "desc" },
       },
     },
     take: LIMIT_ARG ?? undefined,
-    orderBy: { updatedAt: "desc" },
+    orderBy: { lastName: "asc" },
   });
 
   console.log(
-    `🤖 Génération résumés — ${players.length} joueurs à traiter${LIMIT_ARG ? ` (limite: ${LIMIT_ARG})` : ""}\n`,
+    `📝 Génération résumés — ${players.length} joueurs${LIMIT_ARG ? ` (limite: ${LIMIT_ARG})` : ""}\n`,
   );
 
   let done = 0;
-  let errors = 0;
+  let skipped = 0;
 
   for (const player of players) {
-    const seasons = player.seasons.map((ps) => ({
-      season: ps.season,
-      teamAbbr: ps.team.abbr,
-      gamesPlayed: ps.gamesPlayed,
-      pointsPerGame: ps.pointsPerGame,
-      reboundsPerGame: ps.reboundsPerGame,
-      assistsPerGame: ps.assistsPerGame,
-      trueShooting: ps.trueShooting,
-    }));
-
-    process.stdout.write(
-      `  [${done + 1}/${players.length}] ${player.firstName} ${player.lastName}… `,
-    );
-
-    try {
-      const prompt = await buildPrompt(
-        player.firstName,
-        player.lastName,
-        player.position,
-        seasons,
-      );
-
-      const message = await client.messages.create({
-        model: "claude-haiku-4-5",
-        max_tokens: 300,
-        messages: [{ role: "user", content: prompt }],
-      });
-
-      const summary =
-        message.content[0].type === "text"
-          ? message.content[0].text.trim()
-          : "";
-
-      await prisma.player.update({
-        where: { id: player.id },
-        data: {
-          summaryFr: summary,
-          summaryGeneratedAt: new Date(),
-        },
-      });
-
-      done++;
-      console.log(`✓`);
-
-      // Rate limit : ~3 req/sec max sur Haiku
-      await new Promise((r) => setTimeout(r, 400));
-    } catch (err) {
-      errors++;
-      console.log(`❌ ${err instanceof Error ? err.message : err}`);
-      await new Promise((r) => setTimeout(r, 2000));
+    const summary = buildSummary(player);
+    if (!summary) {
+      skipped++;
+      continue;
     }
+
+    await prisma.player.update({
+      where: { id: player.id },
+      data: {
+        summaryFr: summary,
+        summaryGeneratedAt: new Date(),
+      },
+    });
+
+    done++;
+    if (done % 50 === 0)
+      process.stdout.write(`  ${done}/${players.length} résumés générés…\n`);
   }
 
+  await prisma.syncLog.create({
+    data: {
+      source: "generate-summaries",
+      status: "success",
+      itemsProcessed: done,
+      errors: { skipped },
+      startedAt: new Date(),
+      completedAt: new Date(),
+    },
+  });
+
   console.log(`\n✅ ${done} résumés générés`);
-  if (errors) console.log(`⚠️  ${errors} erreurs`);
+  if (skipped) console.log(`⏭️  ${skipped} skippés (pas de saison)`);
 }
 
 main()

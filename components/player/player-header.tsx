@@ -13,6 +13,7 @@ export type PlayerHeaderData = {
   primaryColor: string;
   secondaryColor: string;
   photoUrl?: string | null;
+  summaryFr?: string | null;
   // Stats saison courante
   ppg: number | null;
   rpg: number | null;
@@ -31,6 +32,7 @@ export function PlayerHeader({
   primaryColor,
   secondaryColor,
   photoUrl,
+  summaryFr,
   ppg,
   rpg,
   apg,
@@ -70,6 +72,12 @@ export function PlayerHeader({
             </p>
           )}
         </div>
+
+        {summaryFr && (
+          <p className="text-sm text-white/50 leading-relaxed max-w-2xl">
+            {summaryFr}
+          </p>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <KPI

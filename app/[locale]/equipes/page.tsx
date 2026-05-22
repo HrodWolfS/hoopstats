@@ -66,6 +66,7 @@ export default async function TeamsPage({
                     abbr={team.abbr}
                     primaryColor={team.primaryColor}
                     secondaryColor={team.secondaryColor}
+                    logoUrl={team.logoUrl}
                     size="lg"
                   />
                   <div className="text-center">

@@ -14,7 +14,8 @@
     "import:advanced": "tsx scripts/import-advanced.ts",
     "import:standings": "tsx scripts/import-standings.ts",
     "import:photos": "tsx scripts/import-photos.ts",
-    "generate:summaries": "tsx scripts/generate-summaries.ts"
+    "generate:summaries": "tsx scripts/generate-summaries.ts",
+    "seed:logos": "tsx scripts/seed-team-logos.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",

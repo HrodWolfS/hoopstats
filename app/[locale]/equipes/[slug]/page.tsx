@@ -139,6 +139,7 @@ export default async function TeamPage({
             abbr={team.abbr}
             primaryColor={team.primaryColor}
             secondaryColor={team.secondaryColor}
+            logoUrl={team.logoUrl}
             size="hero"
             className="shadow-2xl"
           />

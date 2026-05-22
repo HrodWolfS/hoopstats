@@ -208,6 +208,7 @@ export function CommandPalette() {
                       abbr={result.sub}
                       primaryColor={result.primaryColor}
                       secondaryColor={result.secondaryColor}
+                      logoUrl={result.logoUrl}
                       size="xs"
                     />
                   )}

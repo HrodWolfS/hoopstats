@@ -10,6 +10,7 @@ export type SearchResult = {
   label: string;
   sub: string;
   photoUrl?: string | null;
+  logoUrl?: string | null;
   primaryColor: string;
   secondaryColor: string;
 };
@@ -80,6 +81,7 @@ export async function GET(req: NextRequest) {
       label: `${t.city} ${t.name}`,
       sub: t.abbr,
       photoUrl: null,
+      logoUrl: t.logoUrl,
       primaryColor: t.primaryColor,
       secondaryColor: t.secondaryColor,
     })),

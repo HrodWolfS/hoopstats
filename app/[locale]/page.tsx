@@ -35,6 +35,7 @@ type StandingRow = {
   name: string;
   primaryColor: string;
   secondaryColor: string;
+  logoUrl: string | null;
   wins: number;
   losses: number;
   conferenceRank: number | null;
@@ -142,6 +143,7 @@ async function getStandings(
           name: true,
           primaryColor: true,
           secondaryColor: true,
+          logoUrl: true,
         },
       },
     },
@@ -153,6 +155,7 @@ async function getStandings(
     name: r.team.name,
     primaryColor: r.team.primaryColor,
     secondaryColor: r.team.secondaryColor,
+    logoUrl: r.team.logoUrl,
     wins: r.wins,
     losses: r.losses,
     conferenceRank: r.conferenceRank ?? i + 1,
@@ -253,6 +256,7 @@ function StandingsPanel({
                 abbr={row.abbr}
                 primaryColor={row.primaryColor}
                 secondaryColor={row.secondaryColor}
+                logoUrl={row.logoUrl}
                 size="xs"
               />
               <div className="flex-1 min-w-0">
