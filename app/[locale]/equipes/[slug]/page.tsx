@@ -209,6 +209,7 @@ export default async function TeamPage({
         currentSeason={seasonStats}
         history={historySeason}
         rosterDate={rosterDate}
+        locale={locale}
       />
     </div>
   );
