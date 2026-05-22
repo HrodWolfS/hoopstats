@@ -29,6 +29,16 @@ OUTPUT_FILE = OUTPUT_DIR / "standings.json"
 
 SLEEP = 2.0
 
+# TeamName (nba_api) → abbr 3 lettres (notre DB)
+TEAM_NAME_TO_ABBR: dict[str, str] = {
+    "Celtics": "BOS", "Nets": "BKN", "Knicks": "NYK", "76ers": "PHI", "Raptors": "TOR",
+    "Bulls": "CHI", "Cavaliers": "CLE", "Pistons": "DET", "Pacers": "IND", "Bucks": "MIL",
+    "Hawks": "ATL", "Hornets": "CHA", "Heat": "MIA", "Magic": "ORL", "Wizards": "WAS",
+    "Nuggets": "DEN", "Timberwolves": "MIN", "Thunder": "OKC", "Trail Blazers": "POR", "Jazz": "UTA",
+    "Warriors": "GSW", "Clippers": "LAC", "Lakers": "LAL", "Suns": "PHX", "Kings": "SAC",
+    "Mavericks": "DAL", "Rockets": "HOU", "Grizzlies": "MEM", "Pelicans": "NOP", "Spurs": "SAS",
+}
+
 
 def safe_int(val, default=0) -> int:
     try:
@@ -58,15 +68,18 @@ def fetch_season_standings(season: str) -> list[dict]:
 
     rows = []
     for _, row in df.iterrows():
-        team_abbr = str(row.get("TeamSlug", "")).upper()
-        # TeamSlug est en minuscules (ex: "lakers"), on va plutôt utiliser TeamCity + TeamName
-        # pour matcher avec notre table Team via l'abbreviation
-        # nba_api retourne TeamAbbreviation dans certaines versions
-        abbr = str(row.get("TeamAbbreviation", team_abbr))
+        team_name = str(row.get("TeamName", ""))
+        abbr = TEAM_NAME_TO_ABBR.get(team_name)
+        if not abbr:
+            print(f"\n  ⚠️  TeamName inconnu: {repr(team_name)}")
+            continue
+
+        # conference_rank depuis PlayoffRank (rang conférence)
+        conf_rank = safe_int(row.get("PlayoffRank", 0))
 
         # Playoff result (peut être vide en saison en cours)
-        playoff_result = str(row.get("PlayoffRound", "")) or None
-        if playoff_result in ("None", "0", "", "nan"):
+        playoff_result = str(row.get("ClinchIndicator", "")) or None
+        if playoff_result in ("None", "", "nan", " "):
             playoff_result = None
 
         rows.append({
@@ -74,7 +87,7 @@ def fetch_season_standings(season: str) -> list[dict]:
             "season": season,
             "wins": safe_int(row.get("WINS")),
             "losses": safe_int(row.get("LOSSES")),
-            "conference_rank": safe_int(row.get("ConferenceRecord", "0").split("-")[0] if isinstance(row.get("ConferenceRecord"), str) else 0),
+            "conference_rank": conf_rank,
             "playoff_result": playoff_result,
         })
 
