@@ -27,14 +27,42 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
   const player = await prisma.player.findUnique({
     where: { slug },
-    select: { firstName: true, lastName: true, position: true },
+    select: {
+      firstName: true,
+      lastName: true,
+      position: true,
+      photoUrl: true,
+      summaryFr: true,
+    },
   });
   if (!player) return {};
+  const title = `${player.firstName} ${player.lastName} — Stats NBA | hoopstats`;
+  const description =
+    player.summaryFr ??
+    `Stats carrière, historique saisons et stats avancées de ${player.firstName} ${player.lastName}${player.position ? ` (${player.position})` : ""}.`;
   return {
-    title: `${player.firstName} ${player.lastName} — Stats NBA | hoopstats`,
-    description: `Stats carrière, historique saisons et stats avancées de ${player.firstName} ${player.lastName}${player.position ? ` (${player.position})` : ""}.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `${BASE}/fr/joueurs/${slug}`,
+      siteName: "hoopstats",
+      images: player.photoUrl
+        ? [{ url: player.photoUrl, width: 400, height: 400 }]
+        : [],
+      locale: "fr_FR",
+      type: "profile",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+      images: player.photoUrl ? [player.photoUrl] : [],
+    },
   };
 }
 

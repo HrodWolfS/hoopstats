@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_SEASON } from "@/lib/nba";
 import { TeamMono } from "@/components/ui/team-mono";
+import { FadeIn, StaggerList, StaggerItem } from "@/components/ui/fade-in";
 
 export const metadata: Metadata = {
   title: "Les 30 équipes NBA — hoopstats",
@@ -48,43 +49,46 @@ export default async function TeamsPage({
       {[
         { label: "Conférence Est", teams: east },
         { label: "Conférence Ouest", teams: west },
-      ].map(({ label, teams: confTeams }) => (
-        <section key={label}>
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-white/40 font-medium mb-4">
-            {label}
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {confTeams.map((team) => {
-              const season = team.seasons[0];
-              return (
-                <Link
-                  key={team.slug}
-                  href={`/${locale}/equipes/${team.slug}`}
-                  className="group rounded-2xl border border-white/[0.06] bg-[#111114] p-4 flex flex-col items-center gap-3 hover:border-white/[0.15] transition"
-                >
-                  <TeamMono
-                    abbr={team.abbr}
-                    primaryColor={team.primaryColor}
-                    secondaryColor={team.secondaryColor}
-                    logoUrl={team.logoUrl}
-                    size="lg"
-                  />
-                  <div className="text-center">
-                    <div className="text-sm font-medium leading-tight">
-                      {team.city}
-                    </div>
-                    <div className="text-sm text-white/40">{team.name}</div>
-                  </div>
-                  {season && (
-                    <div className="text-xs font-mono text-white/40 tabular-nums">
-                      {season.wins}–{season.losses}
-                    </div>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+      ].map(({ label, teams: confTeams }, sectionIdx) => (
+        <FadeIn key={label} delay={sectionIdx * 0.1}>
+          <section>
+            <h2 className="text-[11px] uppercase tracking-[0.2em] text-white/40 font-medium mb-4">
+              {label}
+            </h2>
+            <StaggerList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {confTeams.map((team) => {
+                const teamSeason = team.seasons[0];
+                return (
+                  <StaggerItem key={team.slug}>
+                    <Link
+                      href={`/${locale}/equipes/${team.slug}`}
+                      className="group rounded-2xl border border-white/[0.06] bg-[#111114] p-4 flex flex-col items-center gap-3 hover:border-white/[0.15] transition h-full"
+                    >
+                      <TeamMono
+                        abbr={team.abbr}
+                        primaryColor={team.primaryColor}
+                        secondaryColor={team.secondaryColor}
+                        logoUrl={team.logoUrl}
+                        size="lg"
+                      />
+                      <div className="text-center">
+                        <div className="text-sm font-medium leading-tight">
+                          {team.city}
+                        </div>
+                        <div className="text-sm text-white/40">{team.name}</div>
+                      </div>
+                      {teamSeason && (
+                        <div className="text-xs font-mono text-white/40 tabular-nums">
+                          {teamSeason.wins}–{teamSeason.losses}
+                        </div>
+                      )}
+                    </Link>
+                  </StaggerItem>
+                );
+              })}
+            </StaggerList>
+          </section>
+        </FadeIn>
       ))}
     </div>
   );

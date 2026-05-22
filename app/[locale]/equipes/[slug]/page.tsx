@@ -27,14 +27,34 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
   const team = await prisma.team.findUnique({
     where: { slug },
-    select: { city: true, name: true, conference: true },
+    select: { city: true, name: true, conference: true, logoUrl: true },
   });
   if (!team) return {};
+  const title = `${team.city} ${team.name} — Stats NBA | hoopstats`;
+  const description = `Roster, stats saison et historique 10 saisons des ${team.city} ${team.name} (Conférence ${confFr(team.conference)}).`;
   return {
-    title: `${team.city} ${team.name} — Stats NBA | hoopstats`,
-    description: `Roster, stats saison et historique 10 saisons des ${team.city} ${team.name} (Conférence ${confFr(team.conference)}).`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `${BASE}/fr/equipes/${slug}`,
+      siteName: "hoopstats",
+      images: team.logoUrl
+        ? [{ url: team.logoUrl, width: 200, height: 200 }]
+        : [],
+      locale: "fr_FR",
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+      images: team.logoUrl ? [team.logoUrl] : [],
+    },
   };
 }
 

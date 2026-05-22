@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { Footer } from "@/components/layout/footer";
 import { CommandPalette } from "@/components/ui/command-palette";
+import { PageTransition } from "@/components/ui/page-transition";
 
 export function generateStaticParams() {
   return [{ locale: "fr" }];
@@ -23,7 +24,7 @@ export default function LocaleLayout({
           <TopBar />
         </Suspense>
         <div className="px-8 lg:px-12 py-8 max-w-[1400px] mx-auto w-full flex-1">
-          {children}
+          <PageTransition>{children}</PageTransition>
         </div>
         <Footer />
       </main>

@@ -5,6 +5,7 @@ import { CURRENT_SEASON } from "@/lib/nba";
 import { stat, pct, record } from "@/lib/format";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { TeamMono } from "@/components/ui/team-mono";
+import { FadeIn } from "@/components/ui/fade-in";
 
 export const metadata: Metadata = {
   title: "hoopstats — Stats NBA en français",
@@ -303,96 +304,102 @@ export default async function HomePage({
   return (
     <div className="space-y-10">
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className="pt-4 pb-2">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[11px] font-medium uppercase tracking-wider mb-5">
-          Saison {CURRENT_SEASON} · En cours
-        </div>
-        <h1 className="font-display font-semibold text-5xl md:text-7xl tracking-[-0.04em] leading-[0.9] mb-5">
-          Stats NBA
-          <br />
-          <span className="text-white/25">en français</span>
-        </h1>
-        <p className="text-white/40 text-base max-w-lg leading-relaxed mb-7">
-          Joueurs, équipes, stats carrière et stats avancées — toute la ligue,
-          saison {CURRENT_SEASON}.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href={`/${locale}/joueurs`}
-            className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition"
-          >
-            Joueurs →
-          </Link>
-          <Link
-            href={`/${locale}/equipes`}
-            className="px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.09] text-white text-sm font-medium transition"
-          >
-            Équipes →
-          </Link>
-        </div>
-      </section>
+      <FadeIn>
+        <section className="pt-4 pb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[11px] font-medium uppercase tracking-wider mb-5">
+            Saison {CURRENT_SEASON} · En cours
+          </div>
+          <h1 className="font-display font-semibold text-5xl md:text-7xl tracking-[-0.04em] leading-[0.9] mb-5">
+            Stats NBA
+            <br />
+            <span className="text-white/25">en français</span>
+          </h1>
+          <p className="text-white/40 text-base max-w-lg leading-relaxed mb-7">
+            Joueurs, équipes, stats carrière et stats avancées — toute la ligue,
+            saison {CURRENT_SEASON}.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/${locale}/joueurs`}
+              className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition"
+            >
+              Joueurs →
+            </Link>
+            <Link
+              href={`/${locale}/equipes`}
+              className="px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.09] text-white text-sm font-medium transition"
+            >
+              Équipes →
+            </Link>
+          </div>
+        </section>
+      </FadeIn>
 
       {/* ── Leaders ──────────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
-          Leaders de la saison{" "}
-          <span className="text-white/25 font-normal text-base">
-            {CURRENT_SEASON}
-          </span>
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <LeadersPanel
-            title="Points"
-            unit="PPG"
-            rows={ptsLeaders}
-            format={(v) => stat(v)}
-            locale={locale}
-          />
-          <LeadersPanel
-            title="Rebonds"
-            unit="RPG"
-            rows={rebLeaders}
-            format={(v) => stat(v)}
-            locale={locale}
-          />
-          <LeadersPanel
-            title="Passes décisives"
-            unit="APG"
-            rows={astLeaders}
-            format={(v) => stat(v)}
-            locale={locale}
-          />
-          <LeadersPanel
-            title="True Shooting"
-            unit="TS% · min. 20MJ"
-            rows={tsLeaders}
-            format={(v) => `${pct(v)}%`}
-            locale={locale}
-          />
-        </div>
-      </section>
+      <FadeIn delay={0.1}>
+        <section>
+          <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
+            Leaders de la saison{" "}
+            <span className="text-white/25 font-normal text-base">
+              {CURRENT_SEASON}
+            </span>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <LeadersPanel
+              title="Points"
+              unit="PPG"
+              rows={ptsLeaders}
+              format={(v) => stat(v)}
+              locale={locale}
+            />
+            <LeadersPanel
+              title="Rebonds"
+              unit="RPG"
+              rows={rebLeaders}
+              format={(v) => stat(v)}
+              locale={locale}
+            />
+            <LeadersPanel
+              title="Passes décisives"
+              unit="APG"
+              rows={astLeaders}
+              format={(v) => stat(v)}
+              locale={locale}
+            />
+            <LeadersPanel
+              title="True Shooting"
+              unit="TS% · min. 20MJ"
+              rows={tsLeaders}
+              format={(v) => `${pct(v)}%`}
+              locale={locale}
+            />
+          </div>
+        </section>
+      </FadeIn>
 
       {/* ── Standings ────────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
-          Classement{" "}
-          <span className="text-white/25 font-normal text-base">
-            top 5 par conférence
-          </span>
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <StandingsPanel
-            title="Conférence Est"
-            rows={eastStandings}
-            locale={locale}
-          />
-          <StandingsPanel
-            title="Conférence Ouest"
-            rows={westStandings}
-            locale={locale}
-          />
-        </div>
-      </section>
+      <FadeIn delay={0.2}>
+        <section>
+          <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
+            Classement{" "}
+            <span className="text-white/25 font-normal text-base">
+              top 5 par conférence
+            </span>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <StandingsPanel
+              title="Conférence Est"
+              rows={eastStandings}
+              locale={locale}
+            />
+            <StandingsPanel
+              title="Conférence Ouest"
+              rows={westStandings}
+              locale={locale}
+            />
+          </div>
+        </section>
+      </FadeIn>
     </div>
   );
 }
