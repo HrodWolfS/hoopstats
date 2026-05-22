@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id             String @id @default(cuid())
+  abbr           String @unique
+  city           String
+  name           String
+  slug           String @unique
+  conference     String
+  division       String
+  primaryColor   String
+  secondaryColor String
+  logoUrl        String?
+  founded        Int
+  arena          String?
+  city_country   String?
+
+  seasons       TeamSeason[]
+  playerSeasons PlayerSeason[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Player {
+  id                 String    @id @default(cuid())
+  firstName          String
+  lastName           String
+  slug               String    @unique
+  birthDate          DateTime?
+  height             String?
+  weight             String?
+  position           String?
+  country            String?
+  draftYear          Int?
+  draftPick          Int?
+  college            String?
+  photoUrl           String?
+  photoAttribution   String?
+  wikipediaUrlFr     String?
+  wikipediaUrlEn     String?
+  summaryFr          String?   @db.Text
+  summaryEn          String?   @db.Text
+  summaryGeneratedAt DateTime?
+
+  seasons PlayerSeason[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PlayerSeason {
+  id       String @id @default(cuid())
+  playerId String
+  teamId   String
+  season   String
+
+  gamesPlayed     Int
+  minutesPerGame  Float
+  pointsPerGame   Float
+  reboundsPerGame Float
+  assistsPerGame  Float
+  stealsPerGame   Float
+  blocksPerGame   Float
+  fgPct           Float?
+  threePtPct      Float?
+  ftPct           Float?
+
+  per          Float?
+  trueShooting Float?
+  usageRate    Float?
+  bpm          Float?
+  vorp         Float?
+  winShares    Float?
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id])
+
+  @@unique([playerId, season, teamId])
+  @@index([season])
+  @@index([teamId, season])
+}
+
+model TeamSeason {
+  id     String @id @default(cuid())
+  teamId String
+  season String
+
+  wins           Int
+  losses         Int
+  conferenceRank Int?
+  offRating      Float?
+  defRating      Float?
+  netRating      Float?
+  pace           Float?
+  playoffResult  String?
+  summaryFr      String? @db.Text
+
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@unique([teamId, season])
+  @@index([season])
+}
+
+model SyncLog {
+  id             String   @id @default(cuid())
+  source         String
+  status         String
+  itemsProcessed Int
+  errors         Json?
+  startedAt      DateTime
+  completedAt    DateTime
+}
