@@ -93,8 +93,13 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Accueil", icon: <IconHome />, href: "/fr" },
-  { id: "teams", label: "Équipes", icon: <IconTeams />, href: "/fr" },
-  { id: "players", label: "Joueurs", icon: <IconPlayers />, href: "/fr" },
+  { id: "teams", label: "Équipes", icon: <IconTeams />, href: "/fr/equipes" },
+  {
+    id: "players",
+    label: "Joueurs",
+    icon: <IconPlayers />,
+    href: "/fr/joueurs",
+  },
   { id: "compare", label: "Comparer", icon: <IconCompare />, disabled: true },
   { id: "seasons", label: "Saisons", icon: <IconSeasons />, disabled: true },
 ];

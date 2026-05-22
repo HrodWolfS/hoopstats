@@ -2,6 +2,10 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { Footer } from "@/components/layout/footer";
 
+export function generateStaticParams() {
+  return [{ locale: "fr" }];
+}
+
 export default function LocaleLayout({
   children,
 }: {
