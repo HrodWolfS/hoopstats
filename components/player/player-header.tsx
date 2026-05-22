@@ -12,6 +12,7 @@ export type PlayerHeaderData = {
   teamAbbr: string | null;
   primaryColor: string;
   secondaryColor: string;
+  photoUrl?: string | null;
   // Stats saison courante
   ppg: number | null;
   rpg: number | null;
@@ -29,6 +30,7 @@ export function PlayerHeader({
   teamAbbr,
   primaryColor,
   secondaryColor,
+  photoUrl,
   ppg,
   rpg,
   apg,
@@ -43,6 +45,7 @@ export function PlayerHeader({
           lastName={lastName}
           primaryColor={primaryColor}
           secondaryColor={secondaryColor}
+          photoUrl={photoUrl}
           size="hero"
           showNum={false}
         />

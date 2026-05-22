@@ -12,6 +12,7 @@ type RosterCardProps = {
   jerseyNumber?: string | null;
   primaryColor: string;
   secondaryColor: string;
+  photoUrl?: string | null;
   pts: number;
   reb: number;
   ast: number;
@@ -39,6 +40,7 @@ export function RosterCard({
   jerseyNumber,
   primaryColor,
   secondaryColor,
+  photoUrl,
   pts,
   reb,
   ast,
@@ -59,6 +61,7 @@ export function RosterCard({
         <PlayerAvatar
           firstName={firstName}
           lastName={lastName}
+          photoUrl={photoUrl}
           primaryColor={primaryColor}
           secondaryColor={secondaryColor}
           jerseyNumber={jerseyNumber}

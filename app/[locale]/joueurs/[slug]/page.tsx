@@ -122,6 +122,7 @@ export default async function PlayerPage({
         teamAbbr={currentTeam?.abbr ?? null}
         primaryColor={primaryColor}
         secondaryColor={secondaryColor}
+        photoUrl={player.photoUrl}
         ppg={currentSeason?.pointsPerGame ?? null}
         rpg={currentSeason?.reboundsPerGame ?? null}
         apg={currentSeason?.assistsPerGame ?? null}

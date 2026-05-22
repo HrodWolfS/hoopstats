@@ -8,6 +8,7 @@ export type RosterPlayer = {
   jerseyNumber?: string | null;
   primaryColor: string;
   secondaryColor: string;
+  photoUrl?: string | null;
   pointsPerGame: number;
   reboundsPerGame: number;
   assistsPerGame: number;
@@ -45,6 +46,7 @@ export function RosterView({ players, updatedAt, locale }: RosterViewProps) {
             jerseyNumber={p.jerseyNumber}
             primaryColor={p.primaryColor}
             secondaryColor={p.secondaryColor}
+            photoUrl={p.photoUrl}
             pts={p.pointsPerGame}
             reb={p.reboundsPerGame}
             ast={p.assistsPerGame}

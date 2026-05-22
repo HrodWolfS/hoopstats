@@ -46,7 +46,13 @@ export default async function PlayersPage({
     take: query ? 50 : 100,
     include: {
       player: {
-        select: { firstName: true, lastName: true, slug: true, position: true },
+        select: {
+          firstName: true,
+          lastName: true,
+          slug: true,
+          position: true,
+          photoUrl: true,
+        },
       },
       team: {
         select: {
@@ -116,6 +122,7 @@ export default async function PlayersPage({
                           lastName={row.player.lastName}
                           primaryColor={row.team.primaryColor}
                           secondaryColor={row.team.secondaryColor}
+                          photoUrl={row.player.photoUrl}
                           size="sm"
                           showNum={false}
                         />
