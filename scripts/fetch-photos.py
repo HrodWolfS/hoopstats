@@ -46,58 +46,107 @@ def to_slug(name: str) -> str:
         "ć": "c", "č": "c", "š": "s", "ž": "z",
         "ū": "u", "ō": "o", "ā": "a",
         "ý": "y", "ř": "r", "ě": "e",
-        "'": "", "'": "", ".": "",
+        # NB: apostrophes et points sont intentionnellement absents ici —
+        # le regex [^a-z0-9]+ les convertit en "-", ce qui correspond
+        # aux slugs en DB (de-aaron-fox, t-j-mcconnell, etc.)
     }
     for k, v in replacements.items():
         name = name.replace(k, v)
     return re.sub(r"[^a-z0-9]+", "-", name).strip("-")
 
 
+NBA_KEYWORDS = ["basketball", "nba", "national basketball association"]
+
+
+def is_basketball_page(data: dict) -> bool:
+    """Vérifie que la page Wikipedia parle bien d'un basketteur NBA."""
+    text = (
+        (data.get("extract") or "")
+        + " "
+        + (data.get("description") or "")
+    ).lower()
+    return any(kw in text for kw in NBA_KEYWORDS)
+
+
+def title_matches_player(data: dict, last_name: str) -> bool:
+    """Vérifie que le titre de la page correspond bien au joueur (pas une page de draft, etc.)."""
+    title = (data.get("title") or "").lower()
+    return last_name.lower() in title
+
+
+def fetch_summary(url: str) -> dict | None:
+    """Fetch une page Wikipedia REST summary, retourne le dict ou None."""
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=10)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return None
+
+
 def get_wiki_photo(first_name: str, last_name: str) -> tuple[str | None, str | None]:
     """
     Retourne (photoUrl, attribution) ou (None, None).
     Stratégie :
-      1. Essai direct : fr.wikipedia page summary
-      2. Fallback : en.wikipedia page summary
-      3. Fallback : recherche Wikipedia par nom
+      1. Page de désambiguïsation _(basketball) sur en.wikipedia
+      2. Page directe en/fr.wikipedia — UNIQUEMENT si le texte mentionne basketball/NBA
+      3. Recherche Wikipedia avec "NBA basketball" — vérifie aussi le résultat
     """
     full_name = f"{first_name} {last_name}"
     name_encoded = full_name.replace(" ", "_")
 
-    # Tentative directe sur en.wikipedia (REST summary API)
+    # ── Stratégie 1 : titre désambiguïsé _(basketball) ──────────────────────
+    basketball_url = (
+        f"https://en.wikipedia.org/api/rest_v1/page/summary/{name_encoded}_(basketball)"
+    )
+    data = fetch_summary(basketball_url)
+    if data:
+        img = data.get("originalimage") or data.get("thumbnail")
+        if img and img.get("source"):
+            return img["source"], f"Wikipedia (en), {data.get('title', full_name)}"
+    time.sleep(0.3)
+
+    # ── Stratégie 2 : titre direct, avec vérification NBA ───────────────────
     for lang in ("en", "fr"):
         url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{name_encoded}"
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=10)
-            if r.status_code == 200:
-                data = r.json()
-                img = data.get("originalimage") or data.get("thumbnail")
-                if img and img.get("source"):
-                    attribution = f"Wikipedia ({lang}), {data.get('title', full_name)}"
-                    return img["source"], attribution
-        except Exception:
-            pass
+        data = fetch_summary(url)
+        if data:
+            if not is_basketball_page(data):
+                # Homonymie probable — ignorer sans échouer
+                time.sleep(0.3)
+                continue
+            img = data.get("originalimage") or data.get("thumbnail")
+            if img and img.get("source"):
+                return img["source"], f"Wikipedia ({lang}), {data.get('title', full_name)}"
         time.sleep(0.3)
 
-    # Fallback : recherche Wikipedia
+    # ── Stratégie 3 : recherche Wikipedia avec contexte NBA ─────────────────
     search_url = (
         f"https://en.wikipedia.org/w/api.php"
         f"?action=query&list=search&srsearch={first_name}+{last_name}+NBA+basketball"
-        f"&format=json&srlimit=1&srprop=snippet"
+        f"&format=json&srlimit=3&srprop=snippet"
     )
     try:
         r = requests.get(search_url, headers=HEADERS, timeout=10)
         if r.status_code == 200:
             results = r.json().get("query", {}).get("search", [])
-            if results:
-                title = results[0]["title"].replace(" ", "_")
+            for result in results:
+                title = result["title"].replace(" ", "_")
                 summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
-                r2 = requests.get(summary_url, headers=HEADERS, timeout=10)
-                if r2.status_code == 200:
-                    data = r2.json()
+                data = fetch_summary(summary_url)
+                if data:
+                    if not is_basketball_page(data):
+                        time.sleep(0.3)
+                        continue
+                    # Vérifier que le titre correspond au joueur (pas une page de draft)
+                    if not title_matches_player(data, last_name):
+                        time.sleep(0.3)
+                        continue
                     img = data.get("originalimage") or data.get("thumbnail")
                     if img and img.get("source"):
                         return img["source"], f"Wikipedia (en), {data.get('title', full_name)}"
+                time.sleep(0.3)
     except Exception:
         pass
 

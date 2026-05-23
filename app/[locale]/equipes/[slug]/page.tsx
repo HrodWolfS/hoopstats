@@ -124,7 +124,8 @@ export default async function TeamPage({
         defRating: currentSeason.defRating,
         netRating: currentSeason.netRating,
         pace: currentSeason.pace,
-        trueShooting: null, // agrégé équipe non dispo — sera enrichi Sprint 5
+        trueShooting: null,
+        summaryFr: currentSeason.summaryFr ?? null,
       }
     : null;
 

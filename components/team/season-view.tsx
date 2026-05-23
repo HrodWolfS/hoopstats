@@ -10,6 +10,7 @@ export type SeasonStats = {
   netRating: number | null;
   pace: number | null;
   trueShooting: number | null;
+  summaryFr: string | null;
 };
 
 type SeasonViewProps = {
@@ -36,6 +37,11 @@ export function SeasonView({ season, primaryColor }: SeasonViewProps) {
 
   return (
     <div className="space-y-8">
+      {season.summaryFr && (
+        <p className="text-white/60 text-sm leading-relaxed">
+          {season.summaryFr}
+        </p>
+      )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPI
           label="Off. Rating"
