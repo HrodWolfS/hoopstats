@@ -3,8 +3,8 @@
  *
  * Ce script est déclenché chaque matin à 6h (Paris) par GitHub Actions.
  * Il met à jour :
- *   1. PlayerSeason 2025-26 (stats BallDontLie)
- *   2. TeamSeason 2025-26 (standings NBA Stats API)
+ *   1. PlayerSeason 2025-26 (stats NBA Stats API leaguedashplayerstats)
+ *   2. TeamSeason 2025-26 (standings NBA Stats API leaguestandingsv3)
  *   3. summaryFr des joueurs et équipes (régénération template)
  *   4. Invalide le cache ISR Vercel via /api/revalidate
  *
@@ -17,12 +17,19 @@ import { playerSlug } from "../lib/slugs";
 const prisma = new PrismaClient({ log: ["error"] });
 
 const CURRENT_SEASON = "2025-26";
-const CURRENT_SEASON_INT = 2025;
-const BDL_BASE = "https://api.balldontlie.io/v1";
-const BDL_KEY = process.env.BALLDONTLIE_API_KEY ?? "";
 
 const VERCEL_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "";
 const CRON_SECRET = process.env.CRON_SECRET ?? "";
+
+// Headers communs pour toutes les requêtes stats.nba.com
+const NBA_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+  Accept: "application/json",
+  Referer: "https://www.nba.com/",
+  "x-nba-stats-origin": "stats",
+  "x-nba-stats-token": "true",
+};
 
 // ─── NBA team name → abbr (pour standings NBA Stats API) ─────────────────────
 
@@ -59,136 +66,98 @@ const TEAM_NAME_TO_ABBR: Record<string, string> = {
   Spurs: "SAS",
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-type BdlSeasonAverage = {
-  player: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    team: { abbreviation: string } | null;
-  };
-  stats: {
-    gp?: number;
-    min: string | number;
-    pts: number;
-    reb: number;
-    ast: number;
-    stl: number;
-    blk: number;
-    fg_pct: number | null;
-    fg3_pct: number | null;
-    ft_pct: number | null;
-  };
-};
-
-async function bdlGetAll<T>(
-  path: string,
-  params: Record<string, string | number> = {},
-): Promise<T[]> {
-  const results: T[] = [];
-  let cursor: number | null = null;
-  let attempts = 0;
-
-  do {
-    const url = new URL(`${BDL_BASE}${path}`);
-    for (const [k, v] of Object.entries(params))
-      url.searchParams.set(k, String(v));
-    if (cursor) url.searchParams.set("cursor", String(cursor));
-
-    let res: Response | null = null;
-    for (let retry = 0; retry <= 5; retry++) {
-      res = await fetch(url.toString(), {
-        headers: { Authorization: BDL_KEY },
-      });
-      if (res.ok) break;
-      if (res.status === 429) {
-        const wait = 5000 * Math.pow(2, retry);
-        console.log(`  ⏳ 429 — retry ${retry + 1}/5 dans ${wait / 1000}s`);
-        await sleep(wait);
-        continue;
-      }
-      const body = await res.text().catch(() => "(no body)");
-      throw new Error(`BDL ${res.status} on ${url.toString()} — body: ${body}`);
-    }
-    if (!res?.ok) throw new Error(`BDL — trop de retries sur ${path}`);
-
-    const data = (await res.json()) as {
-      data: T[];
-      meta: { next_cursor?: number };
-    };
-    results.push(...data.data);
-    cursor = data.meta.next_cursor ?? null;
-    attempts++;
-
-    process.stdout.write(
-      `\r  ${results.length} lignes reçues (page ${attempts})    `,
-    );
-
-    if (cursor) await sleep(2000); // respecte 60 req/min
-  } while (cursor !== null);
-
-  console.log();
-  return results;
-}
-
-// ─── 1. Sync player stats (BallDontLie) ──────────────────────────────────────
+// ─── 1. Sync player stats (NBA Stats API) ────────────────────────────────────
 
 async function syncPlayerStats(): Promise<{
   upserted: number;
   skipped: number;
 }> {
-  console.log("\n📊 Sync stats joueurs 2025-26 (BallDontLie)��");
+  console.log("\n📊 Sync stats joueurs 2025-26 (NBA Stats API)…");
 
-  // Charger les mappings depuis la DB
+  const url =
+    `https://stats.nba.com/stats/leaguedashplayerstats` +
+    `?Season=${CURRENT_SEASON}&SeasonType=Regular+Season&PerMode=PerGame&LeagueID=00&MeasureType=Base`;
+
+  const res = await fetch(url, { headers: NBA_HEADERS });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "(no body)");
+    console.warn(
+      `  ⚠️  NBA Stats API ${res.status} — player stats skippés. Body: ${body}`,
+    );
+    return { upserted: 0, skipped: 0 };
+  }
+
+  const data = (await res.json()) as {
+    resultSets: Array<{ name: string; headers: string[]; rowSet: unknown[][] }>;
+  };
+
+  const statsSet = data.resultSets.find(
+    (r) => r.name === "LeagueDashPlayerStats",
+  );
+  if (!statsSet) {
+    console.warn("  ⚠️  Pas de resultSet LeagueDashPlayerStats");
+    return { upserted: 0, skipped: 0 };
+  }
+
+  const h = statsSet.headers;
+  const iName = h.indexOf("PLAYER_NAME");
+  const iTeam = h.indexOf("TEAM_ABBREVIATION");
+  const iGP = h.indexOf("GP");
+  const iMin = h.indexOf("MIN");
+  const iPts = h.indexOf("PTS");
+  const iReb = h.indexOf("REB");
+  const iAst = h.indexOf("AST");
+  const iStl = h.indexOf("STL");
+  const iBlk = h.indexOf("BLK");
+  const iFgPct = h.indexOf("FG_PCT");
+  const iFg3Pct = h.indexOf("FG3_PCT");
+  const iFtPct = h.indexOf("FT_PCT");
+
   const [dbTeams, dbPlayers] = await Promise.all([
     prisma.team.findMany({ select: { id: true, abbr: true } }),
-    prisma.player.findMany({
-      select: { id: true, slug: true },
-    }),
+    prisma.player.findMany({ select: { id: true, slug: true } }),
   ]);
 
   const teamByAbbr = new Map(dbTeams.map((t) => [t.abbr, t.id]));
   const playerBySlug = new Map(dbPlayers.map((p) => [p.slug, p.id]));
 
-  // Fetch toutes les moyennes de la saison courante
-  const seasonStats = await bdlGetAll<BdlSeasonAverage>(
-    "/season_averages/general",
-    {
-      season: CURRENT_SEASON_INT,
-      season_type: "regular",
-      type: "base",
-    },
-  );
-
-  console.log(`  ${seasonStats.length} lignes récupérées depuis BDL`);
+  console.log(`  ${statsSet.rowSet.length} lignes récupérées depuis NBA Stats`);
 
   let upserted = 0;
   let skipped = 0;
 
-  for (const row of seasonStats) {
-    const slug = playerSlug(row.player.first_name, row.player.last_name);
+  for (const row of statsSet.rowSet) {
+    // "LeBron James" → slug "lebron-james"
+    const fullName = String(row[iName]);
+    const spaceIdx = fullName.indexOf(" ");
+    const firstName = spaceIdx > -1 ? fullName.slice(0, spaceIdx) : fullName;
+    const lastName = spaceIdx > -1 ? fullName.slice(spaceIdx + 1) : "";
+
+    const slug = playerSlug(firstName, lastName);
     const playerId = playerBySlug.get(slug);
     if (!playerId) {
       skipped++;
       continue;
     }
 
-    const teamAbbr = row.player.team?.abbreviation ?? null;
-    const teamId = teamAbbr ? (teamByAbbr.get(teamAbbr) ?? null) : null;
+    const teamAbbr = String(row[iTeam]);
+    const teamId = teamByAbbr.get(teamAbbr) ?? null;
     if (!teamId) {
       skipped++;
       continue;
     }
 
-    const { stats } = row;
-    const gamesPlayed = stats.gp ?? 1;
-    const minutesPerGame =
-      typeof stats.min === "string" ? parseFloat(stats.min) : stats.min;
+    const gamesPlayed = Number(row[iGP]) || 1;
+    const minutesPerGame = Number(row[iMin]) || 0;
+    const pts = Number(row[iPts]) || 0;
+    const reb = Number(row[iReb]) || 0;
+    const ast = Number(row[iAst]) || 0;
+    const stl = Number(row[iStl]) || 0;
+    const blk = Number(row[iBlk]) || 0;
+    const fgPct = row[iFgPct] != null ? Number(row[iFgPct]) : undefined;
+    const fg3Pct = row[iFg3Pct] != null ? Number(row[iFg3Pct]) : undefined;
+    const ftPct = row[iFtPct] != null ? Number(row[iFtPct]) : undefined;
 
     try {
       await prisma.playerSeason.upsert({
@@ -198,14 +167,14 @@ async function syncPlayerStats(): Promise<{
         update: {
           gamesPlayed,
           minutesPerGame,
-          pointsPerGame: stats.pts,
-          reboundsPerGame: stats.reb,
-          assistsPerGame: stats.ast,
-          stealsPerGame: stats.stl,
-          blocksPerGame: stats.blk,
-          fgPct: stats.fg_pct ?? undefined,
-          threePtPct: stats.fg3_pct ?? undefined,
-          ftPct: stats.ft_pct ?? undefined,
+          pointsPerGame: pts,
+          reboundsPerGame: reb,
+          assistsPerGame: ast,
+          stealsPerGame: stl,
+          blocksPerGame: blk,
+          fgPct,
+          threePtPct: fg3Pct,
+          ftPct,
         },
         create: {
           playerId,
@@ -213,14 +182,14 @@ async function syncPlayerStats(): Promise<{
           season: CURRENT_SEASON,
           gamesPlayed,
           minutesPerGame,
-          pointsPerGame: stats.pts,
-          reboundsPerGame: stats.reb,
-          assistsPerGame: stats.ast,
-          stealsPerGame: stats.stl,
-          blocksPerGame: stats.blk,
-          fgPct: stats.fg_pct ?? undefined,
-          threePtPct: stats.fg3_pct ?? undefined,
-          ftPct: stats.ft_pct ?? undefined,
+          pointsPerGame: pts,
+          reboundsPerGame: reb,
+          assistsPerGame: ast,
+          stealsPerGame: stl,
+          blocksPerGame: blk,
+          fgPct,
+          threePtPct: fg3Pct,
+          ftPct,
         },
       });
       upserted++;
@@ -243,16 +212,7 @@ async function syncStandings(): Promise<{
 
   const url = `https://stats.nba.com/stats/leaguestandingsv3?LeagueID=00&Season=${CURRENT_SEASON}&SeasonType=Regular+Season`;
 
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-      Accept: "application/json",
-      Referer: "https://www.nba.com/",
-      "x-nba-stats-origin": "stats",
-      "x-nba-stats-token": "true",
-    },
-  });
+  const res = await fetch(url, { headers: NBA_HEADERS });
 
   if (!res.ok) {
     console.warn(`  ⚠️  NBA Stats API ${res.status} — standings skippés`);
@@ -467,11 +427,6 @@ async function revalidateVercel(): Promise<void> {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  if (!BDL_KEY) {
-    console.error("❌ BALLDONTLIE_API_KEY manquante");
-    process.exit(1);
-  }
-
   const startedAt = new Date();
   console.log(`🏀 Sync quotidien NBA — ${CURRENT_SEASON}`);
   console.log(`   Démarré à : ${startedAt.toISOString()}\n`);
