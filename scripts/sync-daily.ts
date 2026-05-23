@@ -112,7 +112,8 @@ async function bdlGetAll<T>(
         await sleep(wait);
         continue;
       }
-      throw new Error(`BDL ${res.status} on ${url.toString()}`);
+      const body = await res.text().catch(() => "(no body)");
+      throw new Error(`BDL ${res.status} on ${url.toString()} — body: ${body}`);
     }
     if (!res?.ok) throw new Error(`BDL — trop de retries sur ${path}`);
 
