@@ -1,6 +1,5 @@
-import { KPI } from "@/components/ui/kpi";
-import { LineChart } from "@/components/ui/line-chart";
-import { stat } from "@/lib/format";
+import Image from "next/image";
+import { winPct } from "@/lib/format";
 
 export type SeasonStats = {
   wins: number;
@@ -13,109 +12,179 @@ export type SeasonStats = {
   summaryFr: string | null;
 };
 
+export type ConferenceRow = {
+  conferenceRank: number | null;
+  previousConferenceRank: number | null;
+  wins: number;
+  losses: number;
+  team: {
+    id: string;
+    slug: string;
+    city: string;
+    name: string;
+    abbr: string;
+    logoUrl: string | null;
+    primaryColor: string;
+  };
+};
+
 type SeasonViewProps = {
   season: SeasonStats;
   primaryColor: string;
+  teamId: string;
+  standings: ConferenceRow[];
 };
 
-// Wins par mois : données non disponibles en DB pour l'instant
-// On affiche un placeholder si on n'a pas les données mensuelles
-const MONTH_PLACEHOLDER = [
-  { s: "OCT", w: 0 },
-  { s: "NOV", w: 0 },
-  { s: "DÉC", w: 0 },
-  { s: "JAN", w: 0 },
-  { s: "FÉV", w: 0 },
-  { s: "MAR", w: 0 },
-  { s: "AVR", w: 0 },
-];
+function RankArrow({
+  current,
+  previous,
+}: {
+  current: number | null;
+  previous: number | null;
+}) {
+  if (!current || !previous || current === previous) {
+    return <span className="text-white/20 text-xs">—</span>;
+  }
+  // Rang plus petit = meilleur classement
+  if (current < previous) {
+    return <span className="text-emerald-400 text-xs font-bold">↑</span>;
+  }
+  return <span className="text-red-400 text-xs font-bold">↓</span>;
+}
 
-export function SeasonView({ season, primaryColor }: SeasonViewProps) {
-  const netVal = season.netRating;
-  const netStr =
-    netVal == null ? "—" : netVal >= 0 ? `+${stat(netVal)}` : stat(netVal);
+export function SeasonView({
+  season,
+  primaryColor,
+  teamId,
+  standings,
+}: SeasonViewProps) {
+  // Games behind : calculé depuis le leader (rang 1)
+  const leader = standings.find((r) => r.conferenceRank === 1);
+  const leaderW = leader?.wins ?? 0;
+  const leaderL = leader?.losses ?? 0;
+
+  const gb = (row: ConferenceRow) => {
+    if (row.conferenceRank === 1) return "—";
+    const diff = (leaderW - row.wins + (row.losses - leaderL)) / 2;
+    return diff % 1 === 0 ? String(diff) : diff.toFixed(1);
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Résumé texte */}
       {season.summaryFr && (
         <p className="text-white/60 text-sm leading-relaxed">
           {season.summaryFr}
         </p>
       )}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPI
-          label="Off. Rating"
-          value={stat(season.offRating)}
-          unit="pts/100"
-          accent="#7C3AED"
-        />
-        <KPI
-          label="Def. Rating"
-          value={stat(season.defRating)}
-          unit="pts/100"
-          accent="#06B6D4"
-        />
-        <KPI label="Net Rating" value={netStr} accent="#10B981" />
-        <KPI label="Pace" value={stat(season.pace)} unit="poss/match" />
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <div className="lg:col-span-2 rounded-2xl border border-white/[0.06] bg-[#111114] p-6">
-          <div className="text-[11px] text-white/40 uppercase tracking-[0.2em] font-medium mb-1">
-            VICTOIRES PAR MOIS
-          </div>
-          <h3 className="font-display font-semibold text-xl tracking-tight mb-4">
-            Bilan {season.wins}–{season.losses}
-          </h3>
-          <LineChart
-            data={MONTH_PLACEHOLDER}
-            accessor={(d) => d.w as number}
-            label="team-month"
-            color={primaryColor}
-          />
-        </div>
-
-        <div className="rounded-2xl border border-white/[0.06] bg-[#111114] p-6 space-y-4">
+      {/* Classement conférence */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden">
+        <div className="px-4 pt-5 pb-3">
           <div className="text-[11px] text-white/40 uppercase tracking-[0.2em] font-medium">
-            INDICATEURS CLÉS
+            Classement conférence
           </div>
-          {[
-            {
-              l: "True Shooting %",
-              v:
-                season.trueShooting != null
-                  ? (season.trueShooting * 100).toFixed(1)
-                  : "—",
-              b: season.trueShooting ?? 0,
-            },
-            {
-              l: "Victoires",
-              v: String(season.wins),
-              b: season.wins / 82,
-            },
-            {
-              l: "Défaites",
-              v: String(season.losses),
-              b: 1 - season.losses / 82,
-            },
-          ].map((row) => (
-            <div key={row.l}>
-              <div className="flex items-baseline justify-between text-sm mb-1.5">
-                <span className="text-white/60">{row.l}</span>
-                <span className="font-mono tabular-nums">{row.v}</span>
-              </div>
-              <div className="h-1 rounded-full bg-white/[0.05]">
-                <div
-                  className="h-1 rounded-full"
-                  style={{
-                    width: `${Math.min(row.b * 100, 100)}%`,
-                    background: `linear-gradient(90deg, ${primaryColor}, #06B6D4)`,
-                  }}
-                />
-              </div>
-            </div>
-          ))}
         </div>
+
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              <th className="text-left text-[11px] text-white/30 font-medium px-4 py-2 w-8">
+                #
+              </th>
+              <th className="text-left text-[11px] text-white/30 font-medium px-2 py-2">
+                Équipe
+              </th>
+              <th className="text-right text-[11px] text-white/30 font-medium px-3 py-2">
+                V
+              </th>
+              <th className="text-right text-[11px] text-white/30 font-medium px-3 py-2">
+                D
+              </th>
+              <th className="text-right text-[11px] text-white/30 font-medium px-3 py-2">
+                %
+              </th>
+              <th className="text-right text-[11px] text-white/30 font-medium px-4 py-2">
+                GB
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {standings.map((row) => {
+              const isCurrentTeam = row.team.id === teamId;
+              return (
+                <tr
+                  key={row.team.id}
+                  className="border-b border-white/[0.04] last:border-0 transition-colors"
+                  style={
+                    isCurrentTeam
+                      ? {
+                          background: `${primaryColor}18`,
+                          borderLeft: `3px solid ${primaryColor}`,
+                        }
+                      : {}
+                  }
+                >
+                  {/* Rang + flèche */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={
+                          isCurrentTeam
+                            ? "font-bold tabular-nums"
+                            : "text-white/50 tabular-nums"
+                        }
+                      >
+                        {row.conferenceRank ?? "—"}
+                      </span>
+                      <RankArrow
+                        current={row.conferenceRank}
+                        previous={row.previousConferenceRank}
+                      />
+                    </div>
+                  </td>
+
+                  {/* Logo + nom */}
+                  <td className="px-2 py-3">
+                    <div className="flex items-center gap-2.5">
+                      {row.team.logoUrl && (
+                        <Image
+                          src={row.team.logoUrl}
+                          alt={row.team.abbr}
+                          width={24}
+                          height={24}
+                          className="object-contain"
+                        />
+                      )}
+                      <span
+                        className={
+                          isCurrentTeam ? "font-semibold" : "text-white/70"
+                        }
+                      >
+                        {row.team.city}{" "}
+                        <span className="text-white/40">{row.team.name}</span>
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Stats */}
+                  <td className="px-3 py-3 text-right tabular-nums">
+                    {row.wins}
+                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums text-white/50">
+                    {row.losses}
+                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums text-white/70">
+                    .{winPct(row.wins, row.losses).replace(".", "")}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-white/40">
+                    {gb(row)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );

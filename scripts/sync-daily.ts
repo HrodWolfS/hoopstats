@@ -89,15 +89,23 @@ async function syncStandings(): Promise<{
         Math.round(statMap.get("playoffSeed") ?? 0) || null;
 
       try {
+        // Lire le rang actuel avant d'écraser (pour l'indicateur ↑↓)
+        const existing = await prisma.teamSeason.findUnique({
+          where: { teamId_season: { teamId, season: CURRENT_SEASON } },
+          select: { conferenceRank: true },
+        });
+        const previousConferenceRank = existing?.conferenceRank ?? null;
+
         await prisma.teamSeason.upsert({
           where: { teamId_season: { teamId, season: CURRENT_SEASON } },
-          update: { wins, losses, conferenceRank },
+          update: { wins, losses, conferenceRank, previousConferenceRank },
           create: {
             teamId,
             season: CURRENT_SEASON,
             wins,
             losses,
             conferenceRank,
+            previousConferenceRank,
           },
         });
         upserted++;

@@ -96,10 +96,11 @@ model TeamSeason {
   teamId String
   season String
 
-  wins           Int
-  losses         Int
-  conferenceRank Int?
-  offRating      Float?
+  wins                   Int
+  losses                 Int
+  conferenceRank         Int?
+  previousConferenceRank Int?
+  offRating              Float?
   defRating      Float?
   netRating      Float?
   pace           Float?

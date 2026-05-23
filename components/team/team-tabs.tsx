@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import { RosterView, type RosterPlayer } from "@/components/team/roster-view";
-import { SeasonView, type SeasonStats } from "@/components/team/season-view";
+import {
+  SeasonView,
+  type SeasonStats,
+  type ConferenceRow,
+} from "@/components/team/season-view";
 import {
   HistoryView,
   type HistorySeason,
@@ -11,8 +15,10 @@ import {
 
 type TeamTabsProps = {
   primaryColor: string;
+  teamId: string;
   roster: RosterPlayer[];
   currentSeason: SeasonStats | null;
+  standings: ConferenceRow[];
   history: HistorySeason[];
   rosterDate: string;
   locale: string;
@@ -26,8 +32,10 @@ const TABS = [
 
 export function TeamTabs({
   primaryColor,
+  teamId,
   roster,
   currentSeason,
+  standings,
   history,
   rosterDate,
   locale,
@@ -42,7 +50,12 @@ export function TeamTabs({
         <RosterView players={roster} updatedAt={rosterDate} locale={locale} />
       )}
       {active === "season" && currentSeason && (
-        <SeasonView season={currentSeason} primaryColor={primaryColor} />
+        <SeasonView
+          season={currentSeason}
+          primaryColor={primaryColor}
+          teamId={teamId}
+          standings={standings}
+        />
       )}
       {active === "season" && !currentSeason && (
         <p className="text-white/40 text-sm font-mono py-8">
