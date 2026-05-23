@@ -3,16 +3,18 @@
  *
  * Ce script est déclenché chaque matin à 6h (Paris) par GitHub Actions.
  * Il met à jour :
- *   1. PlayerSeason 2025-26 (stats NBA Stats API leaguedashplayerstats)
- *   2. TeamSeason 2025-26 (standings NBA Stats API leaguestandingsv3)
- *   3. summaryFr des joueurs et équipes (régénération template)
- *   4. Invalide le cache ISR Vercel via /api/revalidate
+ *   1. TeamSeason 2025-26 (standings ESPN API — fonctionne depuis GitHub Actions)
+ *   2. summaryFr des équipes (régénération template)
+ *   3. Invalide le cache ISR Vercel via /api/revalidate
+ *
+ * Note : les stats joueurs (PlayerSeason) ne sont pas syncées ici car
+ * stats.nba.com et BDL bulk sont bloqués depuis les IPs CI.
+ * Sync manuelle : pnpm tsx scripts/sync-player-stats.ts (en local).
  *
  * Run manuel: pnpm tsx scripts/sync-daily.ts
  */
 
 import { PrismaClient } from "@prisma/client";
-import { playerSlug } from "../lib/slugs";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -21,269 +23,88 @@ const CURRENT_SEASON = "2025-26";
 const VERCEL_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "";
 const CRON_SECRET = process.env.CRON_SECRET ?? "";
 
-// Headers communs pour toutes les requêtes stats.nba.com
-const NBA_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-  Accept: "application/json",
-  Referer: "https://www.nba.com/",
-  "x-nba-stats-origin": "stats",
-  "x-nba-stats-token": "true",
+// ESPN abréviation → abbr DB (6 divergences)
+const ESPN_TO_DB: Record<string, string> = {
+  NY: "NYK",
+  WSH: "WAS",
+  GS: "GSW",
+  UTAH: "UTA",
+  NO: "NOP",
+  SA: "SAS",
 };
 
-// ─── NBA team name → abbr (pour standings NBA Stats API) ─────────────────────
-
-const TEAM_NAME_TO_ABBR: Record<string, string> = {
-  Celtics: "BOS",
-  Nets: "BKN",
-  Knicks: "NYK",
-  "76ers": "PHI",
-  Raptors: "TOR",
-  Bulls: "CHI",
-  Cavaliers: "CLE",
-  Pistons: "DET",
-  Pacers: "IND",
-  Bucks: "MIL",
-  Hawks: "ATL",
-  Hornets: "CHA",
-  Heat: "MIA",
-  Magic: "ORL",
-  Wizards: "WAS",
-  Nuggets: "DEN",
-  Timberwolves: "MIN",
-  Thunder: "OKC",
-  "Trail Blazers": "POR",
-  Jazz: "UTA",
-  Warriors: "GSW",
-  Clippers: "LAC",
-  Lakers: "LAL",
-  Suns: "PHX",
-  Kings: "SAC",
-  Mavericks: "DAL",
-  Rockets: "HOU",
-  Grizzlies: "MEM",
-  Pelicans: "NOP",
-  Spurs: "SAS",
-};
-
-// ─── 1. Sync player stats (NBA Stats API) ────────────────────────────────────
-
-async function syncPlayerStats(): Promise<{
-  upserted: number;
-  skipped: number;
-}> {
-  console.log("\n📊 Sync stats joueurs 2025-26 (NBA Stats API)…");
-
-  const url =
-    `https://stats.nba.com/stats/leaguedashplayerstats` +
-    `?Season=${CURRENT_SEASON}&SeasonType=Regular+Season&PerMode=PerGame&LeagueID=00&MeasureType=Base`;
-
-  const res = await fetch(url, { headers: NBA_HEADERS });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "(no body)");
-    console.warn(
-      `  ⚠️  NBA Stats API ${res.status} — player stats skippés. Body: ${body}`,
-    );
-    return { upserted: 0, skipped: 0 };
-  }
-
-  const data = (await res.json()) as {
-    resultSets: Array<{ name: string; headers: string[]; rowSet: unknown[][] }>;
-  };
-
-  const statsSet = data.resultSets.find(
-    (r) => r.name === "LeagueDashPlayerStats",
-  );
-  if (!statsSet) {
-    console.warn("  ⚠️  Pas de resultSet LeagueDashPlayerStats");
-    return { upserted: 0, skipped: 0 };
-  }
-
-  const h = statsSet.headers;
-  const iName = h.indexOf("PLAYER_NAME");
-  const iTeam = h.indexOf("TEAM_ABBREVIATION");
-  const iGP = h.indexOf("GP");
-  const iMin = h.indexOf("MIN");
-  const iPts = h.indexOf("PTS");
-  const iReb = h.indexOf("REB");
-  const iAst = h.indexOf("AST");
-  const iStl = h.indexOf("STL");
-  const iBlk = h.indexOf("BLK");
-  const iFgPct = h.indexOf("FG_PCT");
-  const iFg3Pct = h.indexOf("FG3_PCT");
-  const iFtPct = h.indexOf("FT_PCT");
-
-  const [dbTeams, dbPlayers] = await Promise.all([
-    prisma.team.findMany({ select: { id: true, abbr: true } }),
-    prisma.player.findMany({ select: { id: true, slug: true } }),
-  ]);
-
-  const teamByAbbr = new Map(dbTeams.map((t) => [t.abbr, t.id]));
-  const playerBySlug = new Map(dbPlayers.map((p) => [p.slug, p.id]));
-
-  console.log(`  ${statsSet.rowSet.length} lignes récupérées depuis NBA Stats`);
-
-  let upserted = 0;
-  let skipped = 0;
-
-  for (const row of statsSet.rowSet) {
-    // "LeBron James" → slug "lebron-james"
-    const fullName = String(row[iName]);
-    const spaceIdx = fullName.indexOf(" ");
-    const firstName = spaceIdx > -1 ? fullName.slice(0, spaceIdx) : fullName;
-    const lastName = spaceIdx > -1 ? fullName.slice(spaceIdx + 1) : "";
-
-    const slug = playerSlug(firstName, lastName);
-    const playerId = playerBySlug.get(slug);
-    if (!playerId) {
-      skipped++;
-      continue;
-    }
-
-    const teamAbbr = String(row[iTeam]);
-    const teamId = teamByAbbr.get(teamAbbr) ?? null;
-    if (!teamId) {
-      skipped++;
-      continue;
-    }
-
-    const gamesPlayed = Number(row[iGP]) || 1;
-    const minutesPerGame = Number(row[iMin]) || 0;
-    const pts = Number(row[iPts]) || 0;
-    const reb = Number(row[iReb]) || 0;
-    const ast = Number(row[iAst]) || 0;
-    const stl = Number(row[iStl]) || 0;
-    const blk = Number(row[iBlk]) || 0;
-    const fgPct = row[iFgPct] != null ? Number(row[iFgPct]) : undefined;
-    const fg3Pct = row[iFg3Pct] != null ? Number(row[iFg3Pct]) : undefined;
-    const ftPct = row[iFtPct] != null ? Number(row[iFtPct]) : undefined;
-
-    try {
-      await prisma.playerSeason.upsert({
-        where: {
-          playerId_season_teamId: { playerId, season: CURRENT_SEASON, teamId },
-        },
-        update: {
-          gamesPlayed,
-          minutesPerGame,
-          pointsPerGame: pts,
-          reboundsPerGame: reb,
-          assistsPerGame: ast,
-          stealsPerGame: stl,
-          blocksPerGame: blk,
-          fgPct,
-          threePtPct: fg3Pct,
-          ftPct,
-        },
-        create: {
-          playerId,
-          teamId,
-          season: CURRENT_SEASON,
-          gamesPlayed,
-          minutesPerGame,
-          pointsPerGame: pts,
-          reboundsPerGame: reb,
-          assistsPerGame: ast,
-          stealsPerGame: stl,
-          blocksPerGame: blk,
-          fgPct,
-          threePtPct: fg3Pct,
-          ftPct,
-        },
-      });
-      upserted++;
-    } catch {
-      skipped++;
-    }
-  }
-
-  console.log(`  ✅ ${upserted} upserted, ${skipped} skipped`);
-  return { upserted, skipped };
-}
-
-// ─── 2. Sync standings (NBA Stats API) ───────────────────────────────────────
+// ─── 1. Sync standings (ESPN API) ────────────────────────────────────────────
 
 async function syncStandings(): Promise<{
   upserted: number;
   skipped: number;
 }> {
-  console.log("\n🏆 Sync standings 2025-26 (NBA Stats API)…");
+  console.log("\n🏆 Sync standings 2025-26 (ESPN API)…");
 
-  const url = `https://stats.nba.com/stats/leaguestandingsv3?LeagueID=00&Season=${CURRENT_SEASON}&SeasonType=Regular+Season`;
+  // ESPN season=2025 = saison 2025-26
+  const url =
+    "https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?season=2025";
 
-  const res = await fetch(url, { headers: NBA_HEADERS });
+  const res = await fetch(url);
 
   if (!res.ok) {
-    console.warn(`  ⚠️  NBA Stats API ${res.status} — standings skippés`);
+    const body = await res.text().catch(() => "(no body)");
+    console.warn(`  ⚠️  ESPN API ${res.status} — standings skippés. ${body}`);
     return { upserted: 0, skipped: 30 };
   }
 
   const data = (await res.json()) as {
-    resultSets: Array<{
+    children: Array<{
       name: string;
-      headers: string[];
-      rowSet: unknown[][];
+      standings: {
+        entries: Array<{
+          team: { abbreviation: string };
+          stats: Array<{ name: string; value: number }>;
+        }>;
+      };
     }>;
   };
 
-  const standingsSet = data.resultSets.find((r) => r.name === "Standings");
-  if (!standingsSet) {
-    console.warn("  ⚠️  Pas de resultSet Standings — standings skippés");
-    return { upserted: 0, skipped: 30 };
-  }
-
-  const h = standingsSet.headers;
-  const iTeamName = h.indexOf("TeamName");
-  const iWins = h.indexOf("WINS");
-  const iLosses = h.indexOf("LOSSES");
-  const iRank = h.indexOf("PlayoffRank");
-  const iClinch = h.indexOf("ClinchIndicator");
-
   const dbTeams = await prisma.team.findMany({
-    select: { id: true, abbr: true, name: true },
+    select: { id: true, abbr: true },
   });
   const teamByAbbr = new Map(dbTeams.map((t) => [t.abbr, t.id]));
 
   let upserted = 0;
   let skipped = 0;
 
-  for (const row of standingsSet.rowSet) {
-    const teamName = String(row[iTeamName]);
-    const abbr = TEAM_NAME_TO_ABBR[teamName];
-    if (!abbr) {
-      skipped++;
-      continue;
-    }
+  for (const conf of data.children ?? []) {
+    for (const entry of conf.standings?.entries ?? []) {
+      const espnAbbr = entry.team.abbreviation;
+      const dbAbbr = ESPN_TO_DB[espnAbbr] ?? espnAbbr;
+      const teamId = teamByAbbr.get(dbAbbr);
+      if (!teamId) {
+        skipped++;
+        continue;
+      }
 
-    const teamId = teamByAbbr.get(abbr);
-    if (!teamId) {
-      skipped++;
-      continue;
-    }
+      const statMap = new Map(entry.stats.map((s) => [s.name, s.value]));
+      const wins = Math.round(statMap.get("wins") ?? 0);
+      const losses = Math.round(statMap.get("losses") ?? 0);
+      const conferenceRank =
+        Math.round(statMap.get("playoffSeed") ?? 0) || null;
 
-    const wins = Number(row[iWins]);
-    const losses = Number(row[iLosses]);
-    const conferenceRank = Number(row[iRank]) || null;
-    const clinch = row[iClinch] ? String(row[iClinch]).trim() || null : null;
-    const playoffResult = clinch ? ` - ${clinch.toLowerCase()}` : null;
-
-    try {
-      await prisma.teamSeason.upsert({
-        where: { teamId_season: { teamId, season: CURRENT_SEASON } },
-        update: { wins, losses, conferenceRank, playoffResult },
-        create: {
-          teamId,
-          season: CURRENT_SEASON,
-          wins,
-          losses,
-          conferenceRank,
-          playoffResult,
-        },
-      });
-      upserted++;
-    } catch {
-      skipped++;
+      try {
+        await prisma.teamSeason.upsert({
+          where: { teamId_season: { teamId, season: CURRENT_SEASON } },
+          update: { wins, losses, conferenceRank },
+          create: {
+            teamId,
+            season: CURRENT_SEASON,
+            wins,
+            losses,
+            conferenceRank,
+          },
+        });
+        upserted++;
+      } catch {
+        skipped++;
+      }
     }
   }
 
@@ -435,7 +256,6 @@ async function main() {
   const errors: string[] = [];
 
   try {
-    const playerResult = await syncPlayerStats();
     const standingsResult = await syncStandings();
     await regenerateSummaries();
     await revalidateVercel();
@@ -444,9 +264,8 @@ async function main() {
       data: {
         source: "sync-daily",
         status,
-        itemsProcessed: playerResult.upserted + standingsResult.upserted,
+        itemsProcessed: standingsResult.upserted,
         errors: {
-          playerSkipped: playerResult.skipped,
           standingsSkipped: standingsResult.skipped,
           messages: errors,
         },
