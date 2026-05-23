@@ -41,9 +41,9 @@ async function syncStandings(): Promise<{
 }> {
   console.log("\n🏆 Sync standings 2025-26 (ESPN API)…");
 
-  // ESPN season=2025 = saison 2025-26
-  const url =
-    "https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?season=2025";
+  // ESPN season = année de FIN de saison : "2025-26" → 2026
+  const espnSeason = "20" + CURRENT_SEASON.split("-")[1];
+  const url = `https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?season=${espnSeason}`;
 
   const res = await fetch(url);
 
