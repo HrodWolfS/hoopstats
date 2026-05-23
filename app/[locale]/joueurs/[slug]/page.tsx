@@ -121,6 +121,26 @@ export default async function PlayerPage({
     netRating: null,
   }));
 
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
+
+  const jsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: `${player.firstName} ${player.lastName}`,
+    url: `${BASE_URL}/${locale}/joueurs/${slug}`,
+    sport: "Basketball",
+    ...(player.photoUrl && { image: player.photoUrl }),
+    ...(player.summaryFr && { description: player.summaryFr }),
+    ...(currentTeam && {
+      memberOf: {
+        "@type": "SportsTeam",
+        name: `${currentTeam.city} ${currentTeam.name}`,
+        sport: "Basketball",
+        memberOf: { "@type": "SportsOrganization", name: "NBA" },
+      },
+    }),
+  };
+
   return (
     <div className="space-y-10">
       <Crumbs
@@ -153,6 +173,11 @@ export default async function PlayerPage({
         primaryColor={primaryColor}
         career={career}
         advanced={advanced}
+      />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
     </div>
   );

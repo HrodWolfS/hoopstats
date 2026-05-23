@@ -1,0 +1,42 @@
+"use client";
+
+import Link from "next/link";
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-4 text-center"
+      style={{ background: "#0a0a0f" }}
+    >
+      <p className="font-display text-[8rem] leading-none font-semibold text-white/10 select-none">
+        500
+      </p>
+      <h1 className="mt-4 text-2xl font-semibold text-white">
+        Une erreur est survenue
+      </h1>
+      <p className="mt-2 text-white/50 text-sm max-w-xs">
+        {error.message || "Quelque chose s'est mal passé. Veuillez réessayer."}
+      </p>
+      <div className="mt-8 flex gap-3">
+        <button
+          onClick={reset}
+          className="inline-block rounded-lg bg-violet-600 px-6 py-3 text-sm font-medium text-white hover:bg-violet-500 transition-colors"
+        >
+          Réessayer
+        </button>
+        <Link
+          href="/fr"
+          className="inline-block rounded-lg border border-white/20 px-6 py-3 text-sm font-medium text-white/70 hover:text-white hover:border-white/40 transition-colors"
+        >
+          Accueil
+        </Link>
+      </div>
+    </div>
+  );
+}

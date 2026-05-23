@@ -143,6 +143,18 @@ export default async function TeamPage({
 
   const rosterDate = new Date().toLocaleDateString("fr-FR");
 
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
+
+  const jsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "SportsTeam",
+    name: `${team.city} ${team.name}`,
+    url: `${BASE_URL}/${locale}/equipes/${slug}`,
+    sport: "Basketball",
+    ...(team.logoUrl && { image: team.logoUrl }),
+    memberOf: { "@type": "SportsOrganization", name: "NBA" },
+  };
+
   return (
     <div className="space-y-10">
       <Crumbs
@@ -234,6 +246,11 @@ export default async function TeamPage({
         history={historySeason}
         rosterDate={rosterDate}
         locale={locale}
+      />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
     </div>
   );
