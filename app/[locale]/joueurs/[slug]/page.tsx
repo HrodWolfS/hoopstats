@@ -9,15 +9,6 @@ import type { CareerSeason } from "@/components/player/career-view";
 import type { AdvancedSeason } from "@/components/player/advanced-view";
 
 export const revalidate = 21600;
-// Pages générées on-demand au premier hit puis cachées (ISR)
-// Évite de saturer les connexions Supabase au build avec ~580 pages simultanées
-export const dynamicParams = true;
-
-// ── generateStaticParams ─────────────────────────────────────────────────────
-
-export async function generateStaticParams() {
-  return [];
-}
 
 // ── generateMetadata ─────────────────────────────────────────────────────────
 
