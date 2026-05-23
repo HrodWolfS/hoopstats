@@ -111,53 +111,12 @@ async function syncStandings(): Promise<{
   return { upserted, skipped };
 }
 
-// ─── 3. Régénération résumés saison courante ─────────────────────────────────
+// ─── 3. Régénération résumés équipes ─────────────────────────────────────────
+// Note : les biographies joueurs sont générées séparément (script one-shot)
+// car elles sont stables dans le temps (draft, université, parcours).
 
 async function regenerateSummaries(): Promise<void> {
-  console.log("\n📝 Régénération résumés saison courante…");
-
-  // Joueurs
-  const players = await prisma.player.findMany({
-    where: { seasons: { some: { season: CURRENT_SEASON } } },
-    include: {
-      seasons: {
-        where: { season: CURRENT_SEASON },
-        include: { team: { select: { abbr: true, city: true, name: true } } },
-      },
-    },
-  });
-
-  const positionFr = (pos: string | null) => {
-    const map: Record<string, string> = {
-      G: "meneur/arrière",
-      F: "ailier",
-      C: "pivot",
-      "G-F": "arrière-ailier",
-      "F-G": "ailier-arrière",
-      "F-C": "ailier-pivot",
-      "C-F": "pivot-ailier",
-    };
-    return map[pos ?? ""] ?? pos?.toLowerCase() ?? "joueur";
-  };
-
-  let playerDone = 0;
-  for (const p of players) {
-    const ps = p.seasons[0];
-    if (!ps) continue;
-    const pos = positionFr(p.position);
-    const team = `${ps.team.city} ${ps.team.name}`;
-    const summary =
-      `${p.firstName} ${p.lastName} est un ${pos} des ${team}. ` +
-      `En ${ps.gamesPlayed} matchs lors de la saison ${CURRENT_SEASON}, ` +
-      `il contribue à hauteur de ${ps.pointsPerGame.toFixed(1)} points, ` +
-      `${ps.reboundsPerGame.toFixed(1)} rebonds et ${ps.assistsPerGame.toFixed(1)} passes par rencontre.`;
-    await prisma.player.update({
-      where: { id: p.id },
-      data: { summaryFr: summary, summaryGeneratedAt: new Date() },
-    });
-    playerDone++;
-  }
-  console.log(`  ✅ ${playerDone} résumés joueurs régénérés`);
+  console.log("\n📝 Régénération résumés équipes…");
 
   // Équipes
   const teamSeasons = await prisma.teamSeason.findMany({
