@@ -15,10 +15,9 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { CURRENT_SEASON } from "../lib/nba";
 
 const prisma = new PrismaClient({ log: ["error"] });
-
-const CURRENT_SEASON = "2025-26";
 
 const VERCEL_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "";
 const CRON_SECRET = process.env.CRON_SECRET ?? "";
