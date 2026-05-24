@@ -2,10 +2,12 @@ import { type Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_SEASON, CURRENT_DRAFT_YEAR, ALL_SEASONS } from "@/lib/nba";
-import { stat } from "@/lib/format";
-import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
+import {
+  SortablePlayerTable,
+  type SortableRow,
+} from "@/components/ui/sortable-player-table";
 
 export const metadata: Metadata = {
   title: "Rookies NBA 2025-26 — hoopstats",
@@ -25,15 +27,10 @@ export default async function RookiesPage({
   const { locale } = await params;
   const { saison } = await searchParams;
   const season = saison ?? CURRENT_SEASON;
-
-  // Année de draft = première année de la saison sélectionnée
   const draftYear = parseInt(season.split("-")[0]);
 
   const rows = await prisma.playerSeason.findMany({
-    where: {
-      season,
-      player: { draftYear },
-    },
+    where: { season, player: { draftYear } },
     orderBy: { pointsPerGame: "desc" },
     include: {
       player: {
@@ -59,7 +56,34 @@ export default async function RookiesPage({
     },
   });
 
-  const isCurrentSeason = season === CURRENT_SEASON;
+  const tableRows: SortableRow[] = rows.map((r) => ({
+    id: r.id,
+    playerSlug: r.player.slug,
+    firstName: r.player.firstName,
+    lastName: r.player.lastName,
+    position: r.player.position,
+    photoUrl: r.player.photoUrl,
+    college: r.player.college,
+    teamAbbr: r.team.abbr,
+    teamSlug: r.team.slug,
+    primaryColor: r.team.primaryColor,
+    secondaryColor: r.team.secondaryColor,
+    draftPick: r.player.draftPick,
+    gamesPlayed: r.gamesPlayed,
+    pointsPerGame: r.pointsPerGame,
+    reboundsPerGame: r.reboundsPerGame,
+    assistsPerGame: r.assistsPerGame,
+    trueShooting: r.trueShooting,
+  }));
+
+  const COLUMNS = [
+    { key: "pick" as const, label: "Pick", show: "sm" as const },
+    { key: "gamesPlayed" as const, label: "MJ" },
+    { key: "pointsPerGame" as const, label: "PTS" },
+    { key: "reboundsPerGame" as const, label: "REB" },
+    { key: "assistsPerGame" as const, label: "PAS" },
+    { key: "trueShooting" as const, label: "TS%", show: "sm" as const },
+  ];
 
   return (
     <div className="space-y-6">
@@ -112,97 +136,15 @@ export default async function RookiesPage({
         </p>
       ) : (
         <FadeIn delay={0.1}>
-          <div className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[640px]">
-                <thead>
-                  <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-wider text-white/40">
-                    <th className="text-left px-5 py-3 font-medium w-10">#</th>
-                    <th className="text-left px-3 py-3 font-medium">Joueur</th>
-                    <th className="text-left px-3 py-3 font-medium">Équipe</th>
-                    <th className="text-right px-3 py-3 font-medium hidden sm:table-cell">
-                      Pick
-                    </th>
-                    <th className="text-right px-3 py-3 font-medium">MJ</th>
-                    <th className="text-right px-3 py-3 font-medium">PTS</th>
-                    <th className="text-right px-3 py-3 font-medium">REB</th>
-                    <th className="text-right px-5 py-3 font-medium">PAS</th>
-                  </tr>
-                </thead>
-                <tbody className="font-mono tabular-nums">
-                  {rows.map((row, i) => (
-                    <tr
-                      key={row.id}
-                      className="border-b border-white/[0.04] hover:bg-white/[0.02] transition group"
-                    >
-                      <td className="px-5 py-2.5 text-white/30 text-xs">
-                        {i + 1}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Link
-                          href={`/${locale}/joueurs/${row.player.slug}`}
-                          className="flex items-center gap-3"
-                        >
-                          <PlayerAvatar
-                            firstName={row.player.firstName}
-                            lastName={row.player.lastName}
-                            primaryColor={row.team.primaryColor}
-                            secondaryColor={row.team.secondaryColor}
-                            photoUrl={row.player.photoUrl}
-                            size="sm"
-                            showNum={false}
-                          />
-                          <div>
-                            <div className="text-sm font-sans font-medium text-white leading-tight group-hover:text-violet-300 transition">
-                              {row.player.firstName} {row.player.lastName}
-                            </div>
-                            <div className="text-[11px] text-white/40 font-sans">
-                              {row.player.position ?? "—"}
-                              {row.player.college
-                                ? ` · ${row.player.college}`
-                                : ""}
-                            </div>
-                          </div>
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Link
-                          href={`/${locale}/equipes/${row.team.slug}`}
-                          className="text-xs text-white/50 hover:text-white/90 transition font-sans"
-                        >
-                          {row.team.abbr}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2.5 text-right text-white/40 hidden sm:table-cell">
-                        {row.player.draftPick
-                          ? `#${row.player.draftPick}`
-                          : "—"}
-                      </td>
-                      <td className="px-3 py-2.5 text-right text-white/50">
-                        {row.gamesPlayed}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-semibold text-white">
-                        {stat(row.pointsPerGame)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right">
-                        {stat(row.reboundsPerGame)}
-                      </td>
-                      <td className="px-5 py-2.5 text-right">
-                        {stat(row.assistsPerGame)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {isCurrentSeason && (
-            <p className="text-[11px] text-white/20 font-mono mt-3 px-1">
-              Classe {CURRENT_DRAFT_YEAR} · Saison rookie en cours · Trié par
-              points par match
-            </p>
-          )}
+          <SortablePlayerTable
+            rows={tableRows}
+            columns={COLUMNS}
+            defaultSort="pick"
+            defaultDir="asc"
+            locale={locale}
+            showCollege
+            footerNote={`Classe ${CURRENT_DRAFT_YEAR} · Cliquer sur une colonne pour trier`}
+          />
         </FadeIn>
       )}
     </div>
