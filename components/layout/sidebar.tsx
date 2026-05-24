@@ -67,6 +67,39 @@ function IconCompare() {
   );
 }
 
+function IconRookie() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
+    </svg>
+  );
+}
+
+function IconAbsent() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+      <line x1="17" y1="3" x2="21" y2="7" />
+      <line x1="21" y1="3" x2="17" y2="7" />
+    </svg>
+  );
+}
+
 function IconSeasons() {
   return (
     <svg
@@ -104,6 +137,21 @@ const NAV_ITEMS: NavItem[] = [
   { id: "seasons", label: "Saisons", icon: <IconSeasons />, disabled: true },
 ];
 
+const EXPLORER_ITEMS: NavItem[] = [
+  {
+    id: "rookies",
+    label: "Rookies",
+    icon: <IconRookie />,
+    href: "/fr/rookies",
+  },
+  {
+    id: "absents",
+    label: "Absents",
+    icon: <IconAbsent />,
+    href: "/fr/absents",
+  },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
 
@@ -116,6 +164,7 @@ export function Sidebar() {
         !pathname.startsWith("/fr/joueurs")
       );
     if (item.id === "players") return pathname.startsWith("/fr/joueurs");
+    if (item.href) return pathname.startsWith(item.href);
     return false;
   }
 
@@ -152,6 +201,32 @@ export function Sidebar() {
               </span>
             </div>
           ) : (
+            <Link
+              key={item.id}
+              href={item.href!}
+              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition ${
+                active
+                  ? "bg-white/[0.06] text-white"
+                  : "text-white/60 hover:bg-white/[0.04] hover:text-white"
+              }`}
+            >
+              <span className={active ? "text-violet-400" : ""}>
+                {item.icon}
+              </span>
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Explorer */}
+      <nav className="px-3 space-y-0.5 mt-4">
+        <div className="px-2 pb-2 text-[10px] uppercase tracking-[0.18em] text-white/30 font-medium">
+          Explorer
+        </div>
+        {EXPLORER_ITEMS.map((item) => {
+          const active = isActive(item);
+          return (
             <Link
               key={item.id}
               href={item.href!}

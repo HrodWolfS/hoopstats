@@ -19,6 +19,12 @@ export function divFr(div: string): string {
 /** Saison courante pour le fetch des données. */
 export const CURRENT_SEASON = "2025-26";
 
+/** Saison précédente (pour diff rookies/absents). */
+export const PREV_SEASON = "2024-25";
+
+/** Année de draft des rookies de la saison courante. */
+export const CURRENT_DRAFT_YEAR = 2025;
+
 /** Toutes les saisons disponibles, du plus récent au plus ancien. */
 export const ALL_SEASONS = [
   "2025-26",
