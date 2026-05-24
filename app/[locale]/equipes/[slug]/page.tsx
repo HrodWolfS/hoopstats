@@ -9,6 +9,7 @@ import { TeamTabs } from "@/components/team/team-tabs";
 import type { RosterPlayer } from "@/components/team/roster-view";
 import type { SeasonStats, ConferenceRow } from "@/components/team/season-view";
 import type { HistorySeason } from "@/components/team/history-view";
+import type { GameRow } from "@/components/team/recent-games";
 
 export const revalidate = 21600; // 6h ISR
 
@@ -74,57 +75,110 @@ export default async function TeamPage({
   const team = await prisma.team.findUnique({ where: { slug } });
   if (!team) notFound();
 
-  const [currentSeason, history, rosterRows, conferenceStandings] =
-    await Promise.all([
-      prisma.teamSeason.findFirst({
-        where: { teamId: team.id, season },
-      }),
-      prisma.teamSeason.findMany({
-        where: { teamId: team.id },
-        orderBy: { season: "asc" },
-      }),
-      prisma.playerSeason.findMany({
-        where: { teamId: team.id, season },
-        orderBy: { pointsPerGame: "desc" },
-        take: 20,
-        include: {
-          player: {
-            select: {
-              firstName: true,
-              lastName: true,
-              slug: true,
-              position: true,
-              photoUrl: true,
-            },
+  const gameInclude = {
+    homeTeam: {
+      select: {
+        id: true,
+        slug: true,
+        city: true,
+        name: true,
+        abbr: true,
+        logoUrl: true,
+        primaryColor: true,
+      },
+    },
+    awayTeam: {
+      select: {
+        id: true,
+        slug: true,
+        city: true,
+        name: true,
+        abbr: true,
+        logoUrl: true,
+        primaryColor: true,
+      },
+    },
+  } as const;
+
+  const [
+    currentSeason,
+    history,
+    rosterRows,
+    conferenceStandings,
+    recentGamesRaw,
+    upcomingGamesRaw,
+  ] = await Promise.all([
+    prisma.teamSeason.findFirst({
+      where: { teamId: team.id, season },
+    }),
+    prisma.teamSeason.findMany({
+      where: { teamId: team.id },
+      orderBy: { season: "asc" },
+    }),
+    prisma.playerSeason.findMany({
+      where: { teamId: team.id, season },
+      orderBy: { pointsPerGame: "desc" },
+      take: 20,
+      include: {
+        player: {
+          select: {
+            firstName: true,
+            lastName: true,
+            slug: true,
+            position: true,
+            photoUrl: true,
           },
         },
-      }),
-      // Classement de la conférence pour l'onglet "Saison actuelle"
-      prisma.teamSeason.findMany({
-        where: {
-          season,
-          team: { conference: team.conference },
-        },
-        orderBy: { conferenceRank: "asc" },
-        select: {
-          wins: true,
-          losses: true,
-          conferenceRank: true,
-          previousConferenceRank: true,
-          team: {
-            select: {
-              id: true,
-              slug: true,
-              city: true,
-              name: true,
-              abbr: true,
-              logoUrl: true,
-              primaryColor: true,
-            },
+      },
+    }),
+    // Classement de la conférence pour l'onglet "Saison actuelle"
+    prisma.teamSeason.findMany({
+      where: {
+        season,
+        team: { conference: team.conference },
+      },
+      orderBy: { conferenceRank: "asc" },
+      select: {
+        wins: true,
+        losses: true,
+        conferenceRank: true,
+        previousConferenceRank: true,
+        team: {
+          select: {
+            id: true,
+            slug: true,
+            city: true,
+            name: true,
+            abbr: true,
+            logoUrl: true,
+            primaryColor: true,
           },
         },
-      }),
-    ]);
+      },
+    }),
+    // 5 derniers matchs joués
+    prisma.game.findMany({
+      where: {
+        status: "final",
+        season: CURRENT_SEASON,
+        OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
+      },
+      orderBy: { gameDate: "desc" },
+      take: 5,
+      include: gameInclude,
+    }),
+    // 3 prochains matchs
+    prisma.game.findMany({
+      where: {
+        status: "scheduled",
+        season: CURRENT_SEASON,
+        OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
+      },
+      orderBy: { gameDate: "asc" },
+      take: 3,
+      include: gameInclude,
+    }),
+  ]);
 
   // ── Adapter les types pour les composants ─────────────────────────────────
 
@@ -170,6 +224,27 @@ export default async function TeamPage({
     losses: cs.losses,
     team: cs.team,
   }));
+
+  const teamId = team.id;
+
+  function toGameRow(
+    g: (typeof recentGamesRaw)[number] | (typeof upcomingGamesRaw)[number],
+  ): GameRow {
+    const isHome = g.homeTeamId === teamId;
+    const opponent = isHome ? g.awayTeam : g.homeTeam;
+    return {
+      id: g.id,
+      gameDate: g.gameDate.toISOString(),
+      homeScore: g.homeScore,
+      awayScore: g.awayScore,
+      status: g.status,
+      isHome,
+      opponent,
+    };
+  }
+
+  const recentGames: GameRow[] = recentGamesRaw.map(toGameRow);
+  const upcomingGames: GameRow[] = upcomingGamesRaw.map(toGameRow);
 
   const wPct = currentSeason
     ? winPct(currentSeason.wins, currentSeason.losses)
@@ -280,6 +355,8 @@ export default async function TeamPage({
         currentSeason={seasonStats}
         standings={standings}
         history={historySeason}
+        recentGames={recentGames}
+        upcomingGames={upcomingGames}
         rosterDate={rosterDate}
         locale={locale}
       />

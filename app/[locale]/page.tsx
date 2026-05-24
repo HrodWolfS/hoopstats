@@ -1,5 +1,6 @@
 import { type Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_SEASON } from "@/lib/nba";
 import { stat, pct, record } from "@/lib/format";
@@ -125,6 +126,45 @@ async function getTsLeaders(limit = 5): Promise<LeaderRow[]> {
     secondaryColor: r.team.secondaryColor,
     value: r.trueShooting as number,
   }));
+}
+
+type RecentGameRow = {
+  id: string;
+  gameDate: Date;
+  homeScore: number | null;
+  awayScore: number | null;
+  homeTeam: {
+    abbr: string;
+    logoUrl: string | null;
+    primaryColor: string;
+    slug: string;
+  };
+  awayTeam: {
+    abbr: string;
+    logoUrl: string | null;
+    primaryColor: string;
+    slug: string;
+  };
+};
+
+async function getRecentGames(limit = 6): Promise<RecentGameRow[]> {
+  return prisma.game.findMany({
+    where: { status: "final", season: CURRENT_SEASON },
+    orderBy: { gameDate: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      gameDate: true,
+      homeScore: true,
+      awayScore: true,
+      homeTeam: {
+        select: { abbr: true, logoUrl: true, primaryColor: true, slug: true },
+      },
+      awayTeam: {
+        select: { abbr: true, logoUrl: true, primaryColor: true, slug: true },
+      },
+    },
+  });
 }
 
 async function getStandings(
@@ -292,6 +332,7 @@ export default async function HomePage({
     tsLeaders,
     eastStandings,
     westStandings,
+    recentGames,
   ] = await Promise.all([
     getLeaders("pointsPerGame"),
     getLeaders("reboundsPerGame"),
@@ -299,6 +340,7 @@ export default async function HomePage({
     getTsLeaders(),
     getStandings("East"),
     getStandings("West"),
+    getRecentGames(),
   ]);
 
   return (
@@ -400,6 +442,81 @@ export default async function HomePage({
           </div>
         </section>
       </FadeIn>
+
+      {/* ── Résultats récents ─────────────────────────────────────────────── */}
+      {recentGames.length > 0 && (
+        <FadeIn delay={0.3}>
+          <section>
+            <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
+              Résultats récents{" "}
+              <span className="text-white/25 font-normal text-base">
+                derniers matchs
+              </span>
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {recentGames.map((g) => (
+                <div
+                  key={g.id}
+                  className="rounded-2xl border border-white/[0.06] bg-[#111114] px-4 py-3 flex items-center gap-3"
+                >
+                  {/* Équipe away */}
+                  <Link
+                    href={`/${locale}/equipes/${g.awayTeam.slug}`}
+                    className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition"
+                  >
+                    {g.awayTeam.logoUrl && (
+                      <Image
+                        src={g.awayTeam.logoUrl}
+                        alt={g.awayTeam.abbr}
+                        width={28}
+                        height={28}
+                        className="object-contain shrink-0"
+                      />
+                    )}
+                    <span className="text-xs text-white/60 font-mono truncate">
+                      {g.awayTeam.abbr}
+                    </span>
+                  </Link>
+
+                  {/* Score */}
+                  <div className="text-center shrink-0">
+                    <div className="font-mono font-semibold tabular-nums text-sm">
+                      {g.awayScore ?? "–"}
+                      <span className="text-white/30 mx-1">–</span>
+                      {g.homeScore ?? "–"}
+                    </div>
+                    <div className="text-[10px] text-white/20 font-mono">
+                      {new Date(g.gameDate).toLocaleDateString("fr-FR", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Équipe home */}
+                  <Link
+                    href={`/${locale}/equipes/${g.homeTeam.slug}`}
+                    className="flex items-center gap-2 flex-1 min-w-0 justify-end hover:opacity-80 transition"
+                  >
+                    <span className="text-xs text-white/60 font-mono truncate text-right">
+                      {g.homeTeam.abbr}
+                    </span>
+                    {g.homeTeam.logoUrl && (
+                      <Image
+                        src={g.homeTeam.logoUrl}
+                        alt={g.homeTeam.abbr}
+                        width={28}
+                        height={28}
+                        className="object-contain shrink-0"
+                      />
+                    )}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </section>
+        </FadeIn>
+      )}
     </div>
   );
 }

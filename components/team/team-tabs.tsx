@@ -12,6 +12,8 @@ import {
   HistoryView,
   type HistorySeason,
 } from "@/components/team/history-view";
+import { RecentGames, type GameRow } from "@/components/team/recent-games";
+import { UpcomingGames } from "@/components/team/upcoming-games";
 
 type TeamTabsProps = {
   primaryColor: string;
@@ -20,6 +22,8 @@ type TeamTabsProps = {
   currentSeason: SeasonStats | null;
   standings: ConferenceRow[];
   history: HistorySeason[];
+  recentGames: GameRow[];
+  upcomingGames: GameRow[];
   rosterDate: string;
   locale: string;
 };
@@ -28,6 +32,7 @@ const TABS = [
   { id: "roster", label: "Effectif" },
   { id: "season", label: "Saison actuelle" },
   { id: "history", label: "Historique 10 saisons" },
+  { id: "games", label: "Matchs" },
 ];
 
 export function TeamTabs({
@@ -37,6 +42,8 @@ export function TeamTabs({
   currentSeason,
   standings,
   history,
+  recentGames,
+  upcomingGames,
   rosterDate,
   locale,
 }: TeamTabsProps) {
@@ -64,6 +71,12 @@ export function TeamTabs({
       )}
       {active === "history" && (
         <HistoryView seasons={history} primaryColor={primaryColor} />
+      )}
+      {active === "games" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <RecentGames games={recentGames} primaryColor={primaryColor} />
+          <UpcomingGames games={upcomingGames} />
+        </div>
       )}
     </div>
   );

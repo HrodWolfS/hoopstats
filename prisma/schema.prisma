@@ -27,6 +27,8 @@ model Team {
 
   seasons       TeamSeason[]
   playerSeasons PlayerSeason[]
+  homeGames     Game[]         @relation("HomeGames")
+  awayGames     Game[]         @relation("AwayGames")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -111,6 +113,25 @@ model TeamSeason {
 
   @@unique([teamId, season])
   @@index([season])
+}
+
+model Game {
+  id         String   @id @default(cuid())
+  espnId     String   @unique
+  homeTeamId String
+  awayTeamId String
+  gameDate   DateTime
+  season     String
+  homeScore  Int?
+  awayScore  Int?
+  status     String   // "scheduled" | "final"
+
+  homeTeam Team @relation("HomeGames", fields: [homeTeamId], references: [id])
+  awayTeam Team @relation("AwayGames", fields: [awayTeamId], references: [id])
+
+  @@index([season, status])
+  @@index([homeTeamId, season])
+  @@index([awayTeamId, season])
 }
 
 model SyncLog {

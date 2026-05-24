@@ -119,6 +119,108 @@ async function syncStandings(): Promise<{
   return { upserted, skipped };
 }
 
+// ─── 2. Sync matchs (ESPN scoreboard) ────────────────────────────────────────
+
+async function syncRecentGames(): Promise<{
+  upserted: number;
+  skipped: number;
+}> {
+  console.log("\n🏀 Sync matchs récents (ESPN scoreboard)…");
+
+  // Dates à synchroniser : J-3, J-1, J, J+1, J+2
+  const offsets = [-3, -1, 0, 1, 2];
+  const dates = offsets.map((d) => {
+    const dt = new Date();
+    dt.setDate(dt.getDate() + d);
+    return dt.toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
+  });
+
+  const dbTeams = await prisma.team.findMany({
+    select: { id: true, abbr: true },
+  });
+  const teamByAbbr = new Map(dbTeams.map((t) => [t.abbr, t.id]));
+
+  let upserted = 0;
+  let skipped = 0;
+
+  for (const date of dates) {
+    const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${date}`;
+    type EspnEvent = {
+      id: string;
+      date: string;
+      competitions: Array<{
+        status: { type: { name: string } };
+        competitors: Array<{
+          homeAway: string;
+          team: { abbreviation: string };
+          score: string;
+        }>;
+      }>;
+    };
+
+    let data: { events?: EspnEvent[] };
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        skipped++;
+        continue;
+      }
+      data = (await res.json()) as { events?: EspnEvent[] };
+    } catch {
+      skipped++;
+      continue;
+    }
+
+    for (const event of data.events ?? []) {
+      const comp = event.competitions?.[0];
+      if (!comp) continue;
+
+      const home = comp.competitors.find((c) => c.homeAway === "home");
+      const away = comp.competitors.find((c) => c.homeAway === "away");
+      if (!home || !away) continue;
+
+      const homeAbbr =
+        ESPN_TO_DB[home.team.abbreviation] ?? home.team.abbreviation;
+      const awayAbbr =
+        ESPN_TO_DB[away.team.abbreviation] ?? away.team.abbreviation;
+      const homeTeamId = teamByAbbr.get(homeAbbr);
+      const awayTeamId = teamByAbbr.get(awayAbbr);
+      if (!homeTeamId || !awayTeamId) {
+        skipped++;
+        continue;
+      }
+
+      const isFinal = comp.status.type.name === "STATUS_FINAL";
+      const status = isFinal ? "final" : "scheduled";
+      const homeScore = isFinal ? parseInt(home.score, 10) : null;
+      const awayScore = isFinal ? parseInt(away.score, 10) : null;
+
+      try {
+        await prisma.game.upsert({
+          where: { espnId: event.id },
+          update: { homeScore, awayScore, status },
+          create: {
+            espnId: event.id,
+            homeTeamId,
+            awayTeamId,
+            gameDate: new Date(event.date),
+            season: CURRENT_SEASON,
+            homeScore,
+            awayScore,
+            status,
+          },
+        });
+        upserted++;
+      } catch {
+        skipped++;
+      }
+    }
+  }
+
+  console.log(`  ✅ ${upserted} matchs upserted, ${skipped} skipped`);
+  return { upserted, skipped };
+}
+
 // ─── 3. Régénération résumés équipes ─────────────────────────────────────────
 // Note : les biographies joueurs sont générées séparément (script one-shot)
 // car elles sont stables dans le temps (draft, université, parcours).
@@ -223,6 +325,7 @@ async function main() {
 
   try {
     const standingsResult = await syncStandings();
+    const gamesResult = await syncRecentGames();
     await regenerateSummaries();
     await revalidateVercel();
 
@@ -230,9 +333,10 @@ async function main() {
       data: {
         source: "sync-daily",
         status,
-        itemsProcessed: standingsResult.upserted,
+        itemsProcessed: standingsResult.upserted + gamesResult.upserted,
         errors: {
           standingsSkipped: standingsResult.skipped,
+          gamesSkipped: gamesResult.skipped,
           messages: errors,
         },
         startedAt,

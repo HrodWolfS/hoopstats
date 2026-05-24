@@ -391,6 +391,246 @@ Site en ligne sur le domaine final, indexable, analytics actifs.
 
 ---
 
+## Sprint 9 — Résultats & matchs à venir (post-launch)
+
+**Objectif** : afficher les résultats des matchs récents et le programme sur 2 jours, sur la home et les pages équipes.
+
+> **Contexte** : ESPN public API (`site.api.espn.com/apis/v2/sports/basketball/nba/scoreboard`) fonctionne depuis GitHub Actions (pas de clé, pas de bloc IP). Les stats avancées de match (`stats.nba.com`) sont bloquées depuis CI — on utilise uniquement ESPN pour les scores/résultats.
+
+### Nouveaux éléments de schéma
+
+```prisma
+model Game {
+  id          String   @id              // ESPN game ID
+  homeTeamId  String
+  awayTeamId  String
+  gameDate    DateTime
+  season      String
+  homeScore   Int?
+  awayScore   Int?
+  status      String                    // "scheduled" | "in_progress" | "final"
+  espnId      String   @unique
+
+  homeTeam    Team     @relation("HomeGames", fields: [homeTeamId], references: [id])
+  awayTeam    Team     @relation("AwayGames", fields: [awayTeamId], references: [id])
+}
+```
+
+### Tâches
+
+#### 9.1 Schema & migration (1h)
+- [ ] Ajouter modèle `Game` à `prisma/schema.prisma`
+- [ ] `pnpm prisma migrate dev --name add-game`
+- [ ] Ajouter les deux relations inverses sur le modèle `Team` (`homeGames`, `awayGames`)
+
+#### 9.2 Sync matchs dans `sync-daily.ts` (3h)
+- [ ] Nouvelle fonction `syncRecentGames()` — fetch ESPN scoreboard J-2 à J+2 :
+  ```
+  GET https://site.api.espn.com/apis/v2/sports/basketball/nba/scoreboard?dates=YYYYMMDD
+  ```
+- [ ] Parser : `event.id`, `competitions[0].competitors` (home/away, score, status)
+- [ ] Upsert `Game` : si `status=final` → écrire scores ; si `scheduled` → créer sans scores
+- [ ] Appeler dans `main()` entre `syncStandings()` et `regenerateSummaries()`
+
+#### 9.3 Composant `RecentGames` (3h)
+- [ ] `components/team/recent-games.tsx` — liste verticale des 5 derniers matchs de l'équipe
+- [ ] Chaque ligne : date · logo adversaire · score (gras si victoire, atténué si défaite)
+- [ ] Badge W/L coloré avec la couleur primaire de l'équipe pour W
+
+#### 9.4 Composant `UpcomingGames` (2h)
+- [ ] `components/team/upcoming-games.tsx` — 2 prochains matchs max
+- [ ] Chaque ligne : date · "vs" ou "@" · logo adversaire · heure indicative (pas de timezone complex)
+
+#### 9.5 Intégration page équipe (2h)
+- [ ] Nouvel onglet "Matchs" dans `team-tabs.tsx` (4e onglet, après "Historique")
+- [ ] Affiche `RecentGames` + `UpcomingGames` côte à côte
+- [ ] Requête dans `app/[locale]/equipes/[slug]/page.tsx` — 5 derniers + 2 prochains
+
+#### 9.6 Section home page (2h)
+- [ ] Section "Matchs d'hier" sur la home : résultats du jour précédent, 3 matchs max en horizontal
+- [ ] Composant `GameCard` compact : logos des deux équipes + score final
+- [ ] Requête dans `app/[locale]/page.tsx`
+
+### Livrable sprint 9
+
+Pages équipes avec onglet "Matchs" (résultats récents + programme J+2). Home avec résultats d'hier.
+
+### Definition of Done
+
+- Sync quotidien peuple la table `Game` sans erreur
+- Onglet "Matchs" visible sur les 30 pages équipes
+- Les scores passés sont corrects (vérification manuelle sur 3 matchs)
+
+---
+
+## Sprint 10 — Rookies & Retraités
+
+**Objectif** : deux nouvelles pages de découverte — les rookies de la saison en cours, et les joueurs qui ont disputé leur dernière saison.
+
+> **Contexte** : on définit "rookie" par `Player.draftYear` = année de début de `CURRENT_SEASON`. On définit "retraité" (ou absent cette saison) par : présent dans `PlayerSeason 2024-25` mais absent dans `PlayerSeason 2025-26`. Pas de flag en DB, tout est calculé à la volée (ou via un script one-shot pour ajouter un champ `Player.active`).
+
+### Tâches
+
+#### 10.1 Page Rookies (3h)
+- [ ] `app/[locale]/rookies/page.tsx`
+- [ ] Requête : `PlayerSeason` saison actuelle `JOIN Player WHERE draftYear = currentYear`
+- [ ] Tri par défaut : PPG desc
+- [ ] Vue grille identique à la page joueurs (composant `PlayerCard` réutilisé)
+- [ ] Sélecteur de saison pour voir les rookies des années précédentes
+- [ ] `generateMetadata` + Schema.org minimal
+- [ ] Ajout dans la sidebar (section "Explorer")
+
+#### 10.2 Page Retraités / Absents (3h)
+- [ ] `app/[locale]/retraites/page.tsx`
+- [ ] Requête :
+  ```typescript
+  const lastSeason = prisma.playerSeason.findMany({ where: { season: PREV_SEASON }, select: { playerId: true } });
+  const thisSeason = prisma.playerSeason.findMany({ where: { season: CURRENT_SEASON }, select: { playerId: true } });
+  // diff = lastSeason.ids − thisSeason.ids
+  ```
+- [ ] Affichage : liste de joueurs avec leur dernière saison, stats de l'année de départ
+- [ ] Titre prudent : "Absents cette saison" (pas "retraités" — peuvent être blessés ou FA)
+- [ ] Filtre optionnel par position
+- [ ] Ajout dans la sidebar
+
+#### 10.3 `PREV_SEASON` constant (30 min)
+- [ ] Ajouter `export const PREV_SEASON = "2024-25"` dans `lib/nba.ts` (à côté de `CURRENT_SEASON`)
+- [ ] Utiliser dans les requêtes ci-dessus
+
+#### 10.4 Champ `Player.draftYear` (1h)
+- [ ] Vérifier que le champ existe en DB (devrait être là depuis l'import BallDontLie)
+- [ ] Si manquant : script one-shot `scripts/backfill-draft-years.ts` depuis l'API BDL `/players`
+- [ ] Ajouter index DB sur `Player.draftYear`
+
+### Livrable sprint 10
+
+Deux nouvelles pages : `/rookies` (classe actuelle + années précédentes) et `/retraites` (absents cette saison vs précédente).
+
+### Definition of Done
+
+- Les pages chargent sans erreur avec vraie data
+- Les liens apparaissent dans la sidebar
+- `pnpm build` génère les routes statiques correctement
+
+---
+
+## Sprint 11 — Historique complet des franchises
+
+**Objectif** : enrichir `TeamSeason` avec l'historique complet depuis la création de chaque franchise (au lieu des 10 dernières saisons).
+
+> **Contexte** : les Lakers existent depuis 1948. Le backfill complet représente ~1500 saisons-équipes. ESPN API supporte les saisons historiques (ex: `season=1980`). L'onglet "Historique" de la page équipe affiche déjà 10 saisons — il suffira d'enlever le filtre ou d'ajouter un toggle.
+
+### Tâches
+
+#### 11.1 Script `scripts/backfill-team-history.ts` (4h)
+- [ ] Définir les années de fondation par franchise (table statique dans le script)
+  ```typescript
+  const FRANCHISE_FOUNDED: Record<string, number> = {
+    "lakers": 1948, "celtics": 1946, "warriors": 1946, ...
+  };
+  ```
+- [ ] Pour chaque équipe, boucle de `foundedYear` à `CURRENT_SEASON_YEAR - 1`
+- [ ] ESPN standings par saison : `?season=YYYY` (YYYY = année de fin de saison)
+- [ ] Upsert `TeamSeason` : wins, losses, conferenceRank, playoffResult si dispo
+- [ ] Rate limit : 500ms entre requêtes (API publique, soyons polis)
+- [ ] Log progress + SyncLog.create en fin
+- [ ] Durée estimée : ~45 min pour l'intégralité
+
+#### 11.2 Données playoff (`playoffResult`) (3h)
+- [ ] ESPN ne fournit pas toujours le résultat playoff dans les standings historiques
+- [ ] Script complémentaire `scripts/backfill-playoff-results.ts` depuis une source alternative :
+  - Option A : Wikipedia table des champions NBA (HTML scraping léger)
+  - Option B : fichier JSON statique codé à la main pour les champions + finalistes
+- [ ] Codes existants déjà dans `sync-daily.ts` : W, E, A, SE, C, NW, SW, P, X, PI
+
+#### 11.3 Mise à jour `HistoryView` (2h)
+- [ ] Toggle "10 saisons / Tout l'historique" dans `components/team/history-view.tsx`
+- [ ] Par défaut : 10 dernières saisons (comportement actuel)
+- [ ] Mode "complet" : toutes les saisons triées par année desc
+- [ ] Chart recharts adapté pour afficher >10 points sans que ça soit illisible (viewport scroll ou responsive)
+
+#### 11.4 Stat "Titres NBA" dans le header équipe (1h)
+- [ ] Compter `TeamSeason WHERE playoffResult = 'W'`
+- [ ] Afficher dans le header si > 0 : "🏆 17 titres" (ex: Lakers)
+
+### Livrable sprint 11
+
+Historique complet pour les 30 franchises depuis leur création. Toggle 10 saisons / tout l'historique sur la page équipe.
+
+### Definition of Done
+
+- Les Celtics affichent leurs 18 titres dans le header
+- L'historique complet des Lakers (~75 saisons) s'affiche sans erreur
+- Script documenté pour re-run si besoin
+
+---
+
+## Sprint 12 — Meilleur 5 par génération
+
+**Objectif** : page éditoriale "Meilleur 5 de chaque génération" — contenu distinctif difficile à trouver ailleurs, bon pour le SEO long tail.
+
+> **Contexte** : on définit 5 générations NBA (à ajuster selon les données dispo) :
+> - **Pionniers** : 1946–1969
+> - **Ère Showtime** : 1970–1989
+> - **Ère Jordan** : 1990–1999
+> - **Kobe/Shaq/Duncan** : 2000–2009
+> - **Ère moderne** : 2010–aujourd'hui
+>
+> Critères de sélection : automatisables via stats DB (WS cumulés, PPG de carrière, MVPs).
+
+### Tâches
+
+#### 12.1 Modèle `GenerationFive` (1h)
+```prisma
+model GenerationFive {
+  id          String   @id @default(cuid())
+  generation  String   // "pioneers" | "showtime" | "jordan" | "kobe-shaq" | "modern"
+  position    String   // "PG" | "SG" | "SF" | "PF" | "C"
+  playerId    String
+  rationale   String?  // pourquoi ce choix (texte FR)
+  player      Player   @relation(...)
+}
+```
+
+#### 12.2 Script de sélection automatique (3h)
+- [ ] `scripts/generate-best-fives.ts`
+- [ ] Pour chaque génération, filtrer `PlayerSeason` par années concernées
+- [ ] Agréger : PPG moyen, total WS, total MVPs (si champ dispo)
+- [ ] Sélectionner le meilleur par position (meilleur score composite)
+- [ ] Proposer en console — validation manuelle avant écriture en DB
+- [ ] Permettre override manuel via fichier JSON `data/best-fives-overrides.json`
+
+#### 12.3 Page `/meilleurs-5` (4h)
+- [ ] `app/[locale]/meilleurs-5/page.tsx`
+- [ ] 5 sections (une par génération) avec titre + années
+- [ ] Chaque section : grille 5 joueurs (composant `PlayerCard` enrichi avec rationale)
+- [ ] Responsive : 5 colonnes desktop, 2-3 colonnes mobile
+- [ ] Animation d'entrée subtile (Framer Motion staggerChildren)
+- [ ] `generateMetadata` SEO-optimisé (titre : "Meilleur 5 NBA par génération")
+- [ ] Schema.org `ItemList`
+
+#### 12.4 Rationale éditorial (2h)
+- [ ] Pour chaque joueur sélectionné : rédiger 1-2 phrases FR expliquant le choix
+- [ ] Stocker dans `GenerationFive.rationale`
+- [ ] Afficher sous la card joueur
+
+#### 12.5 Liens depuis pages joueurs (1h)
+- [ ] Sur la page d'un joueur présent dans un best-5 : badge discret "Meilleur 5 — Ère moderne"
+- [ ] Lien vers la page `/meilleurs-5#era-moderne`
+
+### Livrable sprint 12
+
+Page éditoriale `/meilleurs-5` avec les 25 joueurs sélectionnés (5 générations × 5 postes), rationale textuel, liens depuis les pages joueurs.
+
+### Definition of Done
+
+- La page charge avec les 25 joueurs
+- Le rationale est présent pour chaque joueur
+- SEO : title + description + OG image correctement remplis
+- Les badges apparaissent sur les pages des joueurs concernés
+
+---
+
 ## Récap macro
 
 | Sprint | Semaine | Effort | Livrable visible |
@@ -403,8 +643,12 @@ Site en ligne sur le domaine final, indexable, analytics actifs.
 | 5 | S5 | 9h | Photos + paragraphes français partout |
 | 6 | S6 | 9h | Home + ⌘K + sélecteur saison |
 | 7 | S7 | 10h | Site en prod, SEO, analytics |
-| 8 | S8 | 13h | Launch public + n8n cron |
-| **Total** | **8 sem** | **~85h** | **Site complet en ligne** |
+| 8 | S8 | 13h | Launch public + cron GitHub Actions |
+| 9 | Post-S8 | ~13h | Résultats matchs + programme J+2 |
+| 10 | Post-S9 | ~8h | Page Rookies + Page Retraités |
+| 11 | Post-S10 | ~10h | Historique complet franchises |
+| 12 | Post-S11 | ~11h | Page éditoriale Meilleur 5 par génération |
+| **Total** | **12 sprints** | **~128h** | **Site complet + contenu éditorial** |
 
 ---
 
