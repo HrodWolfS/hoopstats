@@ -127,8 +127,8 @@ async function syncRecentGames(): Promise<{
 }> {
   console.log("\n🏀 Sync matchs récents (ESPN scoreboard)…");
 
-  // Dates à synchroniser : J-3, J-1, J, J+1, J+2
-  const offsets = [-3, -1, 0, 1, 2];
+  // Dates à synchroniser : J-3 à J+2 (fenêtre glissante complète)
+  const offsets = [-3, -2, -1, 0, 1, 2];
   const dates = offsets.map((d) => {
     const dt = new Date();
     dt.setDate(dt.getDate() + d);

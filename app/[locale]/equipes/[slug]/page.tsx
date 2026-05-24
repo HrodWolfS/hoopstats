@@ -156,7 +156,7 @@ export default async function TeamPage({
         },
       },
     }),
-    // 5 derniers matchs joués
+    // 10 derniers matchs joués
     prisma.game.findMany({
       where: {
         status: "final",
@@ -164,7 +164,7 @@ export default async function TeamPage({
         OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
       },
       orderBy: { gameDate: "desc" },
-      take: 5,
+      take: 10,
       include: gameInclude,
     }),
     // 3 prochains matchs
