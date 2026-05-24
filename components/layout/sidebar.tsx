@@ -82,24 +82,6 @@ function IconRookie() {
   );
 }
 
-function IconAbsent() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21a8 8 0 0 1 16 0" />
-      <line x1="17" y1="3" x2="21" y2="7" />
-      <line x1="21" y1="3" x2="17" y2="7" />
-    </svg>
-  );
-}
-
 function IconSeasons() {
   return (
     <svg
@@ -143,12 +125,6 @@ const EXPLORER_ITEMS: NavItem[] = [
     label: "Rookies",
     icon: <IconRookie />,
     href: "/fr/rookies",
-  },
-  {
-    id: "absents",
-    label: "Absents",
-    icon: <IconAbsent />,
-    href: "/fr/absents",
   },
 ];
 
