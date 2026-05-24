@@ -29,52 +29,57 @@ export default async function RookiesPage({
   const season = saison ?? CURRENT_SEASON;
   const draftYear = parseInt(season.split("-")[0]);
 
-  const rows = await prisma.playerSeason.findMany({
-    where: { season, player: { draftYear } },
-    orderBy: { pointsPerGame: "desc" },
+  // Requête depuis Player pour inclure tous les draftés même sans stats
+  const players = await prisma.player.findMany({
+    where: { draftYear },
     include: {
-      player: {
-        select: {
-          firstName: true,
-          lastName: true,
-          slug: true,
-          position: true,
-          photoUrl: true,
-          draftYear: true,
-          draftPick: true,
-          college: true,
-        },
-      },
-      team: {
-        select: {
-          abbr: true,
-          slug: true,
-          primaryColor: true,
-          secondaryColor: true,
+      seasons: {
+        where: { season },
+        include: {
+          team: {
+            select: {
+              abbr: true,
+              slug: true,
+              primaryColor: true,
+              secondaryColor: true,
+            },
+          },
         },
       },
     },
+    orderBy: { draftPick: "asc" },
   });
 
-  const tableRows: SortableRow[] = rows.map((r) => ({
-    id: r.id,
-    playerSlug: r.player.slug,
-    firstName: r.player.firstName,
-    lastName: r.player.lastName,
-    position: r.player.position,
-    photoUrl: r.player.photoUrl,
-    college: r.player.college,
-    teamAbbr: r.team.abbr,
-    teamSlug: r.team.slug,
-    primaryColor: r.team.primaryColor,
-    secondaryColor: r.team.secondaryColor,
-    draftPick: r.player.draftPick,
-    gamesPlayed: r.gamesPlayed,
-    pointsPerGame: r.pointsPerGame,
-    reboundsPerGame: r.reboundsPerGame,
-    assistsPerGame: r.assistsPerGame,
-    trueShooting: r.trueShooting,
-  }));
+  const FALLBACK_TEAM = {
+    abbr: "—",
+    slug: "",
+    primaryColor: "#666666",
+    secondaryColor: "#444444",
+  };
+
+  const tableRows: SortableRow[] = players.map((p) => {
+    const ps = p.seasons[0] ?? null;
+    const team = ps?.team ?? FALLBACK_TEAM;
+    return {
+      id: p.id,
+      playerSlug: p.slug,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      position: p.position,
+      photoUrl: p.photoUrl,
+      college: p.college,
+      teamAbbr: team.abbr,
+      teamSlug: team.slug,
+      primaryColor: team.primaryColor,
+      secondaryColor: team.secondaryColor,
+      draftPick: p.draftPick,
+      gamesPlayed: ps?.gamesPlayed ?? 0,
+      pointsPerGame: ps?.pointsPerGame ?? 0,
+      reboundsPerGame: ps?.reboundsPerGame ?? 0,
+      assistsPerGame: ps?.assistsPerGame ?? 0,
+      trueShooting: ps?.trueShooting ?? null,
+    };
+  });
 
   const COLUMNS = [
     { key: "pick" as const, label: "Pick", show: "sm" as const },
@@ -105,8 +110,8 @@ export default async function RookiesPage({
             </span>
           </h1>
           <p className="text-white/40 text-sm">
-            {rows.length} joueur{rows.length !== 1 ? "s" : ""} en première
-            saison NBA
+            {tableRows.length} joueur{tableRows.length !== 1 ? "s" : ""} en
+            première saison NBA
           </p>
         </div>
       </FadeIn>
@@ -130,7 +135,7 @@ export default async function RookiesPage({
         </div>
       </FadeIn>
 
-      {rows.length === 0 ? (
+      {tableRows.length === 0 ? (
         <p className="text-white/40 text-sm font-mono py-12 text-center">
           Aucun rookie trouvé pour la saison {season}.
         </p>
