@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { PlayoffSeries, PlayoffTeam } from "@/lib/playoffs";
 
@@ -29,11 +30,23 @@ function TeamRow({
         isWinner ? "opacity-100" : "opacity-45"
       }`}
     >
-      {/* Color swatch */}
-      <span
-        className="h-3 w-3 rounded-full flex-shrink-0"
-        style={{ backgroundColor: team.primaryColor }}
-      />
+      {/* Logo ou couleur de fallback */}
+      <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center">
+        {team.logoUrl ? (
+          <Image
+            src={team.logoUrl}
+            alt={team.name}
+            width={24}
+            height={24}
+            className="object-contain"
+          />
+        ) : (
+          <span
+            className="h-3 w-3 rounded-full"
+            style={{ backgroundColor: team.primaryColor }}
+          />
+        )}
+      </span>
       {/* Seed */}
       <span className="w-3 text-[10px] text-white/30 font-mono text-right flex-shrink-0">
         {team.seed ?? "—"}

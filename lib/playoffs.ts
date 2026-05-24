@@ -205,15 +205,16 @@ export async function fetchPlayoffBracket(
     const key = `${conference}-${round}-${ids[0]}-${ids[1]}`;
 
     const seriesObj = comp.series;
-    const wins1 = seriesObj?.competitors.find((c) => c.id === c1.id)?.wins ?? 0;
-    const wins2 = seriesObj?.competitors.find((c) => c.id === c2.id)?.wins ?? 0;
-
     const gameMatch = noteText.match(/game\s*(\d+)/i);
     const gameNumber = gameMatch ? parseInt(gameMatch[1]) : 1;
-
     const isScheduled = comp.status?.type?.name === "STATUS_SCHEDULED";
 
     if (!seriesMap.has(key)) {
+      // First game of this series: initialise with c1/c2 order
+      const wins1 =
+        seriesObj?.competitors.find((c) => c.id === c1.id)?.wins ?? 0;
+      const wins2 =
+        seriesObj?.competitors.find((c) => c.id === c2.id)?.wins ?? 0;
       seriesMap.set(key, {
         conf: conference,
         round,
@@ -231,10 +232,20 @@ export async function fetchPlayoffBracket(
       });
     } else {
       const ex = seriesMap.get(key)!;
-      ex.wins1 = wins1;
-      ex.wins2 = wins2;
-      ex.completed = seriesObj?.completed ?? ex.completed;
-      ex.summary = seriesObj?.summary || ex.summary;
+      // IMPORTANT: look up wins by STORED team IDs, not by current c1/c2 position.
+      // Home/away alternates between games so c1 ≠ espnTeam1 in later games.
+      if (seriesObj) {
+        const w1 = seriesObj.competitors.find(
+          (c) => c.id === ex.espnTeam1.id,
+        )?.wins;
+        const w2 = seriesObj.competitors.find(
+          (c) => c.id === ex.espnTeam2.id,
+        )?.wins;
+        if (w1 !== undefined) ex.wins1 = w1;
+        if (w2 !== undefined) ex.wins2 = w2;
+        ex.completed = seriesObj.completed ?? ex.completed;
+        ex.summary = seriesObj.summary || ex.summary;
+      }
       ex.gameNumber = Math.max(ex.gameNumber, gameNumber);
       if (isScheduled && !ex.nextGameDate) {
         ex.nextGameDate = event.date;
