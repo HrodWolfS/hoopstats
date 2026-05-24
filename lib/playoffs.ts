@@ -61,7 +61,7 @@ type EspnEvent = {
   id: string;
   date: string;
   competitions: Array<{
-    notes?: Array<{ text: string }>;
+    notes?: Array<{ headline?: string; text?: string }>;
     series?: {
       completed: boolean;
       summary: string;
@@ -119,7 +119,8 @@ export async function fetchPlayoffBracket(
 
   const [gamesData, standingsData, dbTeams] = await Promise.all([
     fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?seasontype=3&season=${startYear}&limit=200`,
+      // Date range covers full playoff window (mid-April → late June of end year)
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?seasontype=3&season=${startYear}&dates=${endYear}0415-${endYear}0625`,
       { next: { revalidate: 300 } },
     )
       .then((r) => r.json())
@@ -191,7 +192,8 @@ export async function fetchPlayoffBracket(
     const comp = event.competitions?.[0];
     if (!comp) continue;
 
-    const noteText = comp.notes?.[0]?.text ?? "";
+    // ESPN uses 'headline' in scoreboard notes (not 'text')
+    const noteText = comp.notes?.[0]?.headline ?? comp.notes?.[0]?.text ?? "";
     const parsed = parseNote(noteText);
     if (!parsed) continue;
 
