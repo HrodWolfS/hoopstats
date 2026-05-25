@@ -31,6 +31,12 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma generate
 
+      - name: Sync playoffs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: pnpm tsx scripts/sync-playoffs.ts
+
       - name: Run daily sync
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

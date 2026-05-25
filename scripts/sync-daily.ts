@@ -190,15 +190,23 @@ async function syncRecentGames(): Promise<{
         continue;
       }
 
-      const isFinal = comp.status.type.name === "STATUS_FINAL";
-      const status = isFinal ? "final" : "scheduled";
+      const statusName = comp.status.type.name;
+      const isFinal = statusName === "STATUS_FINAL";
+      // ESPN status : FINAL → "final" | SCHEDULED → "scheduled" | tout autre (en cours) → "in_progress"
+      const status = isFinal
+        ? "final"
+        : statusName === "STATUS_SCHEDULED"
+          ? "scheduled"
+          : "in_progress";
       const homeScore = isFinal ? parseInt(home.score, 10) : null;
       const awayScore = isFinal ? parseInt(away.score, 10) : null;
 
       try {
         await prisma.game.upsert({
           where: { espnId: event.id },
-          update: { homeScore, awayScore, status },
+          // Ne mettre à jour le score que si le match est terminé
+          // (évite d'écraser "final" avec un statut en cours lors d'un retry)
+          update: isFinal ? { homeScore, awayScore, status } : { status },
           create: {
             espnId: event.id,
             homeTeamId,
@@ -386,9 +394,11 @@ async function syncCurrentPlayoffs(): Promise<{
         const w2 = seriesObj.competitors.find(
           (c) => c.id === ex.espnTeam2.id,
         )?.wins;
-        if (w1 !== undefined) ex.wins1 = w1;
-        if (w2 !== undefined) ex.wins2 = w2;
-        ex.completed = seriesObj.completed ?? ex.completed;
+        // Toujours prendre le max — ESPN peut retourner les events hors ordre,
+        // et le score d'un vieux match écraserait sinon le score actuel.
+        if (w1 !== undefined) ex.wins1 = Math.max(ex.wins1, w1);
+        if (w2 !== undefined) ex.wins2 = Math.max(ex.wins2, w2);
+        ex.completed = seriesObj.completed || ex.completed;
         ex.summary = seriesObj.summary || ex.summary;
       }
       ex.gameNumber = Math.max(ex.gameNumber, gameNumber);

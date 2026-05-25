@@ -228,9 +228,11 @@ async function syncSeason(season: string): Promise<{
         const w2 = seriesObj.competitors.find(
           (c) => c.id === ex.espnTeam2.id,
         )?.wins;
-        if (w1 !== undefined) ex.wins1 = w1;
-        if (w2 !== undefined) ex.wins2 = w2;
-        ex.completed = seriesObj.completed ?? ex.completed;
+        // Toujours prendre le max — ESPN peut retourner les events hors ordre,
+        // et le score d'un vieux match écraserait sinon le score actuel.
+        if (w1 !== undefined) ex.wins1 = Math.max(ex.wins1, w1);
+        if (w2 !== undefined) ex.wins2 = Math.max(ex.wins2, w2);
+        ex.completed = seriesObj.completed || ex.completed;
         ex.summary = seriesObj.summary || ex.summary;
       }
       ex.gameNumber = Math.max(ex.gameNumber, gameNumber);
