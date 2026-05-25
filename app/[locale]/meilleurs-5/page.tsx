@@ -1,7 +1,7 @@
 import { type Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { BEST_FIVES } from "@/lib/best-fives";
+import { GENERATIONS } from "@/lib/best-fives";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
@@ -9,17 +9,17 @@ import { FadeIn } from "@/components/ui/fade-in";
 export const revalidate = 86400;
 
 export const metadata: Metadata = {
-  title: "Meilleurs 5 par génération — hoopstats",
+  title: "Équipes légendaires par génération — hoopstats",
   description:
-    "Les cinq meilleurs joueurs de chaque grande ère NBA : Pionniers, Showtime, Jordan, Kobe/Shaq, Moderne.",
+    "Les franchises NBA qui ont défini leur époque : Celtics dynasty, Showtime Lakers, Bulls de Jordan, Spurs de Duncan, Warriors de Curry.",
 };
 
-const POSITION_LABEL: Record<string, string> = {
-  PG: "Meneur",
-  SG: "Arrière",
-  SF: "Ailier",
-  PF: "Ailier fort",
-  C: "Pivot",
+const POSITION_SHORT: Record<string, string> = {
+  PG: "MEN",
+  SG: "ARR",
+  SF: "AIL",
+  PF: "A-F",
+  C: "PIV",
 };
 
 export default async function MeilleursCinqPage({
@@ -29,8 +29,10 @@ export default async function MeilleursCinqPage({
 }) {
   const { locale } = await params;
 
-  // Fetch photoUrl for all 25 slugs in one DB call
-  const allSlugs = BEST_FIVES.flatMap((era) => era.players.map((p) => p.slug));
+  // Fetch photoUrl for every player slug in one DB call
+  const allSlugs = GENERATIONS.flatMap((era) =>
+    era.teams.flatMap((team) => team.players.map((p) => p.slug)),
+  );
 
   const playerRows = await prisma.player.findMany({
     where: { slug: { in: allSlugs } },
@@ -42,12 +44,12 @@ export default async function MeilleursCinqPage({
   );
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-20">
       <FadeIn>
         <Crumbs
           items={[
             { label: "Accueil", href: `/${locale}` },
-            { label: "Meilleurs 5" },
+            { label: "Équipes légendaires" },
           ]}
         />
         <div className="mt-4">
@@ -55,22 +57,23 @@ export default async function MeilleursCinqPage({
             Sélection éditoriale
           </div>
           <h1 className="font-display font-semibold text-4xl md:text-5xl tracking-[-0.03em] mb-2">
-            Meilleurs 5
+            Équipes légendaires
             <span className="text-white/30 ml-3 font-normal text-3xl">
               par génération
             </span>
           </h1>
           <p className="text-white/50 text-sm max-w-xl leading-relaxed">
-            Cinq grandes ères de la NBA. Cinq postes par époque. Les joueurs qui
-            ont défini leur génération.
+            Les franchises qui ont marqué leur époque — pas le meilleur 5
+            imaginaire, mais les vraies équipes qui ont écrit l&apos;histoire de
+            la NBA.
           </p>
         </div>
       </FadeIn>
 
-      {BEST_FIVES.map((era, eraIdx) => (
-        <FadeIn key={era.id} delay={eraIdx * 0.07}>
+      {GENERATIONS.map((era, eraIdx) => (
+        <FadeIn key={era.id} delay={eraIdx * 0.06}>
           {/* Era header */}
-          <div className="mb-6">
+          <div className="mb-8">
             <div
               className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-medium uppercase tracking-wider mb-3 border"
               style={{
@@ -81,7 +84,7 @@ export default async function MeilleursCinqPage({
             >
               {era.years}
             </div>
-            <h2 className="font-display font-semibold text-2xl md:text-3xl tracking-[-0.02em] mb-1">
+            <h2 className="font-display font-semibold text-2xl md:text-3xl tracking-[-0.02em] mb-2">
               {era.label}
             </h2>
             <p className="text-white/45 text-sm max-w-2xl leading-relaxed">
@@ -89,63 +92,107 @@ export default async function MeilleursCinqPage({
             </p>
           </div>
 
-          {/* Players grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {era.players.map((player) => {
-              const photoUrl = photoMap.get(player.slug) ?? null;
-              return (
-                <Link
-                  key={player.slug}
-                  href={`/${locale}/joueurs/${player.slug}`}
-                  className="group rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden hover:border-white/[0.12] hover:bg-[#16161A] transition-all duration-200"
-                >
-                  {/* Colored top accent */}
-                  <div
-                    className="h-1 w-full"
-                    style={{ backgroundColor: era.accentColor, opacity: 0.7 }}
-                  />
+          {/* Team cards */}
+          <div
+            className={`grid gap-5 ${
+              era.teams.length === 1
+                ? "grid-cols-1 max-w-sm"
+                : era.teams.length === 2
+                  ? "grid-cols-1 sm:grid-cols-2 max-w-2xl"
+                  : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+            }`}
+          >
+            {era.teams.map((team) => (
+              <div
+                key={team.id}
+                className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden"
+              >
+                {/* Color bar */}
+                <div
+                  className="h-1.5 w-full"
+                  style={{
+                    background: `linear-gradient(90deg, ${team.primaryColor} 0%, ${team.secondaryColor} 100%)`,
+                  }}
+                />
 
-                  <div className="p-4 flex flex-col gap-3">
-                    {/* Position badge + avatar row */}
-                    <div className="flex items-center gap-3">
-                      <PlayerAvatar
-                        firstName={player.firstName}
-                        lastName={player.lastName}
-                        primaryColor={player.primaryColor}
-                        secondaryColor={player.secondaryColor}
-                        photoUrl={photoUrl}
-                        size="md"
-                        showNum={false}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div
-                          className="text-[10px] font-medium uppercase tracking-wider mb-0.5"
-                          style={{ color: era.accentColor, opacity: 0.85 }}
-                        >
-                          {POSITION_LABEL[player.position] ?? player.position}
-                        </div>
-                        <div className="text-sm font-semibold text-white leading-tight truncate group-hover:text-white/90 transition">
-                          {player.firstName}
-                        </div>
-                        <div className="text-sm font-semibold text-white leading-tight truncate group-hover:text-white/90 transition">
-                          {player.lastName}
-                        </div>
+                <div className="p-5 space-y-4">
+                  {/* Team identity */}
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div>
+                        <p className="text-[11px] text-white/40 uppercase tracking-wider font-medium">
+                          {team.name}
+                        </p>
+                        <h3 className="font-display font-semibold text-lg leading-tight">
+                          {team.nickname}
+                        </h3>
+                      </div>
+                      <div
+                        className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium border mt-0.5"
+                        style={{
+                          backgroundColor: `${team.primaryColor}20`,
+                          borderColor: `${team.primaryColor}35`,
+                          color: team.primaryColor,
+                          filter: "brightness(1.5) saturate(0.9)",
+                        }}
+                      >
+                        {team.seasons}
                       </div>
                     </div>
 
-                    {/* Team */}
-                    <div className="text-[11px] text-white/35 truncate">
-                      {player.team}
-                    </div>
+                    <p
+                      className="text-xs font-semibold"
+                      style={{ color: era.accentColor }}
+                    >
+                      {team.achievement}
+                    </p>
 
-                    {/* Rationale */}
-                    <p className="text-[11px] text-white/50 leading-relaxed line-clamp-4">
-                      {player.rationale}
+                    <p className="text-[11px] text-white/45 leading-relaxed mt-2 line-clamp-3">
+                      {team.description}
                     </p>
                   </div>
-                </Link>
-              );
-            })}
+
+                  {/* Divider */}
+                  <div className="border-t border-white/[0.06]" />
+
+                  {/* Player roster */}
+                  <div className="space-y-2">
+                    {team.players.map((player) => {
+                      const photoUrl = photoMap.get(player.slug) ?? null;
+                      return (
+                        <Link
+                          key={player.slug}
+                          href={`/${locale}/joueurs/${player.slug}`}
+                          className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/[0.04] transition group"
+                        >
+                          {/* Position badge */}
+                          <span className="text-[9px] font-mono text-white/30 w-7 shrink-0 text-center">
+                            {POSITION_SHORT[player.position] ?? player.position}
+                          </span>
+
+                          <PlayerAvatar
+                            firstName={player.firstName}
+                            lastName={player.lastName}
+                            primaryColor={team.primaryColor}
+                            secondaryColor={team.secondaryColor}
+                            photoUrl={photoUrl}
+                            size="xs"
+                            showNum={false}
+                          />
+
+                          <span className="text-sm text-white/75 group-hover:text-white/95 transition truncate">
+                            {player.firstName}{" "}
+                            <span className="font-semibold">
+                              {player.lastName}
+                            </span>
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </FadeIn>
       ))}
