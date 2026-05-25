@@ -25,10 +25,12 @@ model Team {
   arena          String?
   city_country   String?
 
-  seasons       TeamSeason[]
-  playerSeasons PlayerSeason[]
-  homeGames     Game[]         @relation("HomeGames")
-  awayGames     Game[]         @relation("AwayGames")
+  seasons            TeamSeason[]
+  playerSeasons      PlayerSeason[]
+  homeGames          Game[]          @relation("HomeGames")
+  awayGames          Game[]          @relation("AwayGames")
+  playoffSeriesTeam1 PlayoffSeries[] @relation("PlayoffTeam1")
+  playoffSeriesTeam2 PlayoffSeries[] @relation("PlayoffTeam2")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -132,6 +134,30 @@ model Game {
   @@index([season, status])
   @@index([homeTeamId, season])
   @@index([awayTeamId, season])
+}
+
+model PlayoffSeries {
+  id              String    @id @default(cuid())
+  season          String    // "2025-26"
+  conference      String    // "WEST" | "EAST" | "FINALS"
+  round           Int       // 1=First Round 2=Conf Semis 3=Conf Finals 4=NBA Finals
+  team1Id         String    // top seed (ou west pour la finale)
+  team2Id         String    // bottom seed (ou east pour la finale)
+  team1Seed       Int?
+  team2Seed       Int?
+  team1Wins       Int       @default(0)
+  team2Wins       Int       @default(0)
+  completed       Boolean   @default(false)
+  summary         String?   // "OKC wins series 4-3"
+  gameNumber      Int       @default(1)
+  nextGameDate    DateTime?
+  nextGameNetwork String?
+
+  team1 Team @relation("PlayoffTeam1", fields: [team1Id], references: [id])
+  team2 Team @relation("PlayoffTeam2", fields: [team2Id], references: [id])
+
+  @@unique([season, conference, round, team1Id, team2Id])
+  @@index([season])
 }
 
 model SyncLog {

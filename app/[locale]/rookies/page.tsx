@@ -1,7 +1,6 @@
 import { type Metadata } from "next";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON, CURRENT_DRAFT_YEAR, ALL_SEASONS } from "@/lib/nba";
+import { CURRENT_SEASON, CURRENT_DRAFT_YEAR } from "@/lib/nba";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
 import {
@@ -113,25 +112,6 @@ export default async function RookiesPage({
             {tableRows.length} joueur{tableRows.length !== 1 ? "s" : ""} en
             première saison NBA
           </p>
-        </div>
-      </FadeIn>
-
-      {/* Sélecteur de saison */}
-      <FadeIn delay={0.05}>
-        <div className="flex flex-wrap gap-2">
-          {ALL_SEASONS.map((s) => (
-            <Link
-              key={s}
-              href={`/${locale}/rookies?saison=${s}`}
-              className={`px-3 py-1 rounded-lg text-xs font-mono transition ${
-                s === season
-                  ? "bg-violet-600 text-white"
-                  : "bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/70"
-              }`}
-            >
-              {s}
-            </Link>
-          ))}
         </div>
       </FadeIn>
 

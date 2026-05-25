@@ -11,7 +11,7 @@ type Props = {
 /** Placeholder card for a series not yet determined. */
 function TbdCard() {
   return (
-    <div className="rounded-xl border border-white/[0.05] bg-[#0e0e11] w-[210px] h-[86px] flex items-center justify-center flex-shrink-0">
+    <div className="rounded-xl border border-white/[0.05] bg-[#0e0e11] w-full h-[86px] flex items-center justify-center">
       <span className="text-[11px] text-white/15 font-mono uppercase tracking-wider">
         TBD
       </span>
@@ -42,23 +42,23 @@ export function PlayoffBracket({ data, locale }: Props) {
   const eastSemis = pad(east.semis, 2);
 
   return (
-    <div className="overflow-x-auto pb-4">
-      <div className="min-w-[1200px]">
+    <div className="overflow-x-auto pb-4 px-8 lg:px-12">
+      <div className="min-w-[860px]">
         {/* Conference labels */}
-        <div className="flex gap-3 mb-2 px-1">
+        <div className="flex gap-2 mb-2">
           <div className="flex-1">
             <ConferenceLabel label="Conférence Ouest" />
           </div>
-          <div className="w-[220px]" />
+          <div className="w-[170px]" />
           <div className="flex-1">
             <ConferenceLabel label="Conférence Est" />
           </div>
         </div>
 
         {/* Round labels row */}
-        <div className="flex items-center gap-3 mb-3 px-1">
+        <div className="flex items-center gap-2 mb-3">
           {/* West labels: R1 → Semis → CF */}
-          <div className="flex-1 flex gap-3">
+          <div className="flex-1 flex gap-2">
             {["1er tour", "Demi-finales", "Finale conf."].map((l) => (
               <div key={l} className="flex-1 text-center">
                 <span className="text-[9px] uppercase tracking-[0.15em] text-white/20">
@@ -68,13 +68,13 @@ export function PlayoffBracket({ data, locale }: Props) {
             ))}
           </div>
           {/* Finals label */}
-          <div className="w-[220px] text-center">
+          <div className="w-[170px] text-center">
             <span className="text-[9px] uppercase tracking-[0.15em] text-white/20">
               Finales NBA
             </span>
           </div>
           {/* East labels: CF → Semis → R1 */}
-          <div className="flex-1 flex gap-3 flex-row-reverse">
+          <div className="flex-1 flex gap-2 flex-row-reverse">
             {["1er tour", "Demi-finales", "Finale conf."].map((l) => (
               <div key={l} className="flex-1 text-center">
                 <span className="text-[9px] uppercase tracking-[0.15em] text-white/20">
@@ -86,11 +86,11 @@ export function PlayoffBracket({ data, locale }: Props) {
         </div>
 
         {/* Bracket */}
-        <div className="flex gap-3 items-stretch" style={{ minHeight: 640 }}>
+        <div className="flex gap-2 items-stretch" style={{ minHeight: 640 }}>
           {/* ── West ── */}
-          <div className="flex-1 flex gap-3">
+          <div className="flex-1 min-w-0 flex gap-2">
             {/* R1 */}
-            <div className="flex-1 flex flex-col justify-around gap-4">
+            <div className="flex-1 min-w-0 flex flex-col justify-around gap-3">
               {westR1.map((s, i) =>
                 s ? (
                   <PlayoffSeriesCard key={s.key} series={s} locale={locale} />
@@ -100,7 +100,7 @@ export function PlayoffBracket({ data, locale }: Props) {
               )}
             </div>
             {/* Semis */}
-            <div className="flex-1 flex flex-col justify-around gap-4">
+            <div className="flex-1 min-w-0 flex flex-col justify-around gap-3">
               {westSemis.map((s, i) =>
                 s ? (
                   <PlayoffSeriesCard key={s.key} series={s} locale={locale} />
@@ -110,7 +110,7 @@ export function PlayoffBracket({ data, locale }: Props) {
               )}
             </div>
             {/* CF */}
-            <div className="flex-1 flex flex-col justify-center">
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
               {west.finals ? (
                 <PlayoffSeriesCard series={west.finals} locale={locale} />
               ) : (
@@ -120,7 +120,7 @@ export function PlayoffBracket({ data, locale }: Props) {
           </div>
 
           {/* ── NBA Finals ── */}
-          <div className="w-[220px] flex flex-col justify-center items-center gap-3 flex-shrink-0">
+          <div className="w-[170px] flex flex-col justify-center items-center gap-2 flex-shrink-0">
             <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-1">
               <span className="text-amber-400 text-sm">🏆</span>
             </div>
@@ -132,9 +132,9 @@ export function PlayoffBracket({ data, locale }: Props) {
           </div>
 
           {/* ── East ── */}
-          <div className="flex-1 flex gap-3 flex-row-reverse">
+          <div className="flex-1 min-w-0 flex gap-2 flex-row-reverse">
             {/* R1 */}
-            <div className="flex-1 flex flex-col justify-around gap-4">
+            <div className="flex-1 min-w-0 flex flex-col justify-around gap-3">
               {eastR1.map((s, i) =>
                 s ? (
                   <PlayoffSeriesCard key={s.key} series={s} locale={locale} />
@@ -144,7 +144,7 @@ export function PlayoffBracket({ data, locale }: Props) {
               )}
             </div>
             {/* Semis */}
-            <div className="flex-1 flex flex-col justify-around gap-4">
+            <div className="flex-1 min-w-0 flex flex-col justify-around gap-3">
               {eastSemis.map((s, i) =>
                 s ? (
                   <PlayoffSeriesCard key={s.key} series={s} locale={locale} />
@@ -154,7 +154,7 @@ export function PlayoffBracket({ data, locale }: Props) {
               )}
             </div>
             {/* CF */}
-            <div className="flex-1 flex flex-col justify-center items-end">
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
               {east.finals ? (
                 <PlayoffSeriesCard series={east.finals} locale={locale} />
               ) : (

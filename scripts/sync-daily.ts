@@ -221,7 +221,260 @@ async function syncRecentGames(): Promise<{
   return { upserted, skipped };
 }
 
-// ─── 3. Régénération résumés équipes ─────────────────────────────────────────
+// ─── 3. Sync playoffs (saison courante) ──────────────────────────────────────
+
+function parsePlayoffNote(
+  text: string,
+): { conference: "WEST" | "EAST" | "FINALS"; round: 1 | 2 | 3 | 4 } | null {
+  const t = text.toLowerCase().trim();
+  if (t.includes("nba finals")) return { conference: "FINALS", round: 4 };
+  const conference: "WEST" | "EAST" | null = t.startsWith("west")
+    ? "WEST"
+    : t.startsWith("east")
+      ? "EAST"
+      : null;
+  if (!conference) return null;
+  if (t.includes("semi")) return { conference, round: 2 };
+  if (t.includes("finals") || t.includes("final"))
+    return { conference, round: 3 };
+  if (t.includes("first") || t.includes("1st")) return { conference, round: 1 };
+  return null;
+}
+
+async function syncCurrentPlayoffs(): Promise<{
+  upserted: number;
+  skipped: number;
+}> {
+  console.log("\n🏆 Sync playoffs en cours…");
+
+  const season = CURRENT_SEASON;
+  const startYear = parseInt(season.split("-")[0]);
+  const endYear = 2000 + parseInt(season.split("-")[1]);
+  const dateRange = `${endYear}0419-${endYear}0630`;
+
+  type EspnCompetitor = {
+    id: string;
+    team: { id: string; abbreviation: string; displayName: string };
+    homeAway: string;
+  };
+  type EspnEvent = {
+    id: string;
+    date: string;
+    competitions: Array<{
+      notes?: Array<{ headline?: string; text?: string }>;
+      series?: {
+        completed: boolean;
+        summary: string;
+        competitors: Array<{ id: string; wins: number }>;
+      };
+      competitors: EspnCompetitor[];
+      status: { type: { name: string } };
+      broadcasts?: Array<{ names: string[] }>;
+    }>;
+  };
+
+  const [gamesRes, standingsRes] = await Promise.all([
+    fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard` +
+        `?seasontype=3&season=${startYear}&dates=${dateRange}&limit=200`,
+    ),
+    fetch(
+      `https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?season=${endYear}`,
+    ),
+  ]);
+
+  if (!gamesRes.ok) {
+    console.warn(`  ⚠️  ESPN scoreboard ${gamesRes.status} — playoffs skippés`);
+    return { upserted: 0, skipped: 1 };
+  }
+
+  const gamesData = await gamesRes.json();
+  const standingsData = standingsRes.ok
+    ? await standingsRes.json()
+    : { children: [] };
+  const events: EspnEvent[] =
+    (gamesData as { events?: EspnEvent[] }).events ?? [];
+
+  if (events.length === 0) {
+    console.log("  ℹ️  Aucun match playoff trouvé (hors saison)");
+    return { upserted: 0, skipped: 0 };
+  }
+
+  // Seeds depuis standings
+  const seedMap = new Map<string, number>();
+  for (const conf of (
+    standingsData as {
+      children?: Array<{
+        standings?: {
+          entries?: Array<{
+            team?: { abbreviation?: string };
+            stats?: Array<{ name: string; value: number }>;
+          }>;
+        };
+      }>;
+    }
+  ).children ?? []) {
+    for (const entry of conf.standings?.entries ?? []) {
+      const abbr = entry.team?.abbreviation;
+      const stat = entry.stats?.find((s) => s.name === "playoffSeed");
+      if (abbr && stat) seedMap.set(abbr, stat.value);
+    }
+  }
+
+  // Teams DB
+  const dbTeams = await prisma.team.findMany({
+    select: { id: true, abbr: true },
+  });
+  const teamByAbbr = new Map(dbTeams.map((t) => [t.abbr, t.id]));
+
+  // Grouper les événements en séries
+  type SeriesAccum = {
+    conf: "WEST" | "EAST" | "FINALS";
+    round: 1 | 2 | 3 | 4;
+    espnTeam1: EspnCompetitor;
+    espnTeam2: EspnCompetitor;
+    wins1: number;
+    wins2: number;
+    completed: boolean;
+    summary: string;
+    gameNumber: number;
+    nextGameDate: string | null;
+    nextGameNetwork: string | null;
+  };
+
+  const seriesMap = new Map<string, SeriesAccum>();
+
+  for (const event of events) {
+    const comp = event.competitions?.[0];
+    if (!comp) continue;
+    const noteText = comp.notes?.[0]?.headline ?? comp.notes?.[0]?.text ?? "";
+    const parsed = parsePlayoffNote(noteText);
+    if (!parsed) continue;
+    const { conference, round } = parsed;
+    const [c1, c2] = comp.competitors ?? [];
+    if (!c1 || !c2) continue;
+
+    const ids = [c1.team.id, c2.team.id].sort();
+    const key = `${conference}-${round}-${ids[0]}-${ids[1]}`;
+    const seriesObj = comp.series;
+    const gameMatch = noteText.match(/game\s*(\d+)/i);
+    const gameNumber = gameMatch ? parseInt(gameMatch[1]) : 1;
+    const isScheduled = comp.status?.type?.name === "STATUS_SCHEDULED";
+
+    if (!seriesMap.has(key)) {
+      seriesMap.set(key, {
+        conf: conference,
+        round,
+        espnTeam1: c1,
+        espnTeam2: c2,
+        wins1: seriesObj?.competitors.find((c) => c.id === c1.id)?.wins ?? 0,
+        wins2: seriesObj?.competitors.find((c) => c.id === c2.id)?.wins ?? 0,
+        completed: seriesObj?.completed ?? false,
+        summary: seriesObj?.summary ?? "",
+        gameNumber,
+        nextGameDate: isScheduled ? event.date : null,
+        nextGameNetwork: isScheduled
+          ? (comp.broadcasts?.[0]?.names?.[0] ?? null)
+          : null,
+      });
+    } else {
+      const ex = seriesMap.get(key)!;
+      if (seriesObj) {
+        const w1 = seriesObj.competitors.find(
+          (c) => c.id === ex.espnTeam1.id,
+        )?.wins;
+        const w2 = seriesObj.competitors.find(
+          (c) => c.id === ex.espnTeam2.id,
+        )?.wins;
+        if (w1 !== undefined) ex.wins1 = w1;
+        if (w2 !== undefined) ex.wins2 = w2;
+        ex.completed = seriesObj.completed ?? ex.completed;
+        ex.summary = seriesObj.summary || ex.summary;
+      }
+      ex.gameNumber = Math.max(ex.gameNumber, gameNumber);
+      if (isScheduled && !ex.nextGameDate) {
+        ex.nextGameDate = event.date;
+        ex.nextGameNetwork = comp.broadcasts?.[0]?.names?.[0] ?? null;
+      }
+    }
+  }
+
+  let upserted = 0;
+  let skipped = 0;
+
+  for (const [, s] of seriesMap) {
+    const abbr1 =
+      ESPN_TO_DB[s.espnTeam1.team.abbreviation] ??
+      s.espnTeam1.team.abbreviation;
+    const abbr2 =
+      ESPN_TO_DB[s.espnTeam2.team.abbreviation] ??
+      s.espnTeam2.team.abbreviation;
+    const dbId1 = teamByAbbr.get(abbr1);
+    const dbId2 = teamByAbbr.get(abbr2);
+    if (!dbId1 || !dbId2) {
+      skipped++;
+      continue;
+    }
+
+    const seed1 =
+      seedMap.get(abbr1) ?? seedMap.get(s.espnTeam1.team.abbreviation) ?? null;
+    const seed2 =
+      seedMap.get(abbr2) ?? seedMap.get(s.espnTeam2.team.abbreviation) ?? null;
+    const flip = (seed1 ?? 9) > (seed2 ?? 9);
+    const [t1Id, t2Id, w1, w2, s1, s2] = flip
+      ? [dbId2, dbId1, s.wins2, s.wins1, seed2, seed1]
+      : [dbId1, dbId2, s.wins1, s.wins2, seed1, seed2];
+
+    try {
+      await prisma.playoffSeries.upsert({
+        where: {
+          season_conference_round_team1Id_team2Id: {
+            season,
+            conference: s.conf,
+            round: s.round,
+            team1Id: t1Id,
+            team2Id: t2Id,
+          },
+        },
+        update: {
+          team1Seed: s1,
+          team2Seed: s2,
+          team1Wins: w1,
+          team2Wins: w2,
+          completed: s.completed,
+          summary: s.summary || null,
+          gameNumber: s.gameNumber,
+          nextGameDate: s.nextGameDate ? new Date(s.nextGameDate) : null,
+          nextGameNetwork: s.nextGameNetwork,
+        },
+        create: {
+          season,
+          conference: s.conf,
+          round: s.round,
+          team1Id: t1Id,
+          team2Id: t2Id,
+          team1Seed: s1,
+          team2Seed: s2,
+          team1Wins: w1,
+          team2Wins: w2,
+          completed: s.completed,
+          summary: s.summary || null,
+          gameNumber: s.gameNumber,
+          nextGameDate: s.nextGameDate ? new Date(s.nextGameDate) : null,
+          nextGameNetwork: s.nextGameNetwork,
+        },
+      });
+      upserted++;
+    } catch {
+      skipped++;
+    }
+  }
+
+  console.log(`  ✅ ${upserted} séries upsertées, ${skipped} skippées`);
+  return { upserted, skipped };
+}
+
+// ─── 4. Régénération résumés équipes ─────────────────────────────────────────
 // Note : les biographies joueurs sont générées séparément (script one-shot)
 // car elles sont stables dans le temps (draft, université, parcours).
 
@@ -326,6 +579,7 @@ async function main() {
   try {
     const standingsResult = await syncStandings();
     const gamesResult = await syncRecentGames();
+    const playoffsResult = await syncCurrentPlayoffs();
     await regenerateSummaries();
     await revalidateVercel();
 
@@ -333,10 +587,14 @@ async function main() {
       data: {
         source: "sync-daily",
         status,
-        itemsProcessed: standingsResult.upserted + gamesResult.upserted,
+        itemsProcessed:
+          standingsResult.upserted +
+          gamesResult.upserted +
+          playoffsResult.upserted,
         errors: {
           standingsSkipped: standingsResult.skipped,
           gamesSkipped: gamesResult.skipped,
+          playoffsSkipped: playoffsResult.skipped,
           messages: errors,
         },
         startedAt,

@@ -1,7 +1,6 @@
 import { type Metadata } from "next";
-import Link from "next/link";
-import { CURRENT_SEASON, ALL_SEASONS } from "@/lib/nba";
-import { fetchPlayoffBracket } from "@/lib/playoffs";
+import { CURRENT_SEASON } from "@/lib/nba";
+import { getPlayoffBracket } from "@/lib/playoffs";
 import { PlayoffBracket } from "@/components/ui/playoff-bracket";
 import { FadeIn } from "@/components/ui/fade-in";
 import { Crumbs } from "@/components/ui/crumbs";
@@ -26,7 +25,7 @@ export default async function PlayoffsPage({
   const { saison } = await searchParams;
   const season = saison ?? CURRENT_SEASON;
 
-  const bracket = await fetchPlayoffBracket(season);
+  const bracket = await getPlayoffBracket(season);
 
   const hasData =
     bracket.west.r1.length > 0 ||
@@ -55,29 +54,12 @@ export default async function PlayoffsPage({
         </div>
       </FadeIn>
 
-      {/* Season selector */}
-      <FadeIn delay={0.05}>
-        <div className="flex flex-wrap gap-2">
-          {ALL_SEASONS.map((s) => (
-            <Link
-              key={s}
-              href={`/${locale}/playoffs?saison=${s}`}
-              className={`px-3 py-1 rounded-lg text-xs font-mono transition ${
-                s === season
-                  ? "bg-amber-600/80 text-white"
-                  : "bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/70"
-              }`}
-            >
-              {s}
-            </Link>
-          ))}
-        </div>
-      </FadeIn>
-
-      {/* Bracket */}
+      {/* Bracket — breaks out of the page padding to use full content width */}
       <FadeIn delay={0.1}>
         {hasData ? (
-          <PlayoffBracket data={bracket} locale={locale} />
+          <div className="-mx-8 lg:-mx-12">
+            <PlayoffBracket data={bracket} locale={locale} />
+          </div>
         ) : (
           <p className="text-white/40 text-sm font-mono py-16 text-center">
             Aucune donnée playoff disponible pour la saison {season}.

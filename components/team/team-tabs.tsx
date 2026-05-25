@@ -30,8 +30,8 @@ type TeamTabsProps = {
 
 const TABS = [
   { id: "roster", label: "Effectif" },
-  { id: "season", label: "Saison actuelle" },
-  { id: "history", label: "Historique 10 saisons" },
+  { id: "season", label: "Classement" },
+  { id: "history", label: "Historique" },
   { id: "games", label: "Matchs" },
 ];
 
@@ -53,8 +53,19 @@ export function TeamTabs({
     <div className="space-y-8">
       <Tabs tabs={TABS} active={active} onChange={setActive} />
 
-      {active === "roster" && (
+      {active === "roster" && roster.length > 0 && (
         <RosterView players={roster} updatedAt={rosterDate} locale={locale} />
+      )}
+      {active === "roster" && roster.length === 0 && (
+        <div className="py-16 text-center space-y-2">
+          <p className="text-white/40 text-sm font-mono">
+            Effectif non disponible pour cette saison.
+          </p>
+          <p className="text-white/20 text-xs font-mono">
+            Les données d&apos;effectif historiques sont en cours
+            d&apos;intégration (2015-16+ disponibles).
+          </p>
+        </div>
       )}
       {active === "season" && currentSeason && (
         <SeasonView
@@ -65,9 +76,11 @@ export function TeamTabs({
         />
       )}
       {active === "season" && !currentSeason && (
-        <p className="text-white/40 text-sm font-mono py-8">
-          Données saison non disponibles.
-        </p>
+        <div className="py-16 text-center space-y-2">
+          <p className="text-white/40 text-sm font-mono">
+            Classement non disponible pour cette saison.
+          </p>
+        </div>
       )}
       {active === "history" && (
         <HistoryView seasons={history} primaryColor={primaryColor} />

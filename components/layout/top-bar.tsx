@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { ALL_SEASONS, CURRENT_SEASON } from "@/lib/nba";
+import { ALL_SEASONS, ALL_HISTORY_SEASONS, CURRENT_SEASON } from "@/lib/nba";
 
 function SeasonSelector() {
   const router = useRouter();
@@ -10,9 +10,17 @@ function SeasonSelector() {
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
 
+  // Pages équipe/rookies/playoffs/saisons : afficher tout l'historique disponible (1980-81+)
+  const isHistoryPage =
+    pathname.includes("/equipes/") ||
+    pathname.includes("/rookies") ||
+    pathname.includes("/playoffs") ||
+    pathname.includes("/saisons");
+  const seasons = isHistoryPage ? ALL_HISTORY_SEASONS : ALL_SEASONS;
+
   const season = searchParams.get("saison") ?? CURRENT_SEASON;
 
-  function selectSeason(s: string) {
+  function navigate(s: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (s === CURRENT_SEASON) {
       params.delete("saison");
@@ -21,17 +29,31 @@ function SeasonSelector() {
     }
     const query = params.toString();
     router.push(pathname + (query ? `?${query}` : ""));
+  }
+
+  function selectSeason(s: string) {
+    navigate(s);
     setOpen(false);
   }
 
+  const idx = seasons.indexOf(season);
+  // seasons est du plus récent (idx 0) au plus ancien (idx last)
+  // idx === -1 si la saison courante n'est pas dans la liste (page non-historique)
+  const canGoNewer = idx > 0;
+  const canGoOlder = idx >= 0 && idx < seasons.length - 1;
+
+  const arrowClass =
+    "flex items-center justify-center h-[30px] w-7 rounded-md border border-white/10 bg-white/[0.02] transition text-white/50";
+
   return (
-    <div className="relative">
+    <div className="flex items-center gap-1">
+      {/* ← saison précédente (plus ancienne) */}
       <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-white/80 hover:border-white/20 transition"
+        onClick={() => canGoOlder && navigate(seasons[idx + 1])}
+        disabled={!canGoOlder}
+        aria-label="Saison précédente"
+        className={`${arrowClass} ${canGoOlder ? "hover:border-white/20 hover:text-white/80" : "opacity-25 cursor-not-allowed"}`}
       >
-        <span className="font-mono">SAISON</span>
-        <span className="font-display font-semibold text-white">{season}</span>
         <svg
           width="10"
           height="10"
@@ -40,25 +62,78 @@ function SeasonSelector() {
           stroke="currentColor"
           strokeWidth="2.5"
         >
-          <path d="m6 9 6 6 6-6" />
+          <path d="m15 18-6-6 6-6" />
         </svg>
       </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1.5 w-44 rounded-lg border border-white/10 bg-bg-card shadow-2xl py-1 z-30">
-          {ALL_SEASONS.map((s) => (
-            <button
-              key={s}
-              onClick={() => selectSeason(s)}
-              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.05] transition flex items-center justify-between ${
-                s === season ? "text-violet-400" : "text-white/70"
-              }`}
-            >
-              <span className="font-mono">{s}</span>
-              {s === season && <span className="text-[10px]">●</span>}
-            </button>
-          ))}
-        </div>
-      )}
+
+      {/* Sélecteur principal */}
+      <div className="relative">
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-white/80 hover:border-white/20 transition"
+        >
+          <span className="font-mono">SAISON</span>
+          <span className="font-display font-semibold text-white">
+            {season}
+          </span>
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        {open && (
+          <div className="absolute right-0 top-full mt-1.5 w-44 rounded-lg border border-white/10 bg-bg-card shadow-2xl py-1 z-30 max-h-72 overflow-y-auto">
+            {seasons.map((s, i) => {
+              const showDivider = isHistoryPage && s === "2014-15" && i > 0;
+              return (
+                <div key={s}>
+                  {showDivider && (
+                    <div className="mx-3 my-1 border-t border-white/[0.06]">
+                      <span className="text-[9px] text-white/20 font-mono uppercase tracking-wider">
+                        Historique
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => selectSeason(s)}
+                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.05] transition flex items-center justify-between ${
+                      s === season ? "text-violet-400" : "text-white/70"
+                    }`}
+                  >
+                    <span className="font-mono">{s}</span>
+                    {s === season && <span className="text-[10px]">●</span>}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* → saison suivante (plus récente) */}
+      <button
+        onClick={() => canGoNewer && navigate(seasons[idx - 1])}
+        disabled={!canGoNewer}
+        aria-label="Saison suivante"
+        className={`${arrowClass} ${canGoNewer ? "hover:border-white/20 hover:text-white/80" : "opacity-25 cursor-not-allowed"}`}
+      >
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+        >
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </button>
     </div>
   );
 }

@@ -25,7 +25,7 @@ export const PREV_SEASON = "2024-25";
 /** Année de draft des rookies de la saison courante. */
 export const CURRENT_DRAFT_YEAR = 2025;
 
-/** Toutes les saisons disponibles, du plus récent au plus ancien. */
+/** Saisons récentes (stats joueurs disponibles) — utilisé dans les selectors playoffs/global. */
 export const ALL_SEASONS = [
   "2025-26",
   "2024-25",
@@ -39,3 +39,13 @@ export const ALL_SEASONS = [
   "2016-17",
   "2015-16",
 ];
+
+/** Toutes les saisons historiques disponibles (TeamSeason backfill 1980-81+). */
+export const ALL_HISTORY_SEASONS: string[] = (() => {
+  const seasons: string[] = [];
+  for (let end = 2026; end >= 1981; end--) {
+    const s = `${end - 1}-${String(end).slice(-2)}`;
+    seasons.push(s);
+  }
+  return seasons;
+})();

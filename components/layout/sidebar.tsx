@@ -135,8 +135,18 @@ const NAV_ITEMS: NavItem[] = [
     icon: <IconPlayers />,
     href: "/fr/joueurs",
   },
-  { id: "compare", label: "Comparer", icon: <IconCompare />, disabled: true },
-  { id: "seasons", label: "Saisons", icon: <IconSeasons />, disabled: true },
+  {
+    id: "compare",
+    label: "Comparer",
+    icon: <IconCompare />,
+    href: "/fr/comparer",
+  },
+  {
+    id: "seasons",
+    label: "Saisons",
+    icon: <IconSeasons />,
+    href: "/fr/saisons",
+  },
 ];
 
 const EXPLORER_ITEMS: NavItem[] = [

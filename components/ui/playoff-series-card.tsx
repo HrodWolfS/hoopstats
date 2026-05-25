@@ -113,7 +113,7 @@ export function PlayoffSeriesCard({ series, locale }: Props) {
         : "Série à venir";
 
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-[#111114] overflow-hidden w-[210px] flex-shrink-0">
+    <div className="rounded-xl border border-white/[0.07] bg-[#111114] overflow-hidden w-full">
       {/* Header */}
       <div
         className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wide truncate ${headerClass}`}
