@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { GENERATIONS } from "@/lib/best-fives";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
+import { TeamMono } from "@/components/ui/team-mono";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
 
@@ -29,18 +30,30 @@ export default async function MeilleursCinqPage({
 }) {
   const { locale } = await params;
 
-  // Fetch photoUrl for every player slug in one DB call
-  const allSlugs = GENERATIONS.flatMap((era) =>
+  // Fetch all slugs needed: player photos + team logos
+  const allPlayerSlugs = GENERATIONS.flatMap((era) =>
     era.teams.flatMap((team) => team.players.map((p) => p.slug)),
   );
+  const allTeamSlugs = [
+    ...new Set(GENERATIONS.flatMap((era) => era.teams.map((t) => t.teamSlug))),
+  ];
 
-  const playerRows = await prisma.player.findMany({
-    where: { slug: { in: allSlugs } },
-    select: { slug: true, photoUrl: true },
-  });
+  const [playerRows, teamRows] = await Promise.all([
+    prisma.player.findMany({
+      where: { slug: { in: allPlayerSlugs } },
+      select: { slug: true, photoUrl: true },
+    }),
+    prisma.team.findMany({
+      where: { slug: { in: allTeamSlugs } },
+      select: { slug: true, abbr: true, logoUrl: true },
+    }),
+  ]);
 
   const photoMap = new Map<string, string | null>(
     playerRows.map((r) => [r.slug, r.photoUrl]),
+  );
+  const teamMap = new Map<string, { abbr: string; logoUrl: string | null }>(
+    teamRows.map((r) => [r.slug, { abbr: r.abbr, logoUrl: r.logoUrl }]),
   );
 
   return (
@@ -96,103 +109,121 @@ export default async function MeilleursCinqPage({
           <div
             className={`grid gap-5 ${
               era.teams.length === 1
-                ? "grid-cols-1 max-w-sm"
+                ? "grid-cols-1 max-w-md"
                 : era.teams.length === 2
-                  ? "grid-cols-1 sm:grid-cols-2 max-w-2xl"
+                  ? "grid-cols-1 sm:grid-cols-2"
                   : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
             }`}
           >
-            {era.teams.map((team) => (
-              <div
-                key={team.id}
-                className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden"
-              >
-                {/* Color bar */}
+            {era.teams.map((team) => {
+              const teamInfo = teamMap.get(team.teamSlug);
+              return (
                 <div
-                  className="h-1.5 w-full"
-                  style={{
-                    background: `linear-gradient(90deg, ${team.primaryColor} 0%, ${team.secondaryColor} 100%)`,
-                  }}
-                />
+                  key={team.id}
+                  className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden"
+                >
+                  {/* Color bar */}
+                  <div
+                    className="h-1.5 w-full"
+                    style={{
+                      background: `linear-gradient(90deg, ${team.primaryColor} 0%, ${team.secondaryColor} 100%)`,
+                    }}
+                  />
 
-                <div className="p-5 space-y-4">
-                  {/* Team identity */}
-                  <div>
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <div>
-                        <p className="text-[11px] text-white/40 uppercase tracking-wider font-medium">
-                          {team.name}
+                  <div className="p-5 space-y-4">
+                    {/* Team identity */}
+                    <div className="flex items-start gap-3">
+                      {/* Team logo */}
+                      {teamInfo && (
+                        <TeamMono
+                          abbr={teamInfo.abbr}
+                          primaryColor={team.primaryColor}
+                          secondaryColor={team.secondaryColor}
+                          logoUrl={teamInfo.logoUrl}
+                          size="sm"
+                        />
+                      )}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-[11px] text-white/40 uppercase tracking-wider font-medium leading-none mb-0.5">
+                              {team.name}
+                            </p>
+                            <h3 className="font-display font-semibold text-base leading-tight">
+                              {team.nickname}
+                            </h3>
+                          </div>
+                          <span className="shrink-0 text-[10px] font-mono text-white/35 mt-0.5">
+                            {team.seasons}
+                          </span>
+                        </div>
+
+                        <p
+                          className="text-xs font-semibold mt-1"
+                          style={{ color: era.accentColor }}
+                        >
+                          {team.achievement}
                         </p>
-                        <h3 className="font-display font-semibold text-lg leading-tight">
-                          {team.nickname}
-                        </h3>
-                      </div>
-                      <div
-                        className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium border mt-0.5"
-                        style={{
-                          backgroundColor: `${team.primaryColor}20`,
-                          borderColor: `${team.primaryColor}35`,
-                          color: team.primaryColor,
-                          filter: "brightness(1.5) saturate(0.9)",
-                        }}
-                      >
-                        {team.seasons}
                       </div>
                     </div>
 
-                    <p
-                      className="text-xs font-semibold"
-                      style={{ color: era.accentColor }}
-                    >
-                      {team.achievement}
-                    </p>
-
-                    <p className="text-[11px] text-white/45 leading-relaxed mt-2 line-clamp-3">
+                    <p className="text-[11px] text-white/45 leading-relaxed line-clamp-3">
                       {team.description}
                     </p>
-                  </div>
 
-                  {/* Divider */}
-                  <div className="border-t border-white/[0.06]" />
+                    {/* Divider */}
+                    <div className="border-t border-white/[0.06]" />
 
-                  {/* Player roster */}
-                  <div className="space-y-2">
-                    {team.players.map((player) => {
-                      const photoUrl = photoMap.get(player.slug) ?? null;
-                      return (
-                        <Link
-                          key={player.slug}
-                          href={`/${locale}/joueurs/${player.slug}`}
-                          className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/[0.04] transition group"
-                        >
-                          {/* Position badge */}
-                          <span className="text-[9px] font-mono text-white/30 w-7 shrink-0 text-center">
-                            {POSITION_SHORT[player.position] ?? player.position}
-                          </span>
-
-                          <PlayerAvatar
-                            firstName={player.firstName}
-                            lastName={player.lastName}
-                            primaryColor={team.primaryColor}
-                            secondaryColor={team.secondaryColor}
-                            photoUrl={photoUrl}
-                            size="xs"
-                            showNum={false}
-                          />
-
-                          <span className="text-sm text-white/75 group-hover:text-white/95 transition truncate">
-                            {player.firstName}{" "}
-                            <span className="font-semibold">
-                              {player.lastName}
+                    {/* Player roster */}
+                    <div className="space-y-3">
+                      {team.players.map((player) => {
+                        const photoUrl = photoMap.get(player.slug) ?? null;
+                        return (
+                          <Link
+                            key={player.slug}
+                            href={`/${locale}/joueurs/${player.slug}`}
+                            className="flex items-start gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.04] transition group"
+                          >
+                            {/* Position */}
+                            <span className="text-[9px] font-mono text-white/30 w-7 shrink-0 text-center pt-2.5">
+                              {POSITION_SHORT[player.position] ??
+                                player.position}
                             </span>
-                          </span>
-                        </Link>
-                      );
-                    })}
+
+                            {/* Avatar */}
+                            <div className="shrink-0 pt-0.5">
+                              <PlayerAvatar
+                                firstName={player.firstName}
+                                lastName={player.lastName}
+                                primaryColor={team.primaryColor}
+                                secondaryColor={team.secondaryColor}
+                                photoUrl={photoUrl}
+                                size="sm"
+                                showNum={false}
+                              />
+                            </div>
+
+                            {/* Name + bio */}
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm text-white/80 group-hover:text-white/95 transition leading-tight block">
+                                {player.firstName}{" "}
+                                <span className="font-semibold">
+                                  {player.lastName}
+                                </span>
+                              </span>
+                              <p className="text-[11px] text-white/40 leading-relaxed mt-0.5 line-clamp-2">
+                                {player.bio}
+                              </p>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </FadeIn>
       ))}
