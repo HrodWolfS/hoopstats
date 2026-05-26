@@ -108,12 +108,10 @@ async function getGames(offset: number): Promise<GameRow[]> {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatTime(d: Date): string {
-  // Display game time in ET (UTC−4 EDT)
-  const et = new Date(d.getTime() - 4 * 60 * 60 * 1000);
-  return et.toLocaleTimeString("fr-FR", {
+  return d.toLocaleTimeString("fr-FR", {
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "UTC",
+    timeZone: "Europe/Paris",
   });
 }
 
@@ -210,7 +208,6 @@ function GameCard({ game, locale }: { game: GameRow; locale: string }) {
         ) : (
           <div className="font-mono text-sm text-white/60">
             {formatTime(game.gameDate)}
-            <span className="ml-1 text-white/25 text-[10px]">ET</span>
           </div>
         )}
         <StatusBadge status={game.status} />

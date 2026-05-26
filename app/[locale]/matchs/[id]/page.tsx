@@ -86,20 +86,28 @@ type PlayerRow = {
   plusMinus: string;
 };
 
+type TeamStats = {
+  pts: string;
+  reb: string;
+  oreb: string;
+  dreb: string;
+  ast: string;
+  stl: string;
+  blk: string;
+  to: string;
+  pf: string;
+  fg: string;
+  fgPct: string;
+  threePt: string;
+  threePtPct: string;
+  ft: string;
+  ftPct: string;
+};
+
 type TeamBoxScore = {
   abbr: string;
   players: PlayerRow[];
-  totals: {
-    pts: string;
-    reb: string;
-    ast: string;
-    stl: string;
-    blk: string;
-    to: string;
-    fg: string;
-    threePt: string;
-    ft: string;
-  } | null;
+  teamStats: TeamStats | null;
 };
 
 // ── ESPN fetch & parse ────────────────────────────────────────────────────────
@@ -125,7 +133,12 @@ function parsePlayerStats(
   const playersData = espn.boxscore?.players;
   if (!playersData || playersData.length < 2) return null;
 
-  function parseTeam(raw: EspnPlayerTeam, abbr: string): TeamBoxScore {
+  // ESPN arrays: [0] = away, [1] = home (consistent convention)
+  function parseTeam(
+    raw: EspnPlayerTeam,
+    teamStatsRaw: EspnTeamStats | undefined,
+    abbr: string,
+  ): TeamBoxScore {
     const stats = raw.statistics?.[0];
     const names = stats?.names ?? [];
     const idx = (col: string) => names.indexOf(col);
@@ -155,42 +168,37 @@ function parsePlayerStats(
       };
     });
 
-    // Team totals from boxscore.teams
-    const teamData = espn.boxscore?.teams?.find(
-      (t) => (t.team?.abbreviation ?? "").toLowerCase() === abbr.toLowerCase(),
-    );
-    const tStats = teamData?.statistics;
+    // Team totals — label-based lookup (ESPN label field is stable)
+    const tStats = teamStatsRaw?.statistics;
     const tGet = (label: string) =>
-      tStats?.find(
-        (s) =>
-          s.label?.toLowerCase() === label.toLowerCase() ||
-          s.name?.toLowerCase().includes(label.toLowerCase()),
-      )?.displayValue ?? "—";
+      tStats?.find((s) => s.label === label)?.displayValue ?? "—";
 
-    const totals = tStats
+    const teamStats: TeamStats | null = tStats
       ? {
           pts: tGet("PTS"),
           reb: tGet("REB"),
+          oreb: tGet("OREB"),
+          dreb: tGet("DREB"),
           ast: tGet("AST"),
           stl: tGet("STL"),
           blk: tGet("BLK"),
           to: tGet("TO"),
+          pf: tGet("PF"),
           fg: tGet("FG"),
+          fgPct: tGet("FG%"),
           threePt: tGet("3PT"),
+          threePtPct: tGet("3P%"),
           ft: tGet("FT"),
+          ftPct: tGet("FT%"),
         }
       : null;
 
-    return { abbr, players, totals };
+    return { abbr, players, teamStats };
   }
 
-  // ESPN players[0] = away, players[1] = home (by ESPN convention)
-  const awayRaw = playersData[0];
-  const homeRaw = playersData[1];
-
   return {
-    away: parseTeam(awayRaw, awayAbbr),
-    home: parseTeam(homeRaw, homeAbbr),
+    away: parseTeam(playersData[0], espn.boxscore?.teams?.[0], awayAbbr),
+    home: parseTeam(playersData[1], espn.boxscore?.teams?.[1], homeAbbr),
   };
 }
 
@@ -383,7 +391,7 @@ function PlayerTable({
               </>
             )}
             {/* Totals row */}
-            {team.totals && (
+            {team.teamStats && (
               <tr className="border-t border-white/[0.08] bg-white/[0.02]">
                 <td className="px-4 py-2.5 sticky left-0 bg-[#18181c] z-10">
                   <span className="text-[10px] font-mono uppercase tracking-widest text-white/30">
@@ -391,12 +399,9 @@ function PlayerTable({
                   </span>
                 </td>
                 {cols.map((c) => {
-                  const totalsKey = c.key as keyof typeof team.totals;
                   const val =
-                    team.totals && totalsKey in team.totals
-                      ? team.totals[
-                          totalsKey as keyof NonNullable<typeof team.totals>
-                        ]
+                    team.teamStats && c.key in team.teamStats
+                      ? team.teamStats[c.key as keyof TeamStats]
                       : "—";
                   return (
                     <td
@@ -426,6 +431,234 @@ function PlayerTable({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Team Stats Comparison ─────────────────────────────────────────────────────
+
+function TeamStatsComparison({
+  away,
+  home,
+  awayColor,
+  homeColor,
+}: {
+  away: TeamBoxScore;
+  home: TeamBoxScore;
+  awayColor: string;
+  homeColor: string;
+}) {
+  if (!away.teamStats || !home.teamStats) return null;
+  const a = away.teamStats;
+  const h = home.teamStats;
+
+  const num = (v: string) => {
+    const n = parseFloat(v);
+    return isNaN(n) ? null : n;
+  };
+
+  // Format "43-90" or "43/90" → "43/90"
+  const shoot = (v: string) => v.replace("-", "/");
+  const pct = (v: string) => (v !== "—" ? `${v}%` : "—");
+
+  type Row = {
+    label: string;
+    awayVal: string;
+    homeVal: string;
+    awayNum: number | null;
+    homeNum: number | null;
+    lowerIsBetter?: boolean;
+    dim?: boolean; // sub-row (lighter style)
+    sep?: boolean; // visual separator before this row
+  };
+
+  const rows: Row[] = [
+    {
+      label: "Points",
+      awayVal: a.pts,
+      homeVal: h.pts,
+      awayNum: num(a.pts),
+      homeNum: num(h.pts),
+    },
+    {
+      label: "Rebonds",
+      awayVal: a.reb,
+      homeVal: h.reb,
+      awayNum: num(a.reb),
+      homeNum: num(h.reb),
+    },
+    {
+      label: "↳ Offensifs",
+      awayVal: a.oreb,
+      homeVal: h.oreb,
+      awayNum: num(a.oreb),
+      homeNum: num(h.oreb),
+      dim: true,
+    },
+    {
+      label: "Passes décisives",
+      awayVal: a.ast,
+      homeVal: h.ast,
+      awayNum: num(a.ast),
+      homeNum: num(h.ast),
+    },
+    {
+      label: "Interceptions",
+      awayVal: a.stl,
+      homeVal: h.stl,
+      awayNum: num(a.stl),
+      homeNum: num(h.stl),
+    },
+    {
+      label: "Contres",
+      awayVal: a.blk,
+      homeVal: h.blk,
+      awayNum: num(a.blk),
+      homeNum: num(h.blk),
+    },
+    {
+      label: "Pertes de balle",
+      awayVal: a.to,
+      homeVal: h.to,
+      awayNum: num(a.to),
+      homeNum: num(h.to),
+      lowerIsBetter: true,
+    },
+    {
+      label: "Fautes",
+      awayVal: a.pf,
+      homeVal: h.pf,
+      awayNum: num(a.pf),
+      homeNum: num(h.pf),
+      lowerIsBetter: true,
+    },
+    {
+      label: "Tirs (FG)",
+      awayVal: shoot(a.fg),
+      homeVal: shoot(h.fg),
+      awayNum: num(a.fgPct),
+      homeNum: num(h.fgPct),
+      sep: true,
+    },
+    {
+      label: "FG%",
+      awayVal: pct(a.fgPct),
+      homeVal: pct(h.fgPct),
+      awayNum: num(a.fgPct),
+      homeNum: num(h.fgPct),
+      dim: true,
+    },
+    {
+      label: "3 Points",
+      awayVal: shoot(a.threePt),
+      homeVal: shoot(h.threePt),
+      awayNum: num(a.threePtPct),
+      homeNum: num(h.threePtPct),
+    },
+    {
+      label: "3P%",
+      awayVal: pct(a.threePtPct),
+      homeVal: pct(h.threePtPct),
+      awayNum: num(a.threePtPct),
+      homeNum: num(h.threePtPct),
+      dim: true,
+    },
+    {
+      label: "Lancers francs",
+      awayVal: shoot(a.ft),
+      homeVal: shoot(h.ft),
+      awayNum: num(a.ftPct),
+      homeNum: num(h.ftPct),
+    },
+    {
+      label: "LF%",
+      awayVal: pct(a.ftPct),
+      homeVal: pct(h.ftPct),
+      awayNum: num(a.ftPct),
+      homeNum: num(h.ftPct),
+      dim: true,
+    },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/[0.06] flex items-center justify-between">
+        <h3 className="font-display font-semibold text-sm">Stats par équipe</h3>
+        <div className="flex items-center gap-3 text-[11px] font-mono">
+          <span style={{ color: awayColor }}>{away.abbr}</span>
+          <span className="text-white/20">·</span>
+          <span style={{ color: homeColor }}>{home.abbr}</span>
+        </div>
+      </div>
+
+      <table className="w-full">
+        <thead>
+          <tr className="text-[10px] uppercase tracking-wider border-b border-white/[0.04]">
+            <th
+              className="text-right px-5 py-2 font-semibold w-[38%]"
+              style={{ color: awayColor }}
+            >
+              {away.abbr}
+            </th>
+            <th className="text-center px-3 py-2 font-medium text-white/20 w-[24%]">
+              Stat
+            </th>
+            <th
+              className="text-left px-5 py-2 font-semibold w-[38%]"
+              style={{ color: homeColor }}
+            >
+              {home.abbr}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const awayBetter =
+              row.awayNum !== null &&
+              row.homeNum !== null &&
+              (row.lowerIsBetter
+                ? row.awayNum < row.homeNum
+                : row.awayNum > row.homeNum);
+            const homeBetter =
+              row.awayNum !== null &&
+              row.homeNum !== null &&
+              (row.lowerIsBetter
+                ? row.homeNum < row.awayNum
+                : row.homeNum > row.awayNum);
+
+            return (
+              <tr
+                key={row.label}
+                className={`border-b border-white/[0.03] ${row.sep ? "border-t border-t-white/[0.06]" : ""}`}
+              >
+                <td
+                  className={`text-right px-5 py-2 font-mono tabular-nums ${
+                    row.dim ? "text-xs text-white/30" : "text-sm"
+                  } ${awayBetter ? "text-white font-semibold" : row.dim ? "" : "text-white/50"}`}
+                >
+                  {row.awayVal}
+                </td>
+                <td
+                  className={`text-center px-3 py-2 ${
+                    row.dim
+                      ? "text-[10px] text-white/20"
+                      : "text-xs text-white/30"
+                  }`}
+                >
+                  {row.label}
+                </td>
+                <td
+                  className={`text-left px-5 py-2 font-mono tabular-nums ${
+                    row.dim ? "text-xs text-white/30" : "text-sm"
+                  } ${homeBetter ? "text-white font-semibold" : row.dim ? "" : "text-white/50"}`}
+                >
+                  {row.homeVal}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -506,7 +739,7 @@ export default async function MatchPage({
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: "America/New_York",
+    timeZone: "Europe/Paris",
   });
 
   return (
@@ -695,6 +928,16 @@ export default async function MatchPage({
             Les données ESPN n&apos;ont pas pu être récupérées
           </p>
         </div>
+      )}
+
+      {/* Team stats comparison */}
+      {boxScore && (
+        <TeamStatsComparison
+          away={boxScore.away}
+          home={boxScore.home}
+          awayColor={game.awayTeam.primaryColor}
+          homeColor={game.homeTeam.primaryColor}
+        />
       )}
 
       {boxScore && (
