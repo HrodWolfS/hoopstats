@@ -27,7 +27,10 @@ export function AdvancedView({ seasons, primaryColor }: AdvancedViewProps) {
         {[
           { label: "TS%", desc: "True Shooting — efficacité de tir globale" },
           { label: "USG%", desc: "Usage Rate — % de possessions utilisées" },
-          { label: "PIE", desc: "Player Impact Estimate — impact global" },
+          {
+            label: "PIE",
+            desc: "Player Impact Estimate — métrique propriétaire NBA.com (≠ PER)",
+          },
           { label: "ORtg", desc: "Off. Rating — pts marqués pour 100 poss." },
           { label: "DRtg", desc: "Def. Rating — pts encaissés pour 100 poss." },
           {
