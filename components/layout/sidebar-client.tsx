@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSidebar } from "./sidebar-context";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -138,6 +139,36 @@ function IconBestFive() {
   );
 }
 
+function IconChevronLeft() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
+function IconChevronRight() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  );
+}
+
 // ─── Types & nav items ────────────────────────────────────────────────────────
 
 export type NavItem = {
@@ -217,69 +248,107 @@ type Props = { lastSync: Date | null };
 
 export function SidebarClient({ lastSync }: Props) {
   const pathname = usePathname();
+  const { collapsed, toggle } = useSidebar();
 
   return (
-    <aside className="hidden md:flex fixed inset-y-0 left-0 w-[220px] border-r border-white/[0.06] bg-bg-base flex-col z-30">
-      {/* Logo */}
-      <div className="px-5 pt-6 pb-7">
-        <Link href="/fr" className="flex items-center gap-2 group">
-          <div className="h-7 w-7 rounded-md bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center font-display font-bold text-[12px] text-white">
+    <aside
+      className={`hidden md:flex fixed inset-y-0 left-0 border-r border-white/[0.06] bg-bg-base flex-col z-30 overflow-hidden transition-[width] duration-200 ${
+        collapsed ? "w-[56px]" : "w-[220px]"
+      }`}
+    >
+      {/* Logo + Toggle */}
+      <div
+        className={`pt-6 pb-5 ${
+          collapsed
+            ? "flex flex-col items-center gap-2 px-2"
+            : "px-5 flex items-center justify-between"
+        }`}
+      >
+        <Link
+          href="/fr"
+          className="flex items-center gap-2 group"
+          title={collapsed ? "hoopstats" : undefined}
+        >
+          <div className="h-7 w-7 shrink-0 rounded-md bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center font-display font-bold text-[12px] text-white">
             h.
           </div>
-          <span className="font-display font-semibold tracking-tight text-[15px]">
-            hoopstats
-          </span>
+          {!collapsed && (
+            <span className="font-display font-semibold tracking-tight text-[15px] whitespace-nowrap">
+              hoopstats
+            </span>
+          )}
         </Link>
+        <button
+          onClick={toggle}
+          title={collapsed ? "Développer le menu" : "Réduire le menu"}
+          className="p-1.5 rounded-md text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition shrink-0"
+        >
+          {collapsed ? <IconChevronRight /> : <IconChevronLeft />}
+        </button>
       </div>
 
-      {/* Nav — liste unique */}
-      <nav className="px-3 space-y-0.5 flex-1">
+      {/* Nav */}
+      <nav className={`space-y-0.5 flex-1 ${collapsed ? "px-2" : "px-3"}`}>
         {ALL_NAV_ITEMS.map((item) => {
           const active = isItemActive(item, pathname);
           return item.disabled ? (
             <div
               key={item.id}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-white/30 cursor-not-allowed"
+              title={collapsed ? item.label : undefined}
+              className={`w-full flex items-center rounded-md text-sm text-white/30 cursor-not-allowed ${
+                collapsed ? "justify-center p-2" : "gap-2.5 px-2.5 py-2"
+              }`}
             >
-              <span>{item.icon}</span>
-              {item.label}
-              <span className="ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.04] text-white/30">
-                Bientôt
-              </span>
+              <span className="shrink-0">{item.icon}</span>
+              {!collapsed && (
+                <>
+                  {item.label}
+                  <span className="ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.04] text-white/30">
+                    Bientôt
+                  </span>
+                </>
+              )}
             </div>
           ) : (
             <Link
               key={item.id}
               href={item.href}
-              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition ${
+              title={collapsed ? item.label : undefined}
+              className={`w-full flex items-center rounded-md text-sm transition ${
+                collapsed ? "justify-center p-2" : "gap-2.5 px-2.5 py-2"
+              } ${
                 active
                   ? "bg-white/[0.06] text-white"
                   : "text-white/60 hover:bg-white/[0.04] hover:text-white"
               }`}
             >
-              <span className={active ? "text-violet-400" : ""}>
+              <span className={`shrink-0 ${active ? "text-violet-400" : ""}`}>
                 {item.icon}
               </span>
-              {item.label}
+              {!collapsed && item.label}
             </Link>
           );
         })}
       </nav>
 
       {/* Pied — dernière mise à jour */}
-      <div className="p-4 border-t border-white/[0.06]">
-        <p className="text-[10px] text-white/25 uppercase tracking-[0.18em] font-medium mb-2">
-          Données NBA
-        </p>
-        {lastSync ? (
-          <p className="text-[11px] text-white/40 leading-relaxed">
-            Mis à jour{" "}
-            <span className="text-white/70">{formatSyncAge(lastSync)}</span>
+      {!collapsed && (
+        <div className="p-4 border-t border-white/[0.06]">
+          <p className="text-[10px] text-white/25 uppercase tracking-[0.18em] font-medium mb-2">
+            Données NBA
           </p>
-        ) : (
-          <p className="text-[11px] text-white/25">Synchronisation inconnue</p>
-        )}
-      </div>
+          {lastSync ? (
+            <p className="text-[11px] text-white/40 leading-relaxed">
+              Mis à jour{" "}
+              <span className="text-white/70">{formatSyncAge(lastSync)}</span>
+            </p>
+          ) : (
+            <p className="text-[11px] text-white/25">
+              Synchronisation inconnue
+            </p>
+          )}
+        </div>
+      )}
     </aside>
   );
 }

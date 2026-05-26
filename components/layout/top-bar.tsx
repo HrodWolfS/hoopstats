@@ -268,7 +268,7 @@ export function TopBar() {
                 }),
               )
             }
-            className="flex items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-white/40 hover:border-white/20 hover:text-white/80 transition flex-1 min-w-0"
+            className="flex items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-white/40 hover:border-white/20 hover:text-white/80 transition flex-1 min-w-0 max-w-[440px]"
           >
             <svg
               width="12"
@@ -288,14 +288,9 @@ export function TopBar() {
             </kbd>
           </button>
 
-          {/* Season selector — shrink-0 : ne se comprime jamais */}
-          <div className="shrink-0">
+          {/* Season selector — poussé à droite */}
+          <div className="shrink-0 ml-auto">
             <SeasonSelector />
-          </div>
-
-          {/* Avatar */}
-          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center text-[10px] font-display font-bold select-none shrink-0">
-            ME
           </div>
         </div>
       </header>
