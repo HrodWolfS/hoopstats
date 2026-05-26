@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
-import { MobileNav } from "@/components/layout/mobile-nav";
 import { TopBar } from "@/components/layout/top-bar";
 import { Footer } from "@/components/layout/footer";
 import { CommandPalette } from "@/components/ui/command-palette";
@@ -31,15 +30,11 @@ export default function LocaleLayout({
         >
           <TopBar />
         </Suspense>
-        {/* pb-[73px] sur mobile pour ne pas être masqué par la bottom nav */}
-        <div className="px-4 md:px-8 lg:px-12 py-6 md:py-8 max-w-[1400px] mx-auto w-full flex-1 pb-[73px] md:pb-8">
+        <div className="px-4 md:px-8 lg:px-12 py-6 md:py-8 max-w-[1400px] mx-auto w-full flex-1">
           <PageTransition>{children}</PageTransition>
         </div>
         <Footer />
       </main>
-
-      {/* Bottom nav mobile */}
-      <MobileNav />
 
       <CommandPalette />
     </div>
