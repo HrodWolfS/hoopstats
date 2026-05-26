@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { TopBar } from "@/components/layout/top-bar";
 import { Footer } from "@/components/layout/footer";
 import { CommandPalette } from "@/components/ui/command-palette";
@@ -16,18 +17,30 @@ export default function LocaleLayout({
 }) {
   return (
     <div className="min-h-screen flex">
-      <Sidebar />
-      <main className="flex-1 min-w-0 pl-[220px] flex flex-col">
+      {/* Sidebar desktop (md+) */}
+      <Suspense
+        fallback={<div className="hidden md:block w-[220px] shrink-0" />}
+      >
+        <Sidebar />
+      </Suspense>
+
+      {/* Contenu principal */}
+      <main className="flex-1 min-w-0 md:pl-[220px] flex flex-col">
         <Suspense
           fallback={<div className="h-14 border-b border-white/[0.06]" />}
         >
           <TopBar />
         </Suspense>
-        <div className="px-8 lg:px-12 py-8 max-w-[1400px] mx-auto w-full flex-1">
+        {/* pb-[73px] sur mobile pour ne pas être masqué par la bottom nav */}
+        <div className="px-4 md:px-8 lg:px-12 py-6 md:py-8 max-w-[1400px] mx-auto w-full flex-1 pb-[73px] md:pb-8">
           <PageTransition>{children}</PageTransition>
         </div>
         <Footer />
       </main>
+
+      {/* Bottom nav mobile */}
+      <MobileNav />
+
       <CommandPalette />
     </div>
   );
