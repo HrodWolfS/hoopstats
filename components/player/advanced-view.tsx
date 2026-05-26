@@ -96,10 +96,10 @@ export function AdvancedView({ seasons, primaryColor }: AdvancedViewProps) {
                     </td>
                     <td className="px-3 py-3 text-right">{stat(row.per, 3)}</td>
                     <td className="px-3 py-3 text-right text-white/60">
-                      {stat(row.offRating)}
+                      {row.offRating != null ? stat(row.offRating) : "—"}
                     </td>
                     <td className="px-3 py-3 text-right text-white/60">
-                      {stat(row.defRating)}
+                      {row.defRating != null ? stat(row.defRating) : "—"}
                     </td>
                     <td className="px-5 py-3 text-right">{netStr}</td>
                   </tr>

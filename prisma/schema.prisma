@@ -83,6 +83,9 @@ model PlayerSeason {
   per          Float?
   trueShooting Float?
   usageRate    Float?
+  offRating    Float?
+  defRating    Float?
+  netRating    Float?
   bpm          Float?
   vorp         Float?
   winShares    Float?

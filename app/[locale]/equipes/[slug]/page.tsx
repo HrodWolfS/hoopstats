@@ -29,13 +29,38 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
-  const team = await prisma.team.findUnique({
-    where: { slug },
-    select: { city: true, name: true, conference: true, logoUrl: true },
-  });
+
+  const [team, currentSeason] = await Promise.all([
+    prisma.team.findUnique({
+      where: { slug },
+      select: {
+        city: true,
+        name: true,
+        abbr: true,
+        conference: true,
+        logoUrl: true,
+      },
+    }),
+    prisma.teamSeason.findFirst({
+      where: { team: { slug }, season: CURRENT_SEASON },
+      select: { wins: true, losses: true, conferenceRank: true },
+    }),
+  ]);
   if (!team) return {};
-  const title = `${team.city} ${team.name} — Stats NBA | hoopstats`;
-  const description = `Roster, stats saison et historique 10 saisons des ${team.city} ${team.name} (Conférence ${confFr(team.conference)}).`;
+
+  const recordStr = currentSeason
+    ? `${currentSeason.wins}-${currentSeason.losses}`
+    : null;
+  const rankStr = currentSeason?.conferenceRank
+    ? `, ${currentSeason.conferenceRank}e Conférence ${confFr(team.conference)}`
+    : ` · Conférence ${confFr(team.conference)}`;
+
+  const description = recordStr
+    ? `Stats NBA ${CURRENT_SEASON} des ${team.city} ${team.name} (${team.abbr}) : ${recordStr}${rankStr}. Roster, rating offensif/défensif, matchs récents et historique.`
+    : `Roster, stats saison et historique des ${team.city} ${team.name} (Conférence ${confFr(team.conference)}). Stats avancées, classement et historique NBA.`;
+
+  const title = `${team.city} ${team.name} — Stats NBA ${CURRENT_SEASON}, roster et historique | hoopstats`;
+
   return {
     title,
     description,
@@ -254,14 +279,49 @@ export default async function TeamPage({
 
   const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
 
-  const jsonLd: Record<string, unknown> = {
+  const teamUrl = `${BASE_URL}/${locale}/equipes/${slug}`;
+
+  const jsonLdTeam: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "SportsTeam",
     name: `${team.city} ${team.name}`,
-    url: `${BASE_URL}/${locale}/equipes/${slug}`,
+    url: teamUrl,
     sport: "Basketball",
     ...(team.logoUrl && { image: team.logoUrl }),
     memberOf: { "@type": "SportsOrganization", name: "NBA" },
+    foundingDate: String(team.founded),
+    location: {
+      "@type": "Place",
+      name: team.city_country ?? team.city,
+    },
+    ...(team.arena && {
+      homeLocation: { "@type": "Place", name: team.arena },
+    }),
+  };
+
+  const jsonLdBreadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Accueil",
+        item: `${BASE_URL}/${locale}`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Équipes",
+        item: `${BASE_URL}/${locale}/equipes`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: `${team.city} ${team.name}`,
+        item: teamUrl,
+      },
+    ],
   };
 
   return (
@@ -363,7 +423,11 @@ export default async function TeamPage({
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdTeam) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }}
       />
     </div>
   );

@@ -49,7 +49,7 @@ def fetch_advanced_season(season: str) -> list[dict]:
             season=season,
             season_type_all_star="Regular Season",
             measure_type_detailed_defense="Advanced",
-            per_mode_simple="PerGame",
+            per_mode_detailed="PerGame",
             timeout=60,
         )
         df = response.get_data_frames()[0]
