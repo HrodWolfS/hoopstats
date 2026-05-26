@@ -455,15 +455,13 @@ export default async function HomePage({
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
               {recentGames.map((g) => (
-                <div
+                <Link
                   key={g.id}
-                  className="rounded-2xl border border-white/[0.06] bg-[#111114] px-4 py-3 flex items-center gap-3"
+                  href={`/${locale}/matchs/${g.id}`}
+                  className="rounded-2xl border border-white/[0.06] bg-[#111114] px-4 py-3 flex items-center gap-3 hover:border-white/[0.12] hover:bg-[#16161a] transition group"
                 >
                   {/* Équipe away */}
-                  <Link
-                    href={`/${locale}/equipes/${g.awayTeam.slug}`}
-                    className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition"
-                  >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
                     {g.awayTeam.logoUrl && (
                       <Image
                         src={g.awayTeam.logoUrl}
@@ -476,7 +474,7 @@ export default async function HomePage({
                     <span className="text-xs text-white/60 font-mono truncate">
                       {g.awayTeam.abbr}
                     </span>
-                  </Link>
+                  </div>
 
                   {/* Score */}
                   <div className="text-center shrink-0">
@@ -494,10 +492,7 @@ export default async function HomePage({
                   </div>
 
                   {/* Équipe home */}
-                  <Link
-                    href={`/${locale}/equipes/${g.homeTeam.slug}`}
-                    className="flex items-center gap-2 flex-1 min-w-0 justify-end hover:opacity-80 transition"
-                  >
+                  <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
                     <span className="text-xs text-white/60 font-mono truncate text-right">
                       {g.homeTeam.abbr}
                     </span>
@@ -510,8 +505,8 @@ export default async function HomePage({
                         className="object-contain shrink-0"
                       />
                     )}
-                  </Link>
-                </div>
+                  </div>
+                </Link>
               ))}
             </div>
           </section>

@@ -121,6 +121,23 @@ function IconRookie() {
   );
 }
 
+function IconMatches() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a15 15 0 0 1 0 18" />
+      <path d="M3 12a15 15 0 0 0 18 0" />
+    </svg>
+  );
+}
+
 function IconBestFive() {
   return (
     <svg
@@ -181,6 +198,7 @@ export type NavItem = {
 
 export const ALL_NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Accueil", icon: <IconHome />, href: "/fr" },
+  { id: "matches", label: "Matchs", icon: <IconMatches />, href: "/fr/matchs" },
   { id: "teams", label: "Équipes", icon: <IconTeams />, href: "/fr/equipes" },
   {
     id: "players",
@@ -226,6 +244,7 @@ export function isItemActive(item: NavItem, pathname: string): boolean {
   if (item.id === "home") return pathname === "/fr" || pathname === "/fr/";
   if (item.id === "teams") return pathname.startsWith("/fr/equipes");
   if (item.id === "players") return pathname.startsWith("/fr/joueurs");
+  if (item.id === "matches") return pathname.startsWith("/fr/matchs");
   return pathname.startsWith(item.href);
 }
 
