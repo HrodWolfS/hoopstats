@@ -34,7 +34,14 @@ type GameRow = {
   };
 };
 
-type Tab = "hier" | "aujourd-hui" | "demain";
+type Tab = "recents" | "aujourd-hui" | "a-venir";
+
+/** Plages de jours (offsets) couvertes par chaque onglet. */
+const TAB_OFFSETS: Record<Tab, number[]> = {
+  recents: [-2, -1], // Avant-hier + Hier
+  "aujourd-hui": [0],
+  "a-venir": [1, 2], // Demain + Après-demain
+};
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -265,20 +272,37 @@ export default async function MatchsPage({
   ]);
 
   const tab = (
-    ["hier", "aujourd-hui", "demain"].includes(rawTab) ? rawTab : "aujourd-hui"
+    Object.keys(TAB_OFFSETS).includes(rawTab) ? rawTab : "aujourd-hui"
   ) as Tab;
 
-  const tabOffset = tab === "hier" ? -1 : tab === "demain" ? 1 : 0;
-  const [games, { label: dateLabel }] = await Promise.all([
-    getGames(tabOffset),
-    Promise.resolve(getNbaDateRange(tabOffset)),
-  ]);
+  const offsets = TAB_OFFSETS[tab];
+
+  // Pour chaque jour de l'onglet, on récupère les matchs + le label de date
+  const groups = await Promise.all(
+    offsets.map(async (offset) => {
+      const [games, range] = await Promise.all([
+        getGames(offset),
+        Promise.resolve(getNbaDateRange(offset)),
+      ]);
+      return { offset, games, label: range.label };
+    }),
+  );
+
+  const totalGames = groups.reduce((sum, g) => sum + g.games.length, 0);
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "hier", label: "Hier" },
+    { id: "recents", label: "Récents" },
     { id: "aujourd-hui", label: "Aujourd'hui" },
-    { id: "demain", label: "Demain" },
+    { id: "a-venir", label: "À venir" },
   ];
+
+  // Sous-titre dynamique selon l'onglet
+  const subtitle =
+    tab === "aujourd-hui"
+      ? groups[0]?.label
+      : tab === "recents"
+        ? "Avant-hier · Hier"
+        : "Demain · Après-demain";
 
   return (
     <div className="space-y-6">
@@ -287,7 +311,7 @@ export default async function MatchsPage({
         <h1 className="font-display font-semibold text-2xl tracking-tight mb-1">
           Matchs NBA
         </h1>
-        <p className="text-white/40 text-sm capitalize">{dateLabel}</p>
+        <p className="text-white/40 text-sm capitalize">{subtitle}</p>
       </div>
 
       {/* Tabs */}
@@ -309,16 +333,41 @@ export default async function MatchsPage({
       </div>
 
       {/* Games list */}
-      {games.length === 0 ? (
+      {totalGames === 0 ? (
         <div className="rounded-2xl border border-white/[0.06] bg-[#111114] py-16 flex flex-col items-center justify-center gap-3">
           <div className="text-4xl opacity-20">🏀</div>
-          <p className="text-white/30 text-sm">Aucun match ce jour</p>
+          <p className="text-white/30 text-sm">Aucun match sur cette période</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {games.map((g) => (
-            <GameCard key={g.id} game={g} locale={locale} />
-          ))}
+        <div className="space-y-8">
+          {groups.map((group) =>
+            group.games.length === 0 ? null : (
+              <div key={group.offset} className="space-y-2">
+                {/* Sous-en-tête de date (uniquement si plusieurs jours dans l'onglet) */}
+                {offsets.length > 1 && (
+                  <div className="flex items-baseline gap-3 pb-1">
+                    <h2 className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-mono">
+                      {group.offset === -2
+                        ? "Avant-hier"
+                        : group.offset === -1
+                          ? "Hier"
+                          : group.offset === 1
+                            ? "Demain"
+                            : group.offset === 2
+                              ? "Après-demain"
+                              : ""}
+                    </h2>
+                    <span className="text-[11px] text-white/25 capitalize">
+                      {group.label}
+                    </span>
+                  </div>
+                )}
+                {group.games.map((g) => (
+                  <GameCard key={g.id} game={g} locale={locale} />
+                ))}
+              </div>
+            ),
+          )}
         </div>
       )}
     </div>
