@@ -12,7 +12,7 @@
   --color-bg-elevated: #1a1a1f;
 
   /* Accents */
-  --color-accent-primary: #7c3aed;
+  --color-accent-primary: #f97316;
   --color-accent-cyan: #06b6d4;
   --color-accent-amber: #f59e0b;
   --color-accent-green: #10b981;
@@ -34,7 +34,7 @@ body {
 
 /* Selection */
 ::selection {
-  background: #7c3aed;
+  background: #f97316;
   color: #fff;
 }
 

@@ -102,7 +102,7 @@ export function PlayoffSeriesCard({ series, locale }: Props) {
     status === "complete"
       ? "bg-emerald-500/10 text-emerald-400 border-b border-emerald-500/10"
       : status === "in_progress"
-        ? "bg-violet-500/10 text-violet-300 border-b border-violet-500/10"
+        ? "bg-orange-500/10 text-orange-300 border-b border-orange-500/10"
         : "bg-white/[0.03] text-white/30 border-b border-white/[0.05]";
 
   const headerText =

@@ -288,7 +288,7 @@ export function SidebarClient({ lastSync }: Props) {
           className="flex items-center gap-2 group"
           title={collapsed ? "hoopstats" : undefined}
         >
-          <div className="h-7 w-7 shrink-0 rounded-md bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center font-display font-bold text-[12px] text-white">
+          <div className="h-7 w-7 shrink-0 rounded-md bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center font-display font-bold text-[12px] text-white">
             h.
           </div>
           {!collapsed && (
@@ -341,7 +341,7 @@ export function SidebarClient({ lastSync }: Props) {
                   : "text-white/60 hover:bg-white/[0.04] hover:text-white"
               }`}
             >
-              <span className={`shrink-0 ${active ? "text-violet-400" : ""}`}>
+              <span className={`shrink-0 ${active ? "text-orange-400" : ""}`}>
                 {item.icon}
               </span>
               {!collapsed && item.label}

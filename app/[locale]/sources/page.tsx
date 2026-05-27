@@ -34,7 +34,7 @@ const SOURCES = [
       "Profils joueurs (taille, poids, position)",
     ],
     badge: "Officielle NBA",
-    badgeColor: "text-violet-400 bg-violet-500/10 border-violet-500/20",
+    badgeColor: "text-orange-400 bg-orange-500/10 border-orange-500/20",
   },
   {
     name: "Ball Don't Lie",
@@ -249,7 +249,7 @@ export default function SourcesPage() {
                     key={item}
                     className="text-xs text-white/40 flex items-start gap-2"
                   >
-                    <span className="text-violet-500 mt-0.5 shrink-0">·</span>
+                    <span className="text-orange-500 mt-0.5 shrink-0">·</span>
                     {item}
                   </li>
                 ))}
@@ -325,7 +325,7 @@ export default function SourcesPage() {
               className="rounded-xl border border-white/[0.06] bg-[#111114] px-5 py-4 grid grid-cols-[72px_1fr] gap-4 items-start"
             >
               <div>
-                <div className="font-display font-bold text-violet-400 text-base">
+                <div className="font-display font-bold text-orange-400 text-base">
                   {s.abbr}
                 </div>
                 {s.since && (

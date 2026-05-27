@@ -76,7 +76,7 @@ function buildPlayoffBadges(
     } else if (maxRound === 3) {
       badge = {
         label: "Finale Conférence",
-        className: `${BADGE_PILL} bg-violet-500/15 border-violet-500/25 text-violet-300`,
+        className: `${BADGE_PILL} bg-orange-500/15 border-orange-500/25 text-orange-300`,
       };
     } else if (maxRound === 2) {
       badge = {
@@ -240,7 +240,7 @@ export default async function SaisonsPage({
           ]}
         />
         <div className="mt-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[11px] font-medium uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300 text-[11px] font-medium uppercase tracking-wider mb-4">
             Classements {season}
           </div>
           <h1 className="font-display font-semibold text-4xl md:text-5xl tracking-[-0.03em] mb-2">

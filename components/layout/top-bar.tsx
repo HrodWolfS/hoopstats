@@ -102,7 +102,7 @@ function SeasonSelector() {
                   <button
                     onClick={() => selectSeason(s)}
                     className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.05] transition flex items-center justify-between ${
-                      s === season ? "text-violet-400" : "text-white/70"
+                      s === season ? "text-orange-400" : "text-white/70"
                     }`}
                   >
                     <span className="font-mono">{s}</span>
@@ -172,7 +172,7 @@ function MobileDrawer({
             onClick={onClose}
             className="flex items-center gap-2"
           >
-            <div className="h-7 w-7 rounded-md bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center font-display font-bold text-[12px] text-white">
+            <div className="h-7 w-7 rounded-md bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center font-display font-bold text-[12px] text-white">
               h.
             </div>
             <span className="font-display font-semibold tracking-tight text-[15px]">
@@ -212,12 +212,12 @@ function MobileDrawer({
                     : "text-white/60 hover:bg-white/[0.04] hover:text-white"
                 }`}
               >
-                <span className={active ? "text-violet-400" : ""}>
+                <span className={active ? "text-orange-400" : ""}>
                   {item.icon}
                 </span>
                 {item.label}
                 {active && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-400" />
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-orange-400" />
                 )}
               </Link>
             );

@@ -203,6 +203,17 @@ async function getStandings(
   }));
 }
 
+async function getCounts() {
+  const [playersCount, teamsCount, gamesCount] = await Promise.all([
+    prisma.playerSeason.count({
+      where: { season: CURRENT_SEASON, gamesPlayed: { gte: 1 } },
+    }),
+    prisma.teamSeason.count({ where: { season: CURRENT_SEASON } }),
+    prisma.game.count({ where: { season: CURRENT_SEASON, status: "final" } }),
+  ]);
+  return { playersCount, teamsCount, gamesCount };
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function LeadersPanel({
@@ -229,39 +240,52 @@ function LeadersPanel({
         </span>
       </div>
       <ul className="divide-y divide-white/[0.04]">
-        {rows.map((row, i) => (
-          <li key={row.slug}>
-            <Link
-              href={`/${locale}/joueurs/${row.slug}`}
-              className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition group"
-            >
-              <span className="text-xs text-white/20 w-4 tabular-nums font-mono">
-                {i + 1}
-              </span>
-              <PlayerAvatar
-                firstName={row.firstName}
-                lastName={row.lastName}
-                primaryColor={row.primaryColor}
-                secondaryColor={row.secondaryColor}
-                photoUrl={row.photoUrl}
-                size="xs"
-                showNum={false}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium leading-tight truncate group-hover:text-violet-300 transition">
-                  {row.firstName} {row.lastName}
+        {rows.map((row, i) => {
+          const isTop = i === 0;
+          return (
+            <li key={row.slug}>
+              <Link
+                href={`/${locale}/joueurs/${row.slug}`}
+                className={`flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition group ${
+                  isTop ? "bg-orange-500/[0.04]" : ""
+                }`}
+              >
+                <span
+                  className={`w-4 text-xs tabular-nums font-mono ${
+                    isTop ? "text-orange-400 font-bold" : "text-white/20"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <PlayerAvatar
+                  firstName={row.firstName}
+                  lastName={row.lastName}
+                  primaryColor={row.primaryColor}
+                  secondaryColor={row.secondaryColor}
+                  photoUrl={row.photoUrl}
+                  size="xs"
+                  showNum={false}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium leading-tight truncate group-hover:text-orange-300 transition">
+                    {row.firstName} {row.lastName}
+                  </div>
+                  <div className="text-[11px] text-white/30 font-sans">
+                    {row.teamAbbr}
+                    {row.position ? ` · ${row.position}` : ""}
+                  </div>
                 </div>
-                <div className="text-[11px] text-white/30 font-sans">
-                  {row.teamAbbr}
-                  {row.position ? ` · ${row.position}` : ""}
-                </div>
-              </div>
-              <span className="font-mono font-semibold text-sm tabular-nums">
-                {format(row.value)}
-              </span>
-            </Link>
-          </li>
-        ))}
+                <span
+                  className={`font-mono font-semibold text-sm tabular-nums ${
+                    isTop ? "text-orange-300" : ""
+                  }`}
+                >
+                  {format(row.value)}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -301,7 +325,7 @@ function StandingsPanel({
                 size="xs"
               />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium leading-tight truncate group-hover:text-violet-300 transition">
+                <div className="text-sm font-medium leading-tight truncate group-hover:text-orange-300 transition">
                   {row.city} <span className="text-white/40">{row.name}</span>
                 </div>
               </div>
@@ -313,6 +337,75 @@ function StandingsPanel({
         ))}
       </ul>
     </div>
+  );
+}
+
+function SpotlightCard({
+  leader,
+  locale,
+}: {
+  leader: LeaderRow;
+  locale: string;
+}) {
+  return (
+    <Link
+      href={`/${locale}/joueurs/${leader.slug}`}
+      className="group relative block overflow-hidden rounded-3xl border border-white/[0.06] bg-[#111114] hover:border-white/[0.12] transition"
+    >
+      {/* Glow équipe + orange */}
+      <div
+        aria-hidden
+        className="absolute -top-24 -right-24 h-72 w-72 rounded-full blur-3xl opacity-30 transition group-hover:opacity-50"
+        style={{ background: leader.primaryColor }}
+      />
+      <div
+        aria-hidden
+        className="absolute -bottom-32 -left-20 h-64 w-64 rounded-full blur-3xl opacity-10 bg-orange-500"
+      />
+
+      <div className="relative grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-6 p-6 sm:p-8">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300 text-[10px] font-mono uppercase tracking-widest mb-4">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
+            Top scorer · saison {CURRENT_SEASON}
+          </div>
+          <h3 className="font-display font-bold text-3xl sm:text-4xl tracking-tight leading-[1.05] mb-2 group-hover:text-orange-300 transition">
+            {leader.firstName}
+            <br />
+            <span className="text-white/80">{leader.lastName}</span>
+          </h3>
+          <div className="flex items-center gap-2 text-sm text-white/40">
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ background: leader.primaryColor }}
+            />
+            {leader.teamAbbr}
+            {leader.position ? ` · ${leader.position}` : ""}
+          </div>
+
+          <div className="mt-6">
+            <div className="font-display font-bold text-5xl sm:text-6xl tabular-nums tracking-tight bg-gradient-to-br from-white to-orange-300 bg-clip-text text-transparent">
+              {stat(leader.value)}
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-white/30 font-mono mt-1">
+              Points par match
+            </div>
+          </div>
+        </div>
+
+        <div className="shrink-0 self-end">
+          <PlayerAvatar
+            firstName={leader.firstName}
+            lastName={leader.lastName}
+            primaryColor={leader.primaryColor}
+            secondaryColor={leader.secondaryColor}
+            photoUrl={leader.photoUrl}
+            size="xl"
+            showNum={false}
+          />
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -333,6 +426,7 @@ export default async function HomePage({
     eastStandings,
     westStandings,
     recentGames,
+    counts,
   ] = await Promise.all([
     getLeaders("pointsPerGame"),
     getLeaders("reboundsPerGame"),
@@ -341,44 +435,156 @@ export default async function HomePage({
     getStandings("East"),
     getStandings("West"),
     getRecentGames(),
+    getCounts(),
   ]);
 
+  const topScorer = ptsLeaders[0];
+
   return (
-    <div className="space-y-10">
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+    <div className="space-y-8">
+      {/* ── Status bar : saison + ticker stats sur une ligne ─────────────── */}
       <FadeIn>
-        <section className="pt-4 pb-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[11px] font-medium uppercase tracking-wider mb-5">
+        <section className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300 text-[11px] font-medium uppercase tracking-wider">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
             Saison {CURRENT_SEASON} · En cours
           </div>
-          <h1 className="font-display font-semibold text-5xl md:text-7xl tracking-[-0.04em] leading-[0.9] mb-5">
-            Stats NBA
-            <br />
-            <span className="text-white/25">en français</span>
-          </h1>
-          <p className="text-white/40 text-base max-w-lg leading-relaxed mb-7">
-            Joueurs, équipes, stats carrière et stats avancées — toute la ligue,
-            saison {CURRENT_SEASON}.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={`/${locale}/joueurs`}
-              className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition"
-            >
-              Joueurs →
-            </Link>
-            <Link
-              href={`/${locale}/equipes`}
-              className="px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.09] text-white text-sm font-medium transition"
-            >
-              Équipes →
-            </Link>
+          <div className="flex items-center gap-x-6 text-sm text-white/40">
+            <span>
+              <span className="font-display font-semibold text-white tabular-nums">
+                {counts.playersCount}
+              </span>{" "}
+              joueurs
+            </span>
+            <span className="text-white/15">·</span>
+            <span>
+              <span className="font-display font-semibold text-white tabular-nums">
+                {counts.teamsCount}
+              </span>{" "}
+              franchises
+            </span>
+            <span className="text-white/15">·</span>
+            <span>
+              <span className="font-display font-semibold text-white tabular-nums">
+                {counts.gamesCount}
+              </span>{" "}
+              matchs joués
+            </span>
           </div>
         </section>
       </FadeIn>
 
+      {/* ── Spotlight Top Scorer (vraie vitrine) ──────────────────────────── */}
+      {topScorer && (
+        <FadeIn delay={0.05}>
+          <SpotlightCard leader={topScorer} locale={locale} />
+        </FadeIn>
+      )}
+
+      {/* ── Résultats récents ─────────────────────────────────────────────── */}
+      {recentGames.length > 0 && (
+        <FadeIn delay={0.16}>
+          <section>
+            <div className="flex items-baseline justify-between mb-4">
+              <h2 className="font-display font-semibold text-xl tracking-tight">
+                Résultats récents{" "}
+                <span className="text-white/25 font-normal text-base">
+                  derniers matchs
+                </span>
+              </h2>
+              <Link
+                href={`/${locale}/matchs`}
+                className="text-[11px] text-white/40 hover:text-orange-300 transition font-mono uppercase tracking-widest"
+              >
+                Tous →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {recentGames.map((g) => {
+                const homeWon = (g.homeScore ?? 0) > (g.awayScore ?? 0);
+                const awayWon = (g.awayScore ?? 0) > (g.homeScore ?? 0);
+                return (
+                  <Link
+                    key={g.id}
+                    href={`/${locale}/matchs/${g.id}`}
+                    className="relative rounded-2xl border border-white/[0.06] bg-[#111114] px-4 py-3.5 flex items-center gap-3 hover:border-white/[0.12] hover:bg-[#16161a] transition group overflow-hidden"
+                  >
+                    <div
+                      aria-hidden
+                      className="absolute inset-y-0 left-0 w-0.5 transition-all group-hover:w-1"
+                      style={{ background: g.homeTeam.primaryColor }}
+                    />
+
+                    {/* Équipe away */}
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {g.awayTeam.logoUrl && (
+                        <Image
+                          src={g.awayTeam.logoUrl}
+                          alt={g.awayTeam.abbr}
+                          width={28}
+                          height={28}
+                          className="object-contain shrink-0"
+                          unoptimized
+                        />
+                      )}
+                      <span
+                        className={`text-xs font-mono truncate ${awayWon ? "text-white" : "text-white/50"}`}
+                      >
+                        {g.awayTeam.abbr}
+                      </span>
+                    </div>
+
+                    {/* Score */}
+                    <div className="text-center shrink-0">
+                      <div className="font-mono font-semibold tabular-nums text-sm">
+                        <span
+                          className={awayWon ? "text-white" : "text-white/40"}
+                        >
+                          {g.awayScore ?? "–"}
+                        </span>
+                        <span className="text-white/20 mx-1.5">–</span>
+                        <span
+                          className={homeWon ? "text-white" : "text-white/40"}
+                        >
+                          {g.homeScore ?? "–"}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-white/25 font-mono mt-0.5">
+                        {new Date(g.gameDate).toLocaleDateString("fr-FR", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Équipe home */}
+                    <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                      <span
+                        className={`text-xs font-mono truncate text-right ${homeWon ? "text-white" : "text-white/50"}`}
+                      >
+                        {g.homeTeam.abbr}
+                      </span>
+                      {g.homeTeam.logoUrl && (
+                        <Image
+                          src={g.homeTeam.logoUrl}
+                          alt={g.homeTeam.abbr}
+                          width={28}
+                          height={28}
+                          className="object-contain shrink-0"
+                          unoptimized
+                        />
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        </FadeIn>
+      )}
+
       {/* ── Leaders ──────────────────────────────────────────────────────── */}
-      <FadeIn delay={0.1}>
+      <FadeIn delay={0.24}>
         <section>
           <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
             Leaders de la saison{" "}
@@ -420,7 +626,7 @@ export default async function HomePage({
       </FadeIn>
 
       {/* ── Standings ────────────────────────────────────────────────────── */}
-      <FadeIn delay={0.2}>
+      <FadeIn delay={0.32}>
         <section>
           <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
             Classement{" "}
@@ -442,76 +648,6 @@ export default async function HomePage({
           </div>
         </section>
       </FadeIn>
-
-      {/* ── Résultats récents ─────────────────────────────────────────────── */}
-      {recentGames.length > 0 && (
-        <FadeIn delay={0.3}>
-          <section>
-            <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
-              Résultats récents{" "}
-              <span className="text-white/25 font-normal text-base">
-                derniers matchs
-              </span>
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {recentGames.map((g) => (
-                <Link
-                  key={g.id}
-                  href={`/${locale}/matchs/${g.id}`}
-                  className="rounded-2xl border border-white/[0.06] bg-[#111114] px-4 py-3 flex items-center gap-3 hover:border-white/[0.12] hover:bg-[#16161a] transition group"
-                >
-                  {/* Équipe away */}
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {g.awayTeam.logoUrl && (
-                      <Image
-                        src={g.awayTeam.logoUrl}
-                        alt={g.awayTeam.abbr}
-                        width={28}
-                        height={28}
-                        className="object-contain shrink-0"
-                      />
-                    )}
-                    <span className="text-xs text-white/60 font-mono truncate">
-                      {g.awayTeam.abbr}
-                    </span>
-                  </div>
-
-                  {/* Score */}
-                  <div className="text-center shrink-0">
-                    <div className="font-mono font-semibold tabular-nums text-sm">
-                      {g.awayScore ?? "–"}
-                      <span className="text-white/30 mx-1">–</span>
-                      {g.homeScore ?? "–"}
-                    </div>
-                    <div className="text-[10px] text-white/20 font-mono">
-                      {new Date(g.gameDate).toLocaleDateString("fr-FR", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Équipe home */}
-                  <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                    <span className="text-xs text-white/60 font-mono truncate text-right">
-                      {g.homeTeam.abbr}
-                    </span>
-                    {g.homeTeam.logoUrl && (
-                      <Image
-                        src={g.homeTeam.logoUrl}
-                        alt={g.homeTeam.abbr}
-                        width={28}
-                        height={28}
-                        className="object-contain shrink-0"
-                      />
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        </FadeIn>
-      )}
     </div>
   );
 }

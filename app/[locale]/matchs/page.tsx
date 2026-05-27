@@ -326,7 +326,7 @@ export default async function MatchsPage({
           >
             {t.label}
             {tab === t.id && (
-              <span className="absolute left-3 right-3 -bottom-px h-px bg-violet-400" />
+              <span className="absolute left-3 right-3 -bottom-px h-px bg-orange-400" />
             )}
           </Link>
         ))}

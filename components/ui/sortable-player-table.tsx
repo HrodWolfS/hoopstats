@@ -113,9 +113,9 @@ export function SortablePlayerTable({
     if (colKey !== sortKey)
       return <span className="text-white/20 group-hover:text-white/40">↕</span>;
     return sortDir === "asc" ? (
-      <span className="text-violet-400">↑</span>
+      <span className="text-orange-400">↑</span>
     ) : (
-      <span className="text-violet-400">↓</span>
+      <span className="text-orange-400">↓</span>
     );
   }
 
@@ -174,7 +174,7 @@ export function SortablePlayerTable({
                         showNum={false}
                       />
                       <div>
-                        <div className="text-sm font-sans font-medium text-white leading-tight group-hover:text-violet-300 transition">
+                        <div className="text-sm font-sans font-medium text-white leading-tight group-hover:text-orange-300 transition">
                           {row.firstName} {row.lastName}
                         </div>
                         <div className="text-[11px] text-white/40 font-sans">

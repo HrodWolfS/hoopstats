@@ -99,7 +99,7 @@ export default async function RookiesPage({
           ]}
         />
         <div className="mt-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[11px] font-medium uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300 text-[11px] font-medium uppercase tracking-wider mb-4">
             Classe {draftYear}
           </div>
           <h1 className="font-display font-semibold text-4xl md:text-5xl tracking-[-0.03em] mb-2">

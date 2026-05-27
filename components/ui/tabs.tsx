@@ -25,7 +25,7 @@ export function Tabs({ tabs, active, onChange }: TabsProps) {
             >
               {t.label}
               <span
-                className={`absolute left-3 right-3 -bottom-px h-px transition-all duration-300 ${isActive ? "bg-violet-400" : "bg-transparent left-1/2 right-1/2"}`}
+                className={`absolute left-3 right-3 -bottom-px h-px transition-all duration-300 ${isActive ? "bg-orange-400" : "bg-transparent left-1/2 right-1/2"}`}
               />
             </button>
           );

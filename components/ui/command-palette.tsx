@@ -225,7 +225,7 @@ export function CommandPalette() {
                   <span
                     className={`text-[10px] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider ${
                       result.type === "player"
-                        ? "bg-violet-500/10 text-violet-400"
+                        ? "bg-orange-500/10 text-orange-400"
                         : "bg-cyan-500/10 text-cyan-400"
                     }`}
                   >
