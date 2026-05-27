@@ -31,6 +31,7 @@ model Team {
   awayGames          Game[]          @relation("AwayGames")
   playoffSeriesTeam1 PlayoffSeries[] @relation("PlayoffTeam1")
   playoffSeriesTeam2 PlayoffSeries[] @relation("PlayoffTeam2")
+  awards             Award[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -58,6 +59,7 @@ model Player {
   summaryGeneratedAt DateTime?
 
   seasons PlayerSeason[]
+  awards  Award[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -250,6 +252,27 @@ model PlayoffSeries {
 
   @@unique([season, conference, round, team1Id, team2Id])
   @@index([season])
+}
+
+/// Trophées NBA — individuels (MVP, DPOY, MIP, ROY, SMOY, FMVP, NBA_CUP_MVP)
+/// et collectifs (NBA_CHAMPION, EAST_CHAMPION, WEST_CHAMPION, NBA_CUP_CHAMPION).
+/// playerId est présent pour les awards individuels ; teamId est toujours présent
+/// (équipe du lauréat pour les awards individuels, équipe championne sinon).
+model Award {
+  id       String  @id @default(cuid())
+  type     String
+  season   String
+  playerId String?
+  teamId   String?
+  notes    String?
+
+  player Player? @relation(fields: [playerId], references: [id])
+  team   Team?   @relation(fields: [teamId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([season])
+  @@index([type, season])
 }
 
 model SyncLog {
