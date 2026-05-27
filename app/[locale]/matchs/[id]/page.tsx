@@ -231,6 +231,103 @@ function parsePlayerStats(
   };
 }
 
+// ── DB box score loader ──────────────────────────────────────────────────────
+
+/**
+ * Charge le box score depuis la DB et le convertit au format `TeamBoxScore`
+ * (compatible avec le rendu existant). Retourne null si pas encore syncé.
+ */
+async function loadBoxScoreFromDb(
+  gameId: string,
+  awayAbbr: string,
+  homeAbbr: string,
+): Promise<{
+  away: TeamBoxScore;
+  home: TeamBoxScore;
+  linescores: { away: number[]; home: number[] } | null;
+} | null> {
+  const [gbs, players] = await Promise.all([
+    prisma.gameBoxScore.findUnique({ where: { gameId } }),
+    prisma.playerBoxScore.findMany({
+      where: { gameId },
+      orderBy: [{ starter: "desc" }, { pts: "desc" }],
+    }),
+  ]);
+
+  if (!gbs || players.length === 0) return null;
+
+  const fmtNum = (v: number | null): string => (v == null ? "—" : String(v));
+  const fmtPair = (m: number | null, a: number | null): string =>
+    m == null || a == null ? "—" : `${m}/${a}`;
+  const fmtPct = (m: number | null, a: number | null): string =>
+    m == null || a == null || a === 0 ? "—" : ((m / a) * 100).toFixed(1);
+  const fmtSigned = (v: number | null): string =>
+    v == null ? "—" : v > 0 ? `+${v}` : String(v);
+
+  function buildTeamStats(side: "away" | "home"): TeamStats {
+    const pick = <K extends string>(k: K) =>
+      (gbs as unknown as Record<string, number | null>)[`${side}${k}`] ?? null;
+    return {
+      pts: "—", // populated by caller (from header score)
+      reb: fmtNum(pick("Reb")),
+      oreb: fmtNum(pick("Oreb")),
+      dreb: fmtNum(pick("Dreb")),
+      ast: fmtNum(pick("Ast")),
+      stl: fmtNum(pick("Stl")),
+      blk: fmtNum(pick("Blk")),
+      to: fmtNum(pick("Tov")),
+      pf: fmtNum(pick("Pf")),
+      fg: fmtPair(pick("Fgm"), pick("Fga")),
+      fgPct: fmtPct(pick("Fgm"), pick("Fga")),
+      threePt: fmtPair(pick("ThreePm"), pick("ThreePa")),
+      threePtPct: fmtPct(pick("ThreePm"), pick("ThreePa")),
+      ft: fmtPair(pick("Ftm"), pick("Fta")),
+      ftPct: fmtPct(pick("Ftm"), pick("Fta")),
+    };
+  }
+
+  function buildTeam(side: "away" | "home", abbr: string): TeamBoxScore {
+    const teamPlayers: PlayerRow[] = players
+      .filter((p) => p.teamAbbr === abbr)
+      .map((p) => ({
+        name: p.playerName,
+        jersey: p.jersey ?? "",
+        position: p.position ?? "",
+        starter: p.starter,
+        didNotPlay: p.didNotPlay,
+        dnpReason: p.dnpReason,
+        min: p.minutes ?? "—",
+        pts: fmtNum(p.pts),
+        reb: fmtNum(p.reb),
+        ast: fmtNum(p.ast),
+        stl: fmtNum(p.stl),
+        blk: fmtNum(p.blk),
+        to: fmtNum(p.tov),
+        pf: fmtNum(p.pf),
+        fg: fmtPair(p.fgm, p.fga),
+        threePt: fmtPair(p.threePm, p.threePa),
+        ft: fmtPair(p.ftm, p.fta),
+        plusMinus: fmtSigned(p.plusMinus),
+      }));
+    return { abbr, players: teamPlayers, teamStats: buildTeamStats(side) };
+  }
+
+  // Linescores depuis le JSON Prisma
+  const awayLines = Array.isArray(gbs.awayLinescores)
+    ? (gbs.awayLinescores as number[])
+    : null;
+  const homeLines = Array.isArray(gbs.homeLinescores)
+    ? (gbs.homeLinescores as number[])
+    : null;
+
+  return {
+    away: buildTeam("away", awayAbbr),
+    home: buildTeam("home", homeAbbr),
+    linescores:
+      awayLines && homeLines ? { away: awayLines, home: homeLines } : null,
+  };
+}
+
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
@@ -751,23 +848,36 @@ export default async function MatchPage({
   const isLive = game.status === "in_progress";
   const isScheduled = game.status === "scheduled";
 
-  // Fetch ESPN box score for finished or live games
-  const espnData = !isScheduled ? await fetchEspnBoxScore(game.espnId) : null;
+  // Try DB first (cron-synced), fallback ESPN API for fresh/live games
+  const dbBoxScore = !isScheduled
+    ? await loadBoxScoreFromDb(game.id, game.awayTeam.abbr, game.homeTeam.abbr)
+    : null;
 
-  const boxScore =
-    espnData && isFinal
+  const espnData =
+    !isScheduled && !dbBoxScore ? await fetchEspnBoxScore(game.espnId) : null;
+
+  const boxScore = dbBoxScore
+    ? { away: dbBoxScore.away, home: dbBoxScore.home }
+    : espnData && isFinal
       ? parsePlayerStats(espnData, game.awayTeam.abbr, game.homeTeam.abbr)
       : null;
 
-  // Quarter scores from ESPN header
+  // Quarter scores : DB en priorité, sinon ESPN header
   const competition = espnData?.header?.competitions?.[0];
   const awayComp = competition?.competitors?.find((c) => c.homeAway === "away");
   const homeComp = competition?.competitors?.find((c) => c.homeAway === "home");
-  const quarters = awayComp?.linescores?.map((ls, i) => ({
-    q: i + 1,
-    away: ls.displayValue ?? "—",
-    home: homeComp?.linescores?.[i]?.displayValue ?? "—",
-  }));
+
+  const quarters = dbBoxScore?.linescores
+    ? dbBoxScore.linescores.away.map((awayQ, i) => ({
+        q: i + 1,
+        away: String(awayQ),
+        home: String(dbBoxScore.linescores!.home[i] ?? "—"),
+      }))
+    : awayComp?.linescores?.map((ls, i) => ({
+        q: i + 1,
+        away: ls.displayValue ?? "—",
+        home: homeComp?.linescores?.[i]?.displayValue ?? "—",
+      }));
 
   const homeWon = isFinal && (game.homeScore ?? 0) > (game.awayScore ?? 0);
   const awayWon = isFinal && (game.awayScore ?? 0) > (game.homeScore ?? 0);

@@ -134,9 +134,98 @@ model Game {
   homeTeam Team @relation("HomeGames", fields: [homeTeamId], references: [id])
   awayTeam Team @relation("AwayGames", fields: [awayTeamId], references: [id])
 
+  boxScore        GameBoxScore?
+  playerBoxScores PlayerBoxScore[]
+
   @@index([season, status])
   @@index([homeTeamId, season])
   @@index([awayTeamId, season])
+}
+
+model GameBoxScore {
+  id     String @id @default(cuid())
+  gameId String @unique
+
+  // Linescores (par quart-temps, OT inclus) en JSON: [22, 28, 24, 33, ...]
+  awayLinescores Json?
+  homeLinescores Json?
+
+  // Totaux équipe — visiteurs
+  awayReb     Int?
+  awayOreb    Int?
+  awayDreb    Int?
+  awayAst     Int?
+  awayStl     Int?
+  awayBlk     Int?
+  awayTov     Int?
+  awayPf      Int?
+  awayFgm     Int?
+  awayFga     Int?
+  awayThreePm Int?
+  awayThreePa Int?
+  awayFtm     Int?
+  awayFta     Int?
+
+  // Totaux équipe — domicile
+  homeReb     Int?
+  homeOreb    Int?
+  homeDreb    Int?
+  homeAst     Int?
+  homeStl     Int?
+  homeBlk     Int?
+  homeTov     Int?
+  homePf      Int?
+  homeFgm     Int?
+  homeFga     Int?
+  homeThreePm Int?
+  homeThreePa Int?
+  homeFtm     Int?
+  homeFta     Int?
+
+  syncedAt DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}
+
+model PlayerBoxScore {
+  id     String @id @default(cuid())
+  gameId String
+
+  // Identité joueur (ESPN — pas toujours dans notre table Player)
+  playerName String
+  teamAbbr   String
+  jersey     String?
+  position   String?
+
+  // Statut dans le match
+  starter    Boolean @default(false)
+  didNotPlay Boolean @default(false)
+  dnpReason  String?
+
+  // Stats (null si DNP)
+  minutes   String? // "34" ou "34:00" — ESPN format
+  pts       Int?
+  reb       Int?
+  oreb      Int?
+  dreb      Int?
+  ast       Int?
+  stl       Int?
+  blk       Int?
+  tov       Int?
+  pf        Int?
+  fgm       Int?
+  fga       Int?
+  threePm   Int?
+  threePa   Int?
+  ftm       Int?
+  fta       Int?
+  plusMinus Int?
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
+  @@index([playerName])
+  @@index([teamAbbr])
 }
 
 model PlayoffSeries {

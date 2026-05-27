@@ -16,6 +16,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import { CURRENT_SEASON } from "../lib/nba";
+import { syncBoxScores } from "./sync-box-scores";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -591,6 +592,11 @@ async function main() {
     const gamesResult = await syncRecentGames();
     const playoffsResult = await syncCurrentPlayoffs();
     await regenerateSummaries();
+
+    // Box scores ESPN pour les matchs terminés des 7 derniers jours
+    console.log("\n📊 Sync box scores ESPN…");
+    const boxScoreResult = await syncBoxScores({ recent: true });
+
     await revalidateVercel();
 
     await prisma.syncLog.create({
@@ -600,11 +606,13 @@ async function main() {
         itemsProcessed:
           standingsResult.upserted +
           gamesResult.upserted +
-          playoffsResult.upserted,
+          playoffsResult.upserted +
+          boxScoreResult.synced,
         errors: {
           standingsSkipped: standingsResult.skipped,
           gamesSkipped: gamesResult.skipped,
           playoffsSkipped: playoffsResult.skipped,
+          boxScoresErrors: boxScoreResult.errors,
           messages: errors,
         },
         startedAt,
