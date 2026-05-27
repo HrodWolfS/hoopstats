@@ -168,28 +168,57 @@ function parsePlayerStats(
       };
     });
 
-    // Team totals — label-based lookup (ESPN label field is stable)
+    // Team totals — ESPN uses long-form labels ("Rebounds", "Assists", etc.)
+    // and short-form for shooting ("FG", "3PT", "FT"). We match either.
     const tStats = teamStatsRaw?.statistics;
-    const tGet = (label: string) =>
-      tStats?.find((s) => s.label === label)?.displayValue ?? "—";
+    const tGet = (patterns: string[]): string => {
+      const found = tStats?.find((s) => {
+        const label = (s.label ?? "").toLowerCase();
+        const name = (s.name ?? "").toLowerCase();
+        return patterns.some((p) => {
+          const lp = p.toLowerCase();
+          return label === lp || name === lp;
+        });
+      });
+      return found?.displayValue ?? "—";
+    };
 
     const teamStats: TeamStats | null = tStats
       ? {
-          pts: tGet("PTS"),
-          reb: tGet("REB"),
-          oreb: tGet("OREB"),
-          dreb: tGet("DREB"),
-          ast: tGet("AST"),
-          stl: tGet("STL"),
-          blk: tGet("BLK"),
-          to: tGet("TO"),
-          pf: tGet("PF"),
-          fg: tGet("FG"),
-          fgPct: tGet("FG%"),
-          threePt: tGet("3PT"),
-          threePtPct: tGet("3P%"),
-          ft: tGet("FT"),
-          ftPct: tGet("FT%"),
+          // Points are not in the team stats array — populated by caller from header score
+          pts: "—",
+          reb: tGet(["Rebounds", "totalRebounds", "REB"]),
+          oreb: tGet(["Offensive Rebounds", "offensiveRebounds", "OREB"]),
+          dreb: tGet(["Defensive Rebounds", "defensiveRebounds", "DREB"]),
+          ast: tGet(["Assists", "assists", "AST"]),
+          stl: tGet(["Steals", "steals", "STL"]),
+          blk: tGet(["Blocks", "blocks", "BLK"]),
+          to: tGet(["Turnovers", "turnovers", "TO"]),
+          pf: tGet(["Fouls", "fouls", "PF", "teamFouls"]),
+          fg: tGet(["FG", "fieldGoalsMade-fieldGoalsAttempted"]),
+          fgPct: tGet([
+            "Field Goal %",
+            "fieldGoalPct",
+            "FG%",
+            "fieldGoalsPercentage",
+          ]),
+          threePt: tGet([
+            "3PT",
+            "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+          ]),
+          threePtPct: tGet([
+            "Three Point %",
+            "threePointFieldGoalPct",
+            "3P%",
+            "threePointPercentage",
+          ]),
+          ft: tGet(["FT", "freeThrowsMade-freeThrowsAttempted"]),
+          ftPct: tGet([
+            "Free Throw %",
+            "freeThrowPct",
+            "FT%",
+            "freeThrowsPercentage",
+          ]),
         }
       : null;
 
@@ -442,15 +471,25 @@ function TeamStatsComparison({
   home,
   awayColor,
   homeColor,
+  awayScore,
+  homeScore,
 }: {
   away: TeamBoxScore;
   home: TeamBoxScore;
   awayColor: string;
   homeColor: string;
+  awayScore: number | null;
+  homeScore: number | null;
 }) {
   if (!away.teamStats || !home.teamStats) return null;
-  const a = away.teamStats;
-  const h = home.teamStats;
+  const a = {
+    ...away.teamStats,
+    pts: awayScore != null ? String(awayScore) : "—",
+  };
+  const h = {
+    ...home.teamStats,
+    pts: homeScore != null ? String(homeScore) : "—",
+  };
 
   const num = (v: string) => {
     const n = parseFloat(v);
@@ -937,6 +976,8 @@ export default async function MatchPage({
           home={boxScore.home}
           awayColor={game.awayTeam.primaryColor}
           homeColor={game.homeTeam.primaryColor}
+          awayScore={game.awayScore}
+          homeScore={game.homeScore}
         />
       )}
 
