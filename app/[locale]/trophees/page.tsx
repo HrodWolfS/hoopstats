@@ -20,6 +20,7 @@ type AwardRow = {
   type: string;
   season: string;
   notes: string | null;
+  coachName: string | null;
   player: {
     slug: string;
     firstName: string;
@@ -47,6 +48,7 @@ const INDIVIDUAL_AWARDS: { type: string; label: string; sub: string }[] = [
   { type: "ROY", label: "ROY", sub: "Rookie of the Year" },
   { type: "MIP", label: "MIP", sub: "Most Improved Player" },
   { type: "SMOY", label: "6e homme", sub: "Sixth Man of the Year" },
+  { type: "CPOY", label: "Clutch", sub: "Clutch Player of the Year" },
   { type: "NBA_CUP_MVP", label: "Cup MVP", sub: "NBA Cup MVP" },
 ];
 
@@ -60,6 +62,7 @@ async function getAwards(season: string): Promise<AwardRow[]> {
       type: true,
       season: true,
       notes: true,
+      coachName: true,
       player: {
         select: {
           slug: true,
@@ -307,6 +310,68 @@ function ChampionCard({
   );
 }
 
+function CoachCard({
+  award,
+  locale,
+}: {
+  award: AwardRow | undefined;
+  locale: string;
+}) {
+  if (!award || !award.coachName) return null;
+  const t = award.team;
+
+  // Initiales du coach pour l'avatar
+  const parts = award.coachName.split(" ");
+  const initials = (parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "");
+
+  return (
+    <Link
+      href={t ? `/${locale}/equipes/${t.slug}` : "#"}
+      className="group relative block overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111114] hover:border-white/[0.12] transition"
+    >
+      {t && (
+        <div
+          aria-hidden
+          className="absolute inset-y-0 left-0 w-0.5"
+          style={{ background: t.primaryColor }}
+        />
+      )}
+
+      <div className="relative px-5 py-4 flex items-center gap-4">
+        <div
+          className="h-12 w-12 rounded-full flex items-center justify-center font-display font-bold text-base text-white shrink-0"
+          style={{
+            background: t
+              ? `linear-gradient(135deg, ${t.primaryColor}, ${t.secondaryColor})`
+              : "#333",
+          }}
+          title={award.coachName}
+        >
+          {initials.toUpperCase()}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] uppercase tracking-widest font-mono text-white/40 mb-1.5 flex items-center gap-1.5">
+            <TrophyIcon className="h-3 w-3" />
+            COY
+          </div>
+          <div className="font-display font-semibold text-base leading-tight truncate group-hover:text-orange-300 transition">
+            {award.coachName}
+          </div>
+          <div className="text-[11px] text-white/30 mt-0.5 truncate">
+            {t?.abbr} · Coach of the Year
+          </div>
+          {award.notes && (
+            <div className="text-[11px] text-white/40 italic mt-1.5 line-clamp-2">
+              {award.notes}
+            </div>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function TropheesPage({
@@ -458,15 +523,16 @@ export default async function TropheesPage({
                 />
               ),
             )}
+            <CoachCard award={byType.get("COY")} locale={locale} />
           </div>
         </section>
       </FadeIn>
 
       {/* ── Footer note ────────────────────────────────────────────────── */}
       <p className="text-[11px] text-white/25 leading-relaxed pt-2">
-        Awards depuis 2015-16. La NBA Cup a été créée en 2023-24. Le Clutch
-        Player of the Year (depuis 2022-23) et les All-NBA teams ne sont pas
-        encore intégrés.
+        Awards depuis 2015-16. La NBA Cup et le Clutch Player of the Year sont
+        décernés depuis 2023-24 et 2022-23 respectivement. Les All-NBA teams ne
+        sont pas encore intégrées.
       </p>
     </div>
   );

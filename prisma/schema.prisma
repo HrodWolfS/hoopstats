@@ -259,12 +259,13 @@ model PlayoffSeries {
 /// playerId est présent pour les awards individuels ; teamId est toujours présent
 /// (équipe du lauréat pour les awards individuels, équipe championne sinon).
 model Award {
-  id       String  @id @default(cuid())
-  type     String
-  season   String
-  playerId String?
-  teamId   String?
-  notes    String?
+  id        String  @id @default(cuid())
+  type      String
+  season    String
+  playerId  String?
+  teamId    String?
+  coachName String? // pour Coach of the Year (pas de table Coach)
+  notes     String?
 
   player Player? @relation(fields: [playerId], references: [id])
   team   Team?   @relation(fields: [teamId], references: [id])

@@ -14,10 +14,26 @@ import { playerSlug } from "../lib/slugs";
 const prisma = new PrismaClient();
 
 type IndividualAward = {
-  type: "MVP" | "DPOY" | "MIP" | "ROY" | "SMOY" | "FMVP" | "NBA_CUP_MVP";
+  type:
+    | "MVP"
+    | "DPOY"
+    | "MIP"
+    | "ROY"
+    | "SMOY"
+    | "FMVP"
+    | "NBA_CUP_MVP"
+    | "CPOY"; // Clutch Player of the Year (depuis 2022-23)
   season: string;
   player: string; // "Prénom Nom"
   teamAbbr: string; // équipe au moment de la récompense
+  notes?: string;
+};
+
+type CoachAward = {
+  type: "COY"; // Coach of the Year
+  season: string;
+  coachName: string;
+  teamAbbr: string;
   notes?: string;
 };
 
@@ -88,6 +104,13 @@ const INDIVIDUAL: IndividualAward[] = [
     player: "Shai Gilgeous-Alexander",
     teamAbbr: "OKC",
   },
+  {
+    type: "MVP",
+    season: "2025-26",
+    player: "Shai Gilgeous-Alexander",
+    teamAbbr: "OKC",
+    notes: "Back-to-back",
+  },
 
   // DPOY — Defensive Player of the Year
   { type: "DPOY", season: "2015-16", player: "Kawhi Leonard", teamAbbr: "SAS" },
@@ -127,6 +150,12 @@ const INDIVIDUAL: IndividualAward[] = [
     notes: "4e titre, record absolu",
   },
   { type: "DPOY", season: "2024-25", player: "Evan Mobley", teamAbbr: "CLE" },
+  {
+    type: "DPOY",
+    season: "2025-26",
+    player: "Victor Wembanyama",
+    teamAbbr: "SAS",
+  },
 
   // MIP — Most Improved Player
   { type: "MIP", season: "2015-16", player: "CJ McCollum", teamAbbr: "POR" },
@@ -149,6 +178,12 @@ const INDIVIDUAL: IndividualAward[] = [
   },
   { type: "MIP", season: "2023-24", player: "Tyrese Maxey", teamAbbr: "PHI" },
   { type: "MIP", season: "2024-25", player: "Dyson Daniels", teamAbbr: "ATL" },
+  {
+    type: "MIP",
+    season: "2025-26",
+    player: "Nickeil Alexander-Walker",
+    teamAbbr: "ATL",
+  },
 
   // ROY — Rookie of the Year
   {
@@ -179,6 +214,13 @@ const INDIVIDUAL: IndividualAward[] = [
     notes: "Unanime",
   },
   { type: "ROY", season: "2024-25", player: "Stephon Castle", teamAbbr: "SAS" },
+  {
+    type: "ROY",
+    season: "2025-26",
+    player: "Cooper Flagg",
+    teamAbbr: "DAL",
+    notes: "1er choix de la draft 2025",
+  },
 
   // SMOY — Sixth Man of the Year
   {
@@ -222,6 +264,12 @@ const INDIVIDUAL: IndividualAward[] = [
     season: "2024-25",
     player: "Payton Pritchard",
     teamAbbr: "BOS",
+  },
+  {
+    type: "SMOY",
+    season: "2025-26",
+    player: "Keldon Johnson",
+    teamAbbr: "SAS",
   },
 
   // FMVP — Finals MVP
@@ -284,6 +332,86 @@ const INDIVIDUAL: IndividualAward[] = [
     season: "2024-25",
     player: "Giannis Antetokounmpo",
     teamAbbr: "MIL",
+  },
+  {
+    type: "NBA_CUP_MVP",
+    season: "2025-26",
+    player: "Jalen Brunson",
+    teamAbbr: "NYK",
+  },
+
+  // Clutch Player of the Year (depuis 2022-23)
+  {
+    type: "CPOY",
+    season: "2022-23",
+    player: "De'Aaron Fox",
+    teamAbbr: "SAC",
+    notes: "1re édition du trophée",
+  },
+  { type: "CPOY", season: "2023-24", player: "Stephen Curry", teamAbbr: "GSW" },
+  { type: "CPOY", season: "2024-25", player: "Jalen Brunson", teamAbbr: "NYK" },
+  {
+    type: "CPOY",
+    season: "2025-26",
+    player: "Shai Gilgeous-Alexander",
+    teamAbbr: "OKC",
+  },
+];
+
+// ── Coach of the Year ────────────────────────────────────────────────────────
+
+const COACHES: CoachAward[] = [
+  {
+    type: "COY",
+    season: "2015-16",
+    coachName: "Steve Kerr",
+    teamAbbr: "GSW",
+    notes: "Record NBA : 73 victoires",
+  },
+  {
+    type: "COY",
+    season: "2016-17",
+    coachName: "Mike D'Antoni",
+    teamAbbr: "HOU",
+  },
+  { type: "COY", season: "2017-18", coachName: "Dwane Casey", teamAbbr: "TOR" },
+  {
+    type: "COY",
+    season: "2018-19",
+    coachName: "Mike Budenholzer",
+    teamAbbr: "MIL",
+  },
+  { type: "COY", season: "2019-20", coachName: "Nick Nurse", teamAbbr: "TOR" },
+  {
+    type: "COY",
+    season: "2020-21",
+    coachName: "Tom Thibodeau",
+    teamAbbr: "NYK",
+  },
+  {
+    type: "COY",
+    season: "2021-22",
+    coachName: "Monty Williams",
+    teamAbbr: "PHX",
+  },
+  { type: "COY", season: "2022-23", coachName: "Mike Brown", teamAbbr: "SAC" },
+  {
+    type: "COY",
+    season: "2023-24",
+    coachName: "Mark Daigneault",
+    teamAbbr: "OKC",
+  },
+  {
+    type: "COY",
+    season: "2024-25",
+    coachName: "Kenny Atkinson",
+    teamAbbr: "CLE",
+  },
+  {
+    type: "COY",
+    season: "2025-26",
+    coachName: "Joe Mazzulla",
+    teamAbbr: "BOS",
   },
 ];
 
@@ -353,6 +481,7 @@ const TEAM_TROPHIES: TeamTrophy[] = [
   { type: "EAST_CHAMPION", season: "2022-23", teamAbbr: "MIA" },
   { type: "EAST_CHAMPION", season: "2023-24", teamAbbr: "BOS" },
   { type: "EAST_CHAMPION", season: "2024-25", teamAbbr: "IND" },
+  { type: "EAST_CHAMPION", season: "2025-26", teamAbbr: "NYK" },
 
   // Champions Conférence Ouest
   { type: "WEST_CHAMPION", season: "2015-16", teamAbbr: "GSW" },
@@ -369,6 +498,7 @@ const TEAM_TROPHIES: TeamTrophy[] = [
   // NBA Cup Champions (depuis 2023-24)
   { type: "NBA_CUP_CHAMPION", season: "2023-24", teamAbbr: "LAL" },
   { type: "NBA_CUP_CHAMPION", season: "2024-25", teamAbbr: "MIL" },
+  { type: "NBA_CUP_CHAMPION", season: "2025-26", teamAbbr: "NYK" },
 ];
 
 // ── Résolution équipes (gérer les déménagements) ─────────────────────────────
@@ -423,6 +553,26 @@ async function main() {
         playerId,
         teamId,
         notes: a.notes,
+      },
+    });
+    inserted++;
+  }
+
+  // Coach of the Year
+  for (const c of COACHES) {
+    const teamId = await resolveTeamId(c.teamAbbr);
+    if (!teamId) {
+      missingTeams.push(`${c.teamAbbr} (${c.season} ${c.type})`);
+      continue;
+    }
+
+    await prisma.award.create({
+      data: {
+        type: c.type,
+        season: c.season,
+        teamId,
+        coachName: c.coachName,
+        notes: c.notes,
       },
     });
     inserted++;
