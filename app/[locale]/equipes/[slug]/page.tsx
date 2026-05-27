@@ -6,6 +6,8 @@ import { winPct } from "@/lib/format";
 import { TeamMono } from "@/components/ui/team-mono";
 import { Crumbs } from "@/components/ui/crumbs";
 import { TeamTabs } from "@/components/team/team-tabs";
+import { TeamInsights } from "@/components/team/team-insights";
+import { getTeamInsights } from "@/lib/insights";
 import type { RosterPlayer } from "@/components/team/roster-view";
 import type { SeasonStats, ConferenceRow } from "@/components/team/season-view";
 import type { HistorySeason } from "@/components/team/history-view";
@@ -324,6 +326,9 @@ export default async function TeamPage({
     ],
   };
 
+  // Insights auto-découverts (nécessite GameBoxScore peuplé)
+  const insights = await getTeamInsights(team.id, team.city, season);
+
   return (
     <div className="space-y-10">
       <Crumbs
@@ -406,6 +411,9 @@ export default async function TeamPage({
           </div>
         </div>
       </section>
+
+      {/* Insights auto-découverts */}
+      <TeamInsights insights={insights} primaryColor={team.primaryColor} />
 
       {/* Tabs + vues */}
       <TeamTabs
