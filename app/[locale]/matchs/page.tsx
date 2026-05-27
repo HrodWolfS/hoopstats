@@ -39,31 +39,50 @@ type Tab = "hier" | "aujourd-hui" | "demain";
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
 /**
- * Returns UTC bounds for a given NBA "game date", treating midnight as 04:00 UTC
- * (midnight EDT = UTC−4, which covers most of the NBA season).
+ * Returns UTC bounds for a given day expressed in Europe/Paris time.
+ * DST-aware via Intl: detects whether Paris is UTC+1 (CET) or UTC+2 (CEST)
+ * for the target date.
  */
 function getNbaDateRange(offset: number): {
   gte: Date;
   lt: Date;
   label: string;
 } {
-  const EDT_MS = 4 * 60 * 60 * 1000;
-  const now = new Date();
-  // Current time in EDT
-  const nowEdt = new Date(now.getTime() - EDT_MS);
-  // Start of targeted day in EDT (midnight)
-  const midnightEdt = new Date(nowEdt);
-  midnightEdt.setUTCHours(0, 0, 0, 0);
-  midnightEdt.setUTCDate(midnightEdt.getUTCDate() + offset);
-  // Convert back to UTC
-  const gte = new Date(midnightEdt.getTime() + EDT_MS);
+  // Today's date in Paris as YYYY-MM-DD
+  const todayParis = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Paris",
+  }).format(new Date());
+
+  // Apply calendar-day offset
+  const [y, m, d] = todayParis.split("-").map(Number);
+  const tgt = new Date(Date.UTC(y, m - 1, d));
+  tgt.setUTCDate(tgt.getUTCDate() + offset);
+  const yt = tgt.getUTCFullYear();
+  const mt = String(tgt.getUTCMonth() + 1).padStart(2, "0");
+  const dt = String(tgt.getUTCDate()).padStart(2, "0");
+  const targetDate = `${yt}-${mt}-${dt}`;
+
+  // Paris UTC offset for that date (1 in winter, 2 in summer)
+  const noonUtc = new Date(`${targetDate}T12:00:00Z`);
+  const parisHour = parseInt(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Europe/Paris",
+      hour: "numeric",
+      hour12: false,
+    }).format(noonUtc),
+    10,
+  );
+  const offsetH = parisHour - 12; // 1 or 2
+  const tz = `+${String(offsetH).padStart(2, "0")}:00`;
+
+  const gte = new Date(`${targetDate}T00:00:00${tz}`);
   const lt = new Date(gte.getTime() + 24 * 60 * 60 * 1000);
 
-  const label = midnightEdt.toLocaleDateString("fr-FR", {
+  const label = gte.toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
     month: "long",
-    timeZone: "UTC",
+    timeZone: "Europe/Paris",
   });
 
   return { gte, lt, label };
