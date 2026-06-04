@@ -494,6 +494,7 @@ const TEAM_TROPHIES: TeamTrophy[] = [
   { type: "WEST_CHAMPION", season: "2022-23", teamAbbr: "DEN" },
   { type: "WEST_CHAMPION", season: "2023-24", teamAbbr: "DAL" },
   { type: "WEST_CHAMPION", season: "2024-25", teamAbbr: "OKC" },
+  { type: "WEST_CHAMPION", season: "2025-26", teamAbbr: "SAS" },
 
   // NBA Cup Champions (depuis 2023-24)
   { type: "NBA_CUP_CHAMPION", season: "2023-24", teamAbbr: "LAL" },
