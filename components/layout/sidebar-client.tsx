@@ -227,6 +227,18 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     href: "/fr/joueurs",
   },
   {
+    id: "leaderboards",
+    label: "Classements",
+    icon: <IconTrophy />,
+    href: "/fr/classements",
+  },
+  {
+    id: "guides",
+    label: "Guides stats",
+    icon: <IconBestFive />,
+    href: "/fr/guides",
+  },
+  {
     id: "playoffs",
     label: "Playoffs",
     icon: <IconPlayoffs />,

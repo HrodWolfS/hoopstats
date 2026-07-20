@@ -67,6 +67,7 @@ type EspnSummary = {
 
 type PlayerRow = {
   name: string;
+  slug: string | null;
   jersey: string;
   position: string;
   starter: boolean;
@@ -147,7 +148,8 @@ function parsePlayerStats(
       const s = a.stats ?? [];
       const get = (col: string) => s[idx(col)] ?? "—";
       return {
-        name: a.athlete?.displayName ?? "—",
+      name: a.athlete?.displayName ?? "—",
+      slug: null,
         jersey: a.athlete?.jersey ?? "",
         position: a.athlete?.position?.abbreviation ?? "",
         starter: a.starter ?? false,
@@ -250,6 +252,7 @@ async function loadBoxScoreFromDb(
     prisma.gameBoxScore.findUnique({ where: { gameId } }),
     prisma.playerBoxScore.findMany({
       where: { gameId },
+      include: { player: { select: { slug: true } } },
       orderBy: [{ starter: "desc" }, { pts: "desc" }],
     }),
   ]);
@@ -291,6 +294,7 @@ async function loadBoxScoreFromDb(
       .filter((p) => p.teamAbbr === abbr)
       .map((p) => ({
         name: p.playerName,
+        slug: p.player?.slug ?? null,
         jersey: p.jersey ?? "",
         position: p.position ?? "",
         starter: p.starter,
@@ -333,9 +337,9 @@ async function loadBoxScoreFromDb(
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
+  const { locale, id } = await params;
   const game = await prisma.game.findUnique({
     where: { id },
     select: {
@@ -348,6 +352,7 @@ export async function generateMetadata({
   return {
     title: `${game.awayTeam.abbr} @ ${game.homeTeam.abbr} | hoopstats`,
     description: `Box score et statistiques du match ${game.awayTeam.abbr} @ ${game.homeTeam.abbr}`,
+    alternates: { canonical: `/${locale}/matchs/${id}` },
   };
 }
 
@@ -387,10 +392,12 @@ function PlayerTable({
   team,
   primaryColor,
   teamName,
+  locale,
 }: {
   team: TeamBoxScore;
   primaryColor: string;
   teamName: string;
+  locale: string;
 }) {
   const starters = team.players.filter((p) => p.starter && !p.didNotPlay);
   const bench = team.players.filter((p) => !p.starter && !p.didNotPlay);
@@ -432,9 +439,13 @@ function PlayerTable({
               />
             )}
             {!player.starter && <span className="h-1.5 w-1.5 shrink-0" />}
-            <span className="text-xs text-white/80 font-medium truncate">
-              {player.name}
-            </span>
+            {player.slug ? (
+              <Link href={`/${locale}/joueurs/${player.slug}`} className="text-xs text-white/80 font-medium truncate hover:text-orange-300">
+                {player.name}
+              </Link>
+            ) : (
+              <span className="text-xs text-white/80 font-medium truncate">{player.name}</span>
+            )}
             <span className="text-[10px] text-white/25 font-mono shrink-0">
               {player.position}
             </span>
@@ -862,6 +873,18 @@ export default async function MatchPage({
       ? parsePlayerStats(espnData, game.awayTeam.abbr, game.homeTeam.abbr)
       : null;
 
+  const playerPointsTotal = (team: TeamBoxScore): number =>
+    team.players.reduce((total, player) => {
+      const points = Number.parseInt(player.pts, 10);
+      return total + (Number.isFinite(points) ? points : 0);
+    }, 0);
+
+  const hasIncompletePlayerTotals =
+    isFinal &&
+    boxScore != null &&
+    (playerPointsTotal(boxScore.away) !== game.awayScore ||
+      playerPointsTotal(boxScore.home) !== game.homeScore);
+
   // Quarter scores : DB en priorité, sinon ESPN header
   const competition = espnData?.header?.competitions?.[0];
   const awayComp = competition?.competitors?.find((c) => c.homeAway === "away");
@@ -890,6 +913,29 @@ export default async function MatchPage({
     year: "numeric",
     timeZone: "Europe/Paris",
   });
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
+  const jsonLdGame = {
+    "@context": "https://schema.org",
+    "@type": "SportsEvent",
+    name: `${game.awayTeam.city} ${game.awayTeam.name} @ ${game.homeTeam.city} ${game.homeTeam.name}`,
+    startDate: game.gameDate.toISOString(),
+    url: `${BASE_URL}/${locale}/matchs/${id}`,
+    eventStatus: isFinal
+      ? "https://schema.org/EventCompleted"
+      : isLive
+        ? "https://schema.org/EventInProgress"
+        : "https://schema.org/EventScheduled",
+    awayTeam: {
+      "@type": "SportsTeam",
+      name: `${game.awayTeam.city} ${game.awayTeam.name}`,
+      url: `${BASE_URL}/${locale}/equipes/${game.awayTeam.slug}`,
+    },
+    homeTeam: {
+      "@type": "SportsTeam",
+      name: `${game.homeTeam.city} ${game.homeTeam.name}`,
+      url: `${BASE_URL}/${locale}/equipes/${game.homeTeam.slug}`,
+    },
+  };
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -1079,6 +1125,21 @@ export default async function MatchPage({
         </div>
       )}
 
+      {hasIncompletePlayerTotals && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] px-5 py-4 flex items-start gap-3">
+          <span className="text-amber-400/70 shrink-0">⚠</span>
+          <div className="space-y-1">
+            <p className="text-sm text-amber-200/80">
+              Box score joueurs partiellement incomplet
+            </p>
+            <p className="text-xs text-white/40 leading-relaxed">
+              Certaines lignes individuelles sont absentes de la source ESPN.
+              Le score final et les statistiques collectives restent valides.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Team stats comparison */}
       {boxScore && (
         <TeamStatsComparison
@@ -1100,11 +1161,13 @@ export default async function MatchPage({
             team={boxScore.away}
             primaryColor={game.awayTeam.primaryColor}
             teamName={`${game.awayTeam.city} ${game.awayTeam.name}`}
+            locale={locale}
           />
           <PlayerTable
             team={boxScore.home}
             primaryColor={game.homeTeam.primaryColor}
             teamName={`${game.homeTeam.city} ${game.homeTeam.name}`}
+            locale={locale}
           />
         </div>
       )}
@@ -1119,6 +1182,12 @@ export default async function MatchPage({
           Sources & Méthodologie
         </Link>
       </p>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLdGame).replace(/</g, "\\u003c"),
+        }}
+      />
     </div>
   );
 }

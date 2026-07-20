@@ -11,11 +11,11 @@ datasource db {
 }
 
 model Team {
-  id             String @id @default(cuid())
-  abbr           String @unique
+  id             String  @id @default(cuid())
+  abbr           String  @unique
   city           String
   name           String
-  slug           String @unique
+  slug           String  @unique
   conference     String
   division       String
   primaryColor   String
@@ -58,8 +58,11 @@ model Player {
   summaryEn          String?   @db.Text
   summaryGeneratedAt DateTime?
 
-  seasons PlayerSeason[]
-  awards  Award[]
+  seasons   PlayerSeason[]
+  awards    Award[]
+  boxScores PlayerBoxScore[]
+
+  espnId String? @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -110,11 +113,11 @@ model TeamSeason {
   conferenceRank         Int?
   previousConferenceRank Int?
   offRating              Float?
-  defRating      Float?
-  netRating      Float?
-  pace           Float?
-  playoffResult  String?
-  summaryFr      String? @db.Text
+  defRating              Float?
+  netRating              Float?
+  pace                   Float?
+  playoffResult          String?
+  summaryFr              String? @db.Text
 
   team Team @relation(fields: [teamId], references: [id])
 
@@ -131,7 +134,7 @@ model Game {
   season     String
   homeScore  Int?
   awayScore  Int?
-  status     String   // "scheduled" | "final"
+  status     String // "scheduled" | "final"
 
   homeTeam Team @relation("HomeGames", fields: [homeTeamId], references: [id])
   awayTeam Team @relation("AwayGames", fields: [awayTeamId], references: [id])
@@ -190,8 +193,10 @@ model GameBoxScore {
 }
 
 model PlayerBoxScore {
-  id     String @id @default(cuid())
-  gameId String
+  id            String  @id @default(cuid())
+  gameId        String
+  playerId      String?
+  espnAthleteId String?
 
   // Identité joueur (ESPN — pas toujours dans notre table Player)
   playerName String
@@ -223,26 +228,29 @@ model PlayerBoxScore {
   fta       Int?
   plusMinus Int?
 
-  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  game   Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
 
   @@index([gameId])
+  @@index([playerId, gameId])
+  @@index([espnAthleteId])
   @@index([playerName])
   @@index([teamAbbr])
 }
 
 model PlayoffSeries {
   id              String    @id @default(cuid())
-  season          String    // "2025-26"
-  conference      String    // "WEST" | "EAST" | "FINALS"
-  round           Int       // 1=First Round 2=Conf Semis 3=Conf Finals 4=NBA Finals
-  team1Id         String    // top seed (ou west pour la finale)
-  team2Id         String    // bottom seed (ou east pour la finale)
+  season          String // "2025-26"
+  conference      String // "WEST" | "EAST" | "FINALS"
+  round           Int // 1=First Round 2=Conf Semis 3=Conf Finals 4=NBA Finals
+  team1Id         String // top seed (ou west pour la finale)
+  team2Id         String // bottom seed (ou east pour la finale)
   team1Seed       Int?
   team2Seed       Int?
   team1Wins       Int       @default(0)
   team2Wins       Int       @default(0)
   completed       Boolean   @default(false)
-  summary         String?   // "OKC wins series 4-3"
+  summary         String? // "OKC wins series 4-3"
   gameNumber      Int       @default(1)
   nextGameDate    DateTime?
   nextGameNetwork String?
@@ -284,4 +292,16 @@ model SyncLog {
   errors         Json?
   startedAt      DateTime
   completedAt    DateTime
+}
+
+model AnalyticsDaily {
+  id        String   @id @default(cuid())
+  day       DateTime @db.Date
+  event     String
+  dimension String
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([day, event, dimension])
+  @@index([day, event])
 }

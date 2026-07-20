@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 export const metadata: Metadata = {
   title: "Matchs NBA | hoopstats",
   description: "Résultats et programmes NBA — hier, aujourd'hui et demain.",
+  alternates: { canonical: "/fr/matchs" },
 };
 
 export const revalidate = 300;

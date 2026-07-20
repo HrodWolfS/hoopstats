@@ -7,8 +7,8 @@ import { FadeIn, StaggerList, StaggerItem } from "@/components/ui/fade-in";
 
 export const metadata: Metadata = {
   title: "Les 30 équipes NBA — hoopstats",
-  description:
-    "Stats, roster et historique des 30 franchises NBA. Données saison 2024-25.",
+  description: `Stats, roster et historique des 30 franchises NBA. Données saison ${CURRENT_SEASON}.`,
+  alternates: { canonical: "/fr/equipes" },
 };
 
 export const revalidate = 21600;

@@ -1,4 +1,5 @@
 import { stat, pct } from "@/lib/format";
+import { getPlayerMetric } from "@/lib/stats/metrics";
 
 export type AdvancedSeason = {
   season: string;
@@ -24,35 +25,34 @@ export function AdvancedView({ seasons, primaryColor }: AdvancedViewProps) {
     <div className="space-y-6">
       {/* Légende */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[
-          { label: "TS%", desc: "True Shooting — efficacité de tir globale" },
-          { label: "USG%", desc: "Usage Rate — % de possessions utilisées" },
-          {
-            label: "PIE",
-            desc: "Player Impact Estimate — métrique propriétaire NBA.com (≠ PER)",
-          },
-          { label: "ORtg", desc: "Off. Rating — pts marqués pour 100 poss." },
-          { label: "DRtg", desc: "Def. Rating — pts encaissés pour 100 poss." },
-          {
-            label: "NRtg",
-            desc: "Net Rating — différentiel offensif/défensif",
-          },
-        ].map((item) => (
+        {(
+          [
+            "trueShooting",
+            "usageRate",
+            "per",
+            "offRating",
+            "defRating",
+            "netRating",
+          ] as const
+        ).map((key) => {
+          const metric = getPlayerMetric(key);
+          return (
           <div
-            key={item.label}
+            key={metric.key}
             className="rounded-xl border border-white/[0.06] bg-[#111114] p-3"
           >
             <div
               className="text-base font-display font-semibold mb-1"
               style={{ color: primaryColor }}
             >
-              {item.label}
+              {metric.shortLabel}
             </div>
             <div className="text-[10px] text-white/40 leading-snug">
-              {item.desc}
+              {metric.description}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Table */}

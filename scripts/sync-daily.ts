@@ -584,9 +584,6 @@ async function main() {
   console.log(`🏀 Sync quotidien NBA — ${CURRENT_SEASON}`);
   console.log(`   Démarré à : ${startedAt.toISOString()}\n`);
 
-  let status = "success";
-  const errors: string[] = [];
-
   try {
     const standingsResult = await syncStandings();
     const gamesResult = await syncRecentGames();
@@ -598,6 +595,13 @@ async function main() {
     const boxScoreResult = await syncBoxScores({ recent: true });
 
     await revalidateVercel();
+
+    const issueCount =
+      standingsResult.skipped +
+      gamesResult.skipped +
+      playoffsResult.skipped +
+      boxScoreResult.errors;
+    const status = issueCount === 0 ? "success" : "partial";
 
     await prisma.syncLog.create({
       data: {
@@ -613,20 +617,19 @@ async function main() {
           gamesSkipped: gamesResult.skipped,
           playoffsSkipped: playoffsResult.skipped,
           boxScoresErrors: boxScoreResult.errors,
-          messages: errors,
+          issueCount,
         },
         startedAt,
         completedAt: new Date(),
       },
     });
   } catch (e) {
-    status = "error";
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`\n❌ Sync échouée : ${msg}`);
     await prisma.syncLog.create({
       data: {
         source: "sync-daily",
-        status,
+        status: "error",
         itemsProcessed: 0,
         errors: { fatal: msg },
         startedAt,

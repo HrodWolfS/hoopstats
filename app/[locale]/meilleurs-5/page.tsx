@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   title: "Équipes légendaires par génération — hoopstats",
   description:
     "Les franchises NBA qui ont défini leur époque : Celtics dynasty, Showtime Lakers, Bulls de Jordan, Spurs de Duncan, Warriors de Curry.",
+  alternates: { canonical: "/fr/meilleurs-5" },
 };
 
 const POSITION_SHORT: Record<string, string> = {

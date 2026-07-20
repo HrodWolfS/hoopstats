@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "Trophées NBA — MVP, DPOY, Champions | hoopstats",
   description:
     "Tous les trophées NBA depuis 2015-16 : MVP, DPOY, MIP, ROY, Sixième homme, Finals MVP, NBA Cup et champions NBA / Est / Ouest.",
+  alternates: { canonical: "/fr/trophees" },
 };
 
 export const revalidate = 21600;

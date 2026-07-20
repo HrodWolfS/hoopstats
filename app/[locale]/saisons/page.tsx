@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "Saisons NBA — hoopstats",
   description:
     "Classements NBA par saison : conférences Est et Ouest, stats avancées et leaders statistiques.",
+  alternates: { canonical: "/fr/saisons" },
 };
 
 // ─── Badge depuis les séries playoff réelles ─────────────────────────────────

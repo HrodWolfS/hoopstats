@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "Playoffs NBA — hoopstats",
   description:
     "Bracket des playoffs NBA : résultats des séries, scores et avancement du tableau.",
+  alternates: { canonical: "/fr/playoffs" },
 };
 
 // Revalidate every 5 min during playoffs season, 6h otherwise

@@ -670,3 +670,75 @@ Page éditoriale `/meilleurs-5` avec les 25 joueurs sélectionnés (5 générati
 - [ ] Free tier ou compte payant balldontlie ? (free suffit pour V1)
 - [ ] pnpm vs npm (pnpm recommandé pour vitesse)
 - [ ] Claude Code activé sur le repo dès J1 ? (oui, avec CONTEXT.md)
+
+---
+
+## Roadmap de référence — devenir la référence statistique NBA francophone
+
+> Ajoutée le 18 juillet 2026. Cette roadmap prend le relais des sprints de
+> construction initiaux. Ordre directeur : fiabiliser, rendre explorable,
+> contextualiser, approfondir, puis accélérer l'acquisition.
+
+### Phase 0 — Fiabilité et fraîcheur des données
+
+- [ ] Journaliser fidèlement les succès, résultats partiels et erreurs
+- [ ] Contrôler automatiquement couverture, valeurs impossibles et données manquantes
+- [ ] Exécuter les contrôles après chaque synchronisation quotidienne
+- [ ] Afficher source, couverture et dernière mise à jour réelles
+- [ ] Mettre en place des alertes avant de rendre les contrôles bloquants
+
+### Phase 1 — Registre statistique central
+
+- [x] Centraliser libellés, formules, unités, sources et limites historiques
+- [x] Définir les règles de qualification aux classements
+- [x] Définir l'agrégation des saisons avec transfert (`TOT`)
+
+### Phase 2 — Explorateur statistique
+
+- [ ] Filtres saison, équipe, position, âge, métrique et seuil d'échantillon
+- [x] Tri et pagination serveur
+- [ ] Totaux, par match, par 36 minutes et par 100 possessions
+- [x] URLs partageables et états vides pédagogiques
+
+### Phase 3 — Contexte statistique
+
+- [x] Rang, percentile, moyenne et médiane de la ligue
+- [x] Comparaison au poste et à la saison précédente
+- [x] Taille d'échantillon et statut de qualification visibles
+
+### Phase 4 — Matchs et box scores
+
+- [x] Calendrier complet de la saison courante
+- [x] Au moins 98 % de box scores complets
+- [x] Résolution fiable des identités joueurs ESPN
+- [x] Game logs et splits domicile/extérieur, victoire/défaite et adversaire
+
+### Phase 5 — SEO et maillage
+
+- [x] Sitemap complet et dates `lastModified` crédibles
+- [x] Canonicals, données structurées et gestion `noindex` des filtres libres
+- [x] Maillage joueur ↔ équipe ↔ saison ↔ match
+- [x] Pages de leaders pérennes et utiles
+
+### Phase 6 — Mesure produit
+
+- [x] Analytics respectueux de la vie privée
+- [x] Mesurer recherches sans résultat, filtres, comparaisons et partages
+- [x] Tableau de bord mensuel produit, données, SEO, coûts et maintenance
+
+### Phase 7 — Différenciation pédagogique
+
+- [x] Insights déterministes à partir de faits validés
+- [x] Glossaire avancé et guides statistiques en français
+- [x] Joueurs similaires et visualisations partageables
+
+### Règles de pilotage
+
+1. Une évolution doit améliorer au moins deux axes parmi utilité, confiance,
+   acquisition durable, réutilisation des données et automatisation.
+2. Aucune fonctionnalité majeure suivante avant quatre semaines d'observation
+   de la précédente.
+3. Budget de maintenance cible : moins de quatre heures par semaine.
+4. Ne pas indexer les combinaisons de filtres libres ni créer de pages minces.
+5. Les faits sont calculés par du code testé ; un LLM peut reformuler mais ne
+   doit jamais inventer ou recalculer une statistique.

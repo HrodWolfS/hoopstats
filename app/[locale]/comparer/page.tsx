@@ -8,6 +8,9 @@ import { FadeIn } from "@/components/ui/fade-in";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { PlayerPicker } from "@/components/compare/player-picker";
 import { stat, pct } from "@/lib/format";
+import { getPlayerMetric } from "@/lib/stats/metrics";
+import { AnalyticsEvent } from "@/components/analytics/analytics-event";
+import { ShareButton } from "@/components/analytics/share-button";
 
 export const revalidate = 300;
 
@@ -15,6 +18,8 @@ export const metadata: Metadata = {
   title: "Comparer des joueurs NBA | hoopstats",
   description:
     "Compare les statistiques de deux joueurs NBA côte à côte : points, rebonds, passes, stats avancées et historique carrière.",
+  alternates: { canonical: "/fr/comparer" },
+  robots: { index: false, follow: true },
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -38,7 +43,7 @@ type PlayerWithSeasons = {
     threePtPct: number | null;
     trueShooting: number | null;
     per: number | null;
-    winShares: number | null;
+    netRating: number | null;
     team: { abbr: string; primaryColor: string; secondaryColor: string };
   }[];
 };
@@ -75,53 +80,53 @@ type StatRowDef = {
 
 const STAT_ROWS: StatRowDef[] = [
   {
-    label: "Points/match",
+    label: getPlayerMetric("pointsPerGame").label,
     getValue: (s) => s.pointsPerGame,
     format: (v) => stat(v),
   },
   {
-    label: "Rebonds/match",
+    label: getPlayerMetric("reboundsPerGame").label,
     getValue: (s) => s.reboundsPerGame,
     format: (v) => stat(v),
   },
   {
-    label: "Passes/match",
+    label: getPlayerMetric("assistsPerGame").label,
     getValue: (s) => s.assistsPerGame,
     format: (v) => stat(v),
   },
   {
-    label: "Interceptions",
+    label: getPlayerMetric("stealsPerGame").label,
     getValue: (s) => s.stealsPerGame,
     format: (v) => stat(v),
   },
   {
-    label: "Contres",
+    label: getPlayerMetric("blocksPerGame").label,
     getValue: (s) => s.blocksPerGame,
     format: (v) => stat(v),
   },
   {
-    label: "FG%",
+    label: getPlayerMetric("fgPct").shortLabel,
     getValue: (s) => s.fgPct,
     format: (v) => pct(v),
   },
   {
-    label: "3P%",
+    label: getPlayerMetric("threePtPct").shortLabel,
     getValue: (s) => s.threePtPct,
     format: (v) => pct(v),
   },
   {
-    label: "TS%",
+    label: getPlayerMetric("trueShooting").shortLabel,
     getValue: (s) => s.trueShooting,
     format: (v) => pct(v),
   },
   {
-    label: "PER",
+    label: getPlayerMetric("per").shortLabel,
     getValue: (s) => s.per,
     format: (v) => stat(v),
   },
   {
-    label: "Win Shares",
-    getValue: (s) => s.winShares,
+    label: getPlayerMetric("netRating").shortLabel,
+    getValue: (s) => s.netRating,
     format: (v) => stat(v),
   },
 ];
@@ -140,22 +145,6 @@ export default async function ComparerPage({
 
   // ── Empty / partial state ──────────────────────────────────────────────────
   if (!j1 || !j2) {
-    // Try to fetch whichever slot is filled to show its name in the picker
-    const partialPlayer = j1
-      ? await fetchPlayer(j1)
-      : j2
-        ? await fetchPlayer(j2)
-        : null;
-
-    const p1Slug = j1 ?? null;
-    const p1Name =
-      j1 && partialPlayer && !j2
-        ? null
-        : j1 && partialPlayer
-          ? `${partialPlayer.firstName} ${partialPlayer.lastName}`
-          : null;
-
-    // Simpler: just resolve names for whichever slots are filled
     const [player1Data, player2Data] = await Promise.all([
       j1 ? fetchPlayer(j1) : null,
       j2 ? fetchPlayer(j2) : null,
@@ -166,6 +155,13 @@ export default async function ComparerPage({
 
     return (
       <div className="space-y-6">
+        {(j1 || j2) && (
+          <AnalyticsEvent
+            event="comparison"
+            dimension="incomplete"
+            dedupeKey={`comparison:${j1 ?? "none"}:${j2 ?? "none"}`}
+          />
+        )}
         <FadeIn>
           <Crumbs
             items={[
@@ -256,7 +252,17 @@ export default async function ComparerPage({
 
   return (
     <div className="space-y-8">
+      {(j1 || j2) && (
+        <AnalyticsEvent
+          event="comparison"
+          dimension={j1 && j2 ? "complete" : "incomplete"}
+          dedupeKey={`comparison:${j1 ?? "none"}:${j2 ?? "none"}`}
+        />
+      )}
       <FadeIn>
+        <div className="mb-3 flex justify-end">
+          <ShareButton dimension="comparison" />
+        </div>
         <Crumbs
           items={[
             { label: "Accueil", href: `/${locale}` },

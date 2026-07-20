@@ -1,6 +1,7 @@
 import { type Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_SEASON, CURRENT_DRAFT_YEAR } from "@/lib/nba";
+import { getPlayerMetric } from "@/lib/stats/metrics";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
 import {
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
   title: "Rookies NBA 2025-26 — hoopstats",
   description:
     "Découvrez les rookies de la saison NBA 2025-26 : stats, draft et premières performances en carrière.",
+  alternates: { canonical: "/fr/rookies" },
 };
 
 export const revalidate = 21600;
@@ -82,11 +84,27 @@ export default async function RookiesPage({
 
   const COLUMNS = [
     { key: "pick" as const, label: "Pick", show: "sm" as const },
-    { key: "gamesPlayed" as const, label: "MJ" },
-    { key: "pointsPerGame" as const, label: "PTS" },
-    { key: "reboundsPerGame" as const, label: "REB" },
-    { key: "assistsPerGame" as const, label: "PAS" },
-    { key: "trueShooting" as const, label: "TS%", show: "sm" as const },
+    {
+      key: "gamesPlayed" as const,
+      label: getPlayerMetric("gamesPlayed").shortLabel,
+    },
+    {
+      key: "pointsPerGame" as const,
+      label: getPlayerMetric("pointsPerGame").shortLabel,
+    },
+    {
+      key: "reboundsPerGame" as const,
+      label: getPlayerMetric("reboundsPerGame").shortLabel,
+    },
+    {
+      key: "assistsPerGame" as const,
+      label: getPlayerMetric("assistsPerGame").shortLabel,
+    },
+    {
+      key: "trueShooting" as const,
+      label: getPlayerMetric("trueShooting").shortLabel,
+      show: "sm" as const,
+    },
   ];
 
   return (

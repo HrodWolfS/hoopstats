@@ -29,7 +29,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
 
   const [team, currentSeason] = await Promise.all([
@@ -66,6 +66,7 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: { canonical: `/${locale}/equipes/${slug}` },
     openGraph: {
       title,
       description,
@@ -431,11 +432,15 @@ export default async function TeamPage({
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdTeam) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLdTeam).replace(/</g, "\\u003c"),
+        }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLdBreadcrumb).replace(/</g, "\\u003c"),
+        }}
       />
     </div>
   );

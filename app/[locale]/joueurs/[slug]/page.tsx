@@ -12,24 +12,21 @@ import {
 } from "@/components/player/player-radar";
 import type { CareerSeason } from "@/components/player/career-view";
 import type { AdvancedSeason } from "@/components/player/advanced-view";
+import type { PlayerGameLog } from "@/components/player/game-log-view";
+import { calculateMetricContext } from "@/lib/stats/context";
+import { getPlayerMetric, type PlayerMetricKey } from "@/lib/stats/metrics";
+import { findSimilarPlayers } from "@/lib/stats/player-similarity";
+import { buildPlayerInsights } from "@/lib/stats/player-insights";
+import {
+  PlayerInsights,
+  SimilarPlayers,
+  type SimilarPlayerCard,
+} from "@/components/player/player-context-sections";
+import { ShareButton } from "@/components/analytics/share-button";
 
 export const revalidate = 21600;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Calcule le rang (1 = meilleur), le total et le percentile d'une valeur. */
-function calcRank(
-  values: number[],
-  target: number,
-): { rank: number; total: number; percentile: number } {
-  const valid = values.filter((v) => v != null);
-  if (valid.length === 0) return { rank: 1, total: 1, percentile: 50 };
-  const above = valid.filter((v) => v > target).length;
-  const rank = above + 1;
-  const below = valid.filter((v) => v < target).length;
-  const percentile = Math.round((below / valid.length) * 100);
-  return { rank, total: valid.length, percentile };
-}
 
 /** Retourne la liste des positions comparables pour un groupe. */
 function positionGroup(pos: string | null): string[] | undefined {
@@ -57,6 +54,23 @@ function positionLabel(pos: string | null): string {
   return "ailiers NBA";
 }
 
+function radarContext(
+  metricKey: PlayerMetricKey,
+  values: readonly (number | null | undefined)[],
+  target: number | null | undefined,
+): Pick<RadarStat, "rank" | "total" | "percentile"> {
+  const context = calculateMetricContext(
+    values,
+    target,
+    getPlayerMetric(metricKey).higherIsBetter,
+  );
+  return {
+    rank: context.rank ?? 0,
+    total: context.total,
+    percentile: context.percentile ?? 0,
+  };
+}
+
 // ── generateMetadata ──────────────────────────────────────────────────────────
 
 export async function generateMetadata({
@@ -64,7 +78,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
 
   const player = await prisma.player.findUnique({
@@ -117,6 +131,7 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: { canonical: `/${locale}/joueurs/${slug}` },
     openGraph: {
       title,
       description,
@@ -170,6 +185,49 @@ export default async function PlayerPage({
   const primaryColor = currentTeam?.primaryColor ?? "#7C3AED";
   const secondaryColor = currentTeam?.secondaryColor ?? "#06B6D4";
 
+  const gameRows = currentSeason
+    ? await prisma.playerBoxScore.findMany({
+        where: {
+          playerId: player.id,
+          didNotPlay: false,
+          game: { season: currentSeason.season, status: "final" },
+        },
+        include: {
+          game: {
+            include: {
+              homeTeam: { select: { abbr: true, slug: true } },
+              awayTeam: { select: { abbr: true, slug: true } },
+            },
+          },
+        },
+        orderBy: { game: { gameDate: "desc" } },
+      })
+    : [];
+
+  const gameLogs: PlayerGameLog[] = gameRows.map((row) => {
+    const home = row.teamAbbr === row.game.homeTeam.abbr;
+    const teamScore = home ? row.game.homeScore : row.game.awayScore;
+    const opponentScore = home ? row.game.awayScore : row.game.homeScore;
+    const opponent = home ? row.game.awayTeam : row.game.homeTeam;
+    return {
+      id: row.gameId,
+      date: row.game.gameDate.toLocaleDateString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        timeZone: "Europe/Paris",
+      }),
+      opponent: opponent.abbr,
+      opponentSlug: opponent.slug,
+      home,
+      won: (teamScore ?? 0) > (opponentScore ?? 0),
+      minutes: row.minutes,
+      pts: row.pts,
+      reb: row.reb,
+      ast: row.ast,
+      plusMinus: row.plusMinus,
+    };
+  });
+
   // ── Radar : percentiles par position ─────────────────────────────────────
 
   const posGroup = positionGroup(player.position);
@@ -182,12 +240,29 @@ export default async function PlayerPage({
           ...(posGroup ? { player: { position: { in: posGroup } } } : {}),
         },
         select: {
+          id: true,
           pointsPerGame: true,
           reboundsPerGame: true,
           assistsPerGame: true,
           stealsPerGame: true,
           blocksPerGame: true,
           trueShooting: true,
+          player: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              slug: true,
+              photoUrl: true,
+            },
+          },
+          team: {
+            select: {
+              abbr: true,
+              primaryColor: true,
+              secondaryColor: true,
+            },
+          },
         },
       })
     : [];
@@ -198,7 +273,8 @@ export default async function PlayerPage({
           key: "PTS",
           label: "Points",
           value: stat(currentSeason.pointsPerGame),
-          ...calcRank(
+          ...radarContext(
+            "pointsPerGame",
             peers.map((p) => p.pointsPerGame),
             currentSeason.pointsPerGame,
           ),
@@ -207,7 +283,8 @@ export default async function PlayerPage({
           key: "REB",
           label: "Rebonds",
           value: stat(currentSeason.reboundsPerGame),
-          ...calcRank(
+          ...radarContext(
+            "reboundsPerGame",
             peers.map((p) => p.reboundsPerGame),
             currentSeason.reboundsPerGame,
           ),
@@ -216,7 +293,8 @@ export default async function PlayerPage({
           key: "AST",
           label: "Passes",
           value: stat(currentSeason.assistsPerGame),
-          ...calcRank(
+          ...radarContext(
+            "assistsPerGame",
             peers.map((p) => p.assistsPerGame),
             currentSeason.assistsPerGame,
           ),
@@ -228,18 +306,20 @@ export default async function PlayerPage({
             currentSeason.trueShooting != null
               ? `${pct(currentSeason.trueShooting)}%`
               : "—",
-          ...calcRank(
+          ...radarContext(
+            "trueShooting",
             peers
               .filter((p) => p.trueShooting != null)
               .map((p) => p.trueShooting!),
-            currentSeason.trueShooting ?? 0,
+            currentSeason.trueShooting,
           ),
         },
         {
           key: "STL",
           label: "Interceptions",
           value: stat(currentSeason.stealsPerGame),
-          ...calcRank(
+          ...radarContext(
+            "stealsPerGame",
             peers.map((p) => p.stealsPerGame),
             currentSeason.stealsPerGame,
           ),
@@ -248,13 +328,80 @@ export default async function PlayerPage({
           key: "BLK",
           label: "Contres",
           value: stat(currentSeason.blocksPerGame),
-          ...calcRank(
+          ...radarContext(
+            "blocksPerGame",
             peers.map((p) => p.blocksPerGame),
             currentSeason.blocksPerGame,
           ),
         },
       ]
     : [];
+
+  const similarityResults = currentSeason
+    ? findSimilarPlayers(
+        {
+          id: currentSeason.id,
+          values: [
+            currentSeason.pointsPerGame,
+            currentSeason.reboundsPerGame,
+            currentSeason.assistsPerGame,
+            currentSeason.stealsPerGame,
+            currentSeason.blocksPerGame,
+            currentSeason.trueShooting,
+          ],
+        },
+        peers
+          .filter((peer) => peer.player.id !== player.id)
+          .map((peer) => ({
+            id: peer.id,
+            values: [
+              peer.pointsPerGame,
+              peer.reboundsPerGame,
+              peer.assistsPerGame,
+              peer.stealsPerGame,
+              peer.blocksPerGame,
+              peer.trueShooting,
+            ],
+          })),
+        10,
+      )
+    : [];
+  const similarityById = new Map(
+    similarityResults.map((result) => [result.id, result.similarity]),
+  );
+  const seenSimilarPlayers = new Set<string>();
+  const similarPlayers: SimilarPlayerCard[] = peers
+    .filter((peer) => similarityById.has(peer.id))
+    .sort(
+      (left, right) =>
+        (similarityById.get(right.id) ?? 0) -
+        (similarityById.get(left.id) ?? 0),
+    )
+    .filter((peer) => {
+      if (seenSimilarPlayers.has(peer.player.id)) return false;
+      seenSimilarPlayers.add(peer.player.id);
+      return true;
+    })
+    .map((peer) => ({
+      id: peer.player.id,
+      slug: peer.player.slug,
+      firstName: peer.player.firstName,
+      lastName: peer.player.lastName,
+      photoUrl: peer.player.photoUrl,
+      teamAbbr: peer.team.abbr,
+      primaryColor: peer.team.primaryColor,
+      secondaryColor: peer.team.secondaryColor,
+      similarity: similarityById.get(peer.id)!,
+    }))
+    .slice(0, 4);
+  const playerInsights = buildPlayerInsights(
+    radarStats.map((item) => ({
+      label: item.label,
+      percentile: item.percentile,
+      value: item.value,
+    })),
+    positionLabel(player.position),
+  );
 
   // ── Adapter les types pour les composants ─────────────────────────────────
 
@@ -342,13 +489,16 @@ export default async function PlayerPage({
 
   return (
     <div className="space-y-10">
-      <Crumbs
-        items={[
-          { label: "Accueil", href: `/${locale}` },
-          { label: "Joueurs", href: `/${locale}/joueurs` },
-          { label: `${player.firstName} ${player.lastName}` },
-        ]}
-      />
+      <div className="flex items-center justify-between gap-4">
+        <Crumbs
+          items={[
+            { label: "Accueil", href: `/${locale}` },
+            { label: "Joueurs", href: `/${locale}/joueurs` },
+            { label: `${player.firstName} ${player.lastName}` },
+          ]}
+        />
+        <ShareButton dimension="player_profile" />
+      </div>
 
       <PlayerHeader
         firstName={player.firstName}
@@ -466,19 +616,28 @@ export default async function PlayerPage({
         </section>
       )}
 
+      <PlayerInsights insights={playerInsights} />
+      <SimilarPlayers players={similarPlayers} locale={locale} />
+
       <PlayerTabs
         primaryColor={primaryColor}
         career={career}
         advanced={advanced}
+        gameLogs={gameLogs}
+        locale={locale}
       />
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdPerson) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLdPerson).replace(/</g, "\\u003c"),
+        }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLdBreadcrumb).replace(/</g, "\\u003c"),
+        }}
       />
     </div>
   );

@@ -4,6 +4,7 @@ export const revalidate = false;
 
 export const metadata: Metadata = {
   title: "Politique de confidentialité | hoopstats",
+  alternates: { canonical: "/fr/politique-confidentialite" },
 };
 
 export default function PolitiqueConfidentialitePage() {
@@ -34,20 +35,19 @@ export default function PolitiqueConfidentialitePage() {
       <section className="space-y-2">
         <h2 className="text-white font-semibold">Mesure d&apos;audience</h2>
         <p className="text-white/70 text-sm leading-relaxed">
-          Ce site utilise PostHog pour mesurer l&apos;audience de manière
-          anonymisée. Les données de navigation (pages visitées, durée de
-          session) sont collectées sans identifiant personnel. Si votre
-          navigateur envoie un signal <abbr title="Do Not Track">DNT</abbr>, la
-          collecte est automatiquement désactivée.
+          hoopstats mesure uniquement des actions produit agrégées par jour :
+          recherches avec ou sans résultat, utilisation des filtres,
+          comparaisons et partages. Aucun terme recherché, identifiant
+          utilisateur, cookie, adresse IP ou empreinte du navigateur
+          n&apos;est enregistré dans la base analytics.
         </p>
       </section>
 
       <section className="space-y-2">
         <h2 className="text-white font-semibold">Hébergement des données</h2>
         <p className="text-white/70 text-sm leading-relaxed">
-          Les données anonymisées de navigation sont hébergées par PostHog
-          (infrastructure en Union européenne). Les pages du site sont servies
-          via Vercel (CDN mondial).
+          Les compteurs agrégés sont hébergés dans la même base de données que
+          les statistiques du site. Les pages sont servies via Vercel.
         </p>
       </section>
 
@@ -77,7 +77,7 @@ export default function PolitiqueConfidentialitePage() {
           Cette politique peut être mise à jour à tout moment. La date de
           dernière modification sera indiquée en bas de page.
         </p>
-        <p className="text-white/40 text-xs">Dernière mise à jour : mai 2025</p>
+        <p className="text-white/40 text-xs">Dernière mise à jour : juillet 2026</p>
       </section>
     </div>
   );

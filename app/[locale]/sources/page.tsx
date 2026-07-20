@@ -1,23 +1,15 @@
 import { type Metadata } from "next";
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { PLAYER_METRICS } from "@/lib/stats/metrics";
 
-export const revalidate = false;
+export const revalidate = 21600;
 
 export const metadata: Metadata = {
   title: "Sources & Méthodologie | hoopstats",
   description:
     "Origine des données NBA affichées sur hoopstats : sources officielles, méthodes de calcul, couverture historique et limites connues.",
-};
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type StatDef = {
-  abbr: string;
-  name: string;
-  formula?: string;
-  description: string;
-  source: string;
-  since?: string;
+  alternates: { canonical: "/fr/sources" },
 };
 
 // ─── Données ──────────────────────────────────────────────────────────────────
@@ -35,6 +27,11 @@ const SOURCES = [
     ],
     badge: "Officielle NBA",
     badgeColor: "text-orange-400 bg-orange-500/10 border-orange-500/20",
+    logSources: [
+      "import-player-stats",
+      "import-player-stats-history",
+      "import-advanced",
+    ],
   },
   {
     name: "Ball Don't Lie",
@@ -48,21 +45,32 @@ const SOURCES = [
     ],
     badge: "API tierce",
     badgeColor: "text-sky-400 bg-sky-500/10 border-sky-500/20",
+    logSources: ["import-balldontlie"],
   },
   {
     name: "ESPN API",
     domain: "site.api.espn.com",
     description:
-      "Utilisée spécifiquement pour les classements (standings) des équipes par conférence. Fournit les bilans victoires/défaites et la position au classement pour chaque saison depuis 2001-02.",
+      "Utilisée pour les classements, le calendrier, les résultats, les box scores et le suivi des séries de playoffs. Fournit notamment les bilans et positions par conférence depuis 2001-02.",
     provides: [
       "Classements par conférence",
       "Bilan victoires-défaites par équipe",
       "Seed de conférence (2001-02 à aujourd'hui)",
+      "Calendrier, résultats, box scores et séries de playoffs",
     ],
     badge: "API tierce",
     badgeColor: "text-sky-400 bg-sky-500/10 border-sky-500/20",
+    logSources: ["sync-daily", "sync-playoffs", "sync-box-scores"],
   },
 ];
+
+function formatUpdatedAt(date: Date): string {
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "Europe/Paris",
+  }).format(date);
+}
 
 const COVERAGE = [
   {
@@ -95,109 +103,21 @@ const COVERAGE = [
   },
 ];
 
-const STATS: StatDef[] = [
-  {
-    abbr: "PTS",
-    name: "Points",
-    description: "Nombre de points marqués par match en moyenne.",
-    source: "NBA Stats API",
-  },
-  {
-    abbr: "REB",
-    name: "Rebonds",
-    description: "Total des rebonds offensifs et défensifs par match.",
-    source: "NBA Stats API",
-  },
-  {
-    abbr: "AST",
-    name: "Passes décisives",
-    description: "Passes directement à l'origine d'un panier par match.",
-    source: "NBA Stats API",
-  },
-  {
-    abbr: "FG%",
-    name: "Field Goal Percentage",
-    formula: "FGM / FGA",
-    description:
-      "Pourcentage de tirs réussis (2 pts + 3 pts), hors lancers francs.",
-    source: "NBA Stats API",
-  },
-  {
-    abbr: "3P%",
-    name: "Three Point Percentage",
-    formula: "3PM / 3PA",
-    description: "Pourcentage de tirs à 3 points réussis.",
-    source: "NBA Stats API",
-  },
-  {
-    abbr: "FT%",
-    name: "Free Throw Percentage",
-    formula: "FTM / FTA",
-    description: "Pourcentage de lancers francs réussis.",
-    source: "NBA Stats API",
-  },
-  {
-    abbr: "TS%",
-    name: "True Shooting Percentage",
-    formula: "PTS / (2 × (FGA + 0,44 × FTA))",
-    description:
-      "Mesure l'efficacité de tir globale en intégrant les tirs à 2 pts, 3 pts et lancers francs dans un seul indicateur. Un TS% de 58% ou plus est considéré excellent.",
-    source: "NBA Stats API",
-    since: "2015-16",
-  },
-  {
-    abbr: "USG%",
-    name: "Usage Rate",
-    formula:
-      "(FGA + 0,44 × FTA + TOV) / (Poss. équipe quand joueur sur le terrain)",
-    description:
-      "Pourcentage des possessions de l'équipe utilisées par le joueur lorsqu'il est sur le terrain. Indique le rôle offensif dans le système.",
-    source: "NBA Stats API",
-    since: "2015-16",
-  },
-  {
-    abbr: "PIE",
-    name: "Player Impact Estimate",
-    formula: "Métrique propriétaire NBA.com",
-    description:
-      "Indicateur propriétaire de nba.com estimant la contribution globale d'un joueur. Basé sur le rapport entre ses statistiques individuelles et celles totales du match. À ne pas confondre avec le PER (Player Efficiency Rating) de John Hollinger, qui utilise une formule différente non disponible via l'API officielle NBA.",
-    source: "NBA Stats API",
-    since: "2015-16",
-  },
-  {
-    abbr: "ORtg",
-    name: "Offensive Rating",
-    formula:
-      "Points marqués par l'équipe pour 100 possessions (joueur sur le terrain)",
-    description:
-      "Nombre de points que l'équipe marque pour 100 possessions lorsque le joueur est présent. Plus la valeur est élevée, plus le joueur est efficace offensivement. La moyenne NBA tourne autour de 110-115.",
-    source: "NBA Stats API",
-    since: "2015-16",
-  },
-  {
-    abbr: "DRtg",
-    name: "Defensive Rating",
-    formula:
-      "Points encaissés par l'équipe pour 100 possessions (joueur sur le terrain)",
-    description:
-      "Nombre de points que l'équipe encaisse pour 100 possessions lorsque le joueur est présent. Contrairement à ORtg, une valeur plus basse est meilleure.",
-    source: "NBA Stats API",
-    since: "2015-16",
-  },
-  {
-    abbr: "NRtg",
-    name: "Net Rating",
-    formula: "ORtg − DRtg",
-    description:
-      "Différentiel entre le rating offensif et défensif. Résume l'impact net du joueur sur le score. Un NRtg positif indique que l'équipe performe mieux avec le joueur sur le terrain.",
-    source: "NBA Stats API",
-    since: "2015-16",
-  },
-];
+const STATS = PLAYER_METRICS.filter((metric) => metric.showInGlossary);
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function SourcesPage() {
+export default async function SourcesPage() {
+  const sourceFreshness = await Promise.all(
+    SOURCES.map((source) =>
+      prisma.syncLog.findFirst({
+        where: { source: { in: source.logSources } },
+        orderBy: { completedAt: "desc" },
+        select: { completedAt: true, status: true, source: true },
+      }),
+    ),
+  );
+
   return (
     <div className="max-w-3xl mx-auto py-10 space-y-14">
       {/* Header */}
@@ -218,7 +138,9 @@ export default function SourcesPage() {
           Sources de données
         </h2>
         <div className="space-y-3">
-          {SOURCES.map((s) => (
+          {SOURCES.map((s, sourceIndex) => {
+            const freshness = sourceFreshness[sourceIndex];
+            return (
             <div
               key={s.name}
               className="rounded-xl border border-white/[0.06] bg-[#111114] p-5 space-y-3"
@@ -254,8 +176,28 @@ export default function SourcesPage() {
                   </li>
                 ))}
               </ul>
+              <div className="pt-3 border-t border-white/[0.05] flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono">
+                <span className="text-white/30">Dernier import connu</span>
+                {freshness ? (
+                  <span
+                    className={
+                      freshness.status === "error"
+                        ? "text-red-300"
+                        : freshness.status === "partial"
+                          ? "text-amber-300"
+                          : "text-emerald-300"
+                    }
+                    title={`Journal : ${freshness.source}`}
+                  >
+                    {formatUpdatedAt(freshness.completedAt)} · {freshness.status}
+                  </span>
+                ) : (
+                  <span className="text-white/25">Non disponible</span>
+                )}
+              </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -321,22 +263,22 @@ export default function SourcesPage() {
         <div className="space-y-2">
           {STATS.map((s) => (
             <div
-              key={s.abbr}
+              key={s.key}
               className="rounded-xl border border-white/[0.06] bg-[#111114] px-5 py-4 grid grid-cols-[72px_1fr] gap-4 items-start"
             >
               <div>
                 <div className="font-display font-bold text-orange-400 text-base">
-                  {s.abbr}
+                  {s.shortLabel}
                 </div>
-                {s.since && (
+                {s.availableSince !== "1980-81" && (
                   <div className="text-[10px] text-white/25 font-mono mt-0.5">
-                    depuis {s.since}
+                    depuis {s.availableSince}
                   </div>
                 )}
               </div>
               <div className="space-y-1.5">
                 <div className="text-white/80 text-sm font-medium">
-                  {s.name}
+                  {s.label}
                 </div>
                 {s.formula && (
                   <div className="text-[11px] font-mono text-white/35 bg-white/[0.03] rounded px-2 py-1 inline-block">
@@ -346,6 +288,10 @@ export default function SourcesPage() {
                 <p className="text-xs text-white/50 leading-relaxed">
                   {s.description}
                 </p>
+                <div className="text-[10px] text-white/25 font-mono">
+                  Source : {s.source} · Qualification : {s.minimumGames > 0 ? `min. ${s.minimumGames} MJ` : "aucun seuil"}
+                  {s.higherIsBetter ? " · valeur haute favorisée" : " · valeur basse favorisée"}
+                </div>
               </div>
             </div>
           ))}

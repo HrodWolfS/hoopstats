@@ -7,22 +7,28 @@ import {
   AdvancedView,
   type AdvancedSeason,
 } from "@/components/player/advanced-view";
+import { GameLogView, type PlayerGameLog } from "@/components/player/game-log-view";
 
 type PlayerTabsProps = {
   primaryColor: string;
   career: CareerSeason[];
   advanced: AdvancedSeason[];
+  gameLogs: PlayerGameLog[];
+  locale: string;
 };
 
 const TABS = [
   { id: "career", label: "Carrière" },
   { id: "advanced", label: "Stats avancées" },
+  { id: "games", label: "Matchs" },
 ];
 
 export function PlayerTabs({
   primaryColor,
   career,
   advanced,
+  gameLogs,
+  locale,
 }: PlayerTabsProps) {
   const [active, setActive] = useState("career");
 
@@ -35,6 +41,7 @@ export function PlayerTabs({
       {active === "advanced" && (
         <AdvancedView seasons={advanced} primaryColor={primaryColor} />
       )}
+      {active === "games" && <GameLogView logs={gameLogs} locale={locale} />}
     </div>
   );
 }

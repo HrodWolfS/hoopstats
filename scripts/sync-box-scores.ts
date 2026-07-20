@@ -13,6 +13,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { resolvePlayerIdentity } from "../lib/stats/player-identity";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -22,6 +23,7 @@ type EspnStat = { name?: string; displayValue?: string; label?: string };
 
 type EspnAthlete = {
   athlete?: {
+    id?: string;
     displayName?: string;
     jersey?: string;
     position?: { abbreviation?: string };
@@ -176,6 +178,8 @@ function parseTeamTotals(stats: EspnStat[] | undefined): TeamTotals {
 // ── Parse player rows ─────────────────────────────────────────────────────────
 
 type PlayerRow = {
+  espnAthleteId: string | null;
+  playerId: string | null;
   playerName: string;
   teamAbbr: string;
   jersey: string | null;
@@ -206,6 +210,12 @@ function parsePlayers(
   espn: EspnSummary,
   awayDbAbbr: string,
   homeDbAbbr: string,
+  candidates: Array<{
+    id: string;
+    espnId: string | null;
+    firstName: string;
+    lastName: string;
+  }>,
 ): PlayerRow[] {
   const rows: PlayerRow[] = [];
   const playersData = espn.boxscore?.players ?? [];
@@ -230,6 +240,13 @@ function parsePlayers(
       const ft = parseShootingPair(get("FT"));
 
       rows.push({
+        espnAthleteId: a.athlete?.id ?? null,
+        playerId:
+          resolvePlayerIdentity(
+            a.athlete?.id ?? null,
+            a.athlete?.displayName ?? "",
+            candidates,
+          )?.id ?? null,
         playerName: a.athlete?.displayName ?? "—",
         teamAbbr,
         jersey: a.athlete?.jersey ?? null,
@@ -267,6 +284,7 @@ export async function syncBoxScores(
   opts: {
     recent?: boolean;
     force?: boolean;
+    concurrency?: number;
   } = {},
 ): Promise<{ synced: number; skipped: number; errors: number }> {
   const where: {
@@ -302,15 +320,26 @@ export async function syncBoxScores(
 
   console.log(`📊 ${games.length} matchs à synchroniser`);
 
+  const identityCandidates = await prisma.player.findMany({
+    select: { id: true, espnId: true, firstName: true, lastName: true },
+  });
+
   let synced = 0;
   let errors = 0;
 
-  for (const game of games) {
+  let nextGameIndex = 0;
+  const concurrency = Math.max(1, Math.min(opts.concurrency ?? 3, 6));
+
+  async function syncNextGame(): Promise<void> {
+    const gameIndex = nextGameIndex++;
+    const game = games[gameIndex];
+    if (!game) return;
+
     const espn = await fetchEspnSummary(game.espnId);
     if (!espn?.boxscore) {
       console.warn(`  ⚠️  ESPN data manquante pour ${game.espnId}`);
       errors++;
-      continue;
+      return syncNextGame();
     }
 
     try {
@@ -330,6 +359,18 @@ export async function syncBoxScores(
         espn,
         game.awayTeam.abbr,
         game.homeTeam.abbr,
+        identityCandidates,
+      );
+
+      await Promise.all(
+        players
+          .filter((player) => player.playerId && player.espnAthleteId)
+          .map((player) =>
+            prisma.player.updateMany({
+              where: { id: player.playerId!, espnId: null },
+              data: { espnId: player.espnAthleteId },
+            }),
+          ),
       );
 
       // Transaction : tout ou rien
@@ -390,7 +431,15 @@ export async function syncBoxScores(
       console.error(`  ❌ Erreur ${game.espnId} : ${msg}`);
       errors++;
     }
+
+    return syncNextGame();
   }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, games.length) }, () =>
+      syncNextGame(),
+    ),
+  );
 
   console.log(`\n✅ Sync terminée : ${synced} ok, ${errors} erreurs`);
   return { synced, skipped: 0, errors };
@@ -403,19 +452,51 @@ async function main() {
   const opts = {
     recent: args.includes("--recent"),
     force: args.includes("--force"),
+    concurrency: Number.parseInt(
+      args.find((arg) => arg.startsWith("--concurrency="))?.split("=")[1] ??
+        "3",
+      10,
+    ),
   };
 
   console.log(
     `📊 Box score sync — ${opts.recent ? "7 derniers jours" : "tous les matchs"}${opts.force ? " (FORCE)" : ""}\n`,
   );
 
-  const start = Date.now();
+  const startedAt = new Date();
   try {
-    await syncBoxScores(opts);
-    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+    const result = await syncBoxScores(opts);
+    await prisma.syncLog.create({
+      data: {
+        source: "sync-box-scores",
+        status: result.errors === 0 ? "success" : "partial",
+        itemsProcessed: result.synced,
+        errors: {
+          skipped: result.skipped,
+          errors: result.errors,
+          recent: opts.recent,
+          force: opts.force,
+          concurrency: opts.concurrency,
+        },
+        startedAt,
+        completedAt: new Date(),
+      },
+    });
+    const elapsed = ((Date.now() - startedAt.getTime()) / 1000).toFixed(1);
     console.log(`⏱  ${elapsed}s`);
   } catch (e) {
-    console.error("❌ Sync échouée :", e);
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("❌ Sync échouée :", message);
+    await prisma.syncLog.create({
+      data: {
+        source: "sync-box-scores",
+        status: "error",
+        itemsProcessed: 0,
+        errors: { fatal: message },
+        startedAt,
+        completedAt: new Date(),
+      },
+    });
     process.exit(1);
   }
 }

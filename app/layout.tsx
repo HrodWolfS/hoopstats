@@ -23,6 +23,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr",
+  ),
   title: "hoopstats — La NBA en français",
   description:
     "Statistiques NBA en français. Joueurs, équipes, saisons — depuis 2016.",

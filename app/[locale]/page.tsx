@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "hoopstats — Stats NBA en français",
   description:
     "Stats NBA complètes en français. Joueurs, équipes, saison 2025-26.",
+  alternates: { canonical: "/fr" },
 };
 
 export const revalidate = 21600;
