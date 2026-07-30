@@ -35,7 +35,9 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
-        run: pnpm tsx scripts/sync-playoffs.ts
+        # Retry : le compute Neon (free tier) peut être en veille (scale-to-zero).
+        # Le premier essai réveille la base ; les suivants passent une fois réveillée.
+        run: .github/scripts/retry.sh pnpm tsx scripts/sync-playoffs.ts
 
       - name: Run daily sync
         env:
@@ -44,11 +46,11 @@ jobs:
           BALLDONTLIE_API_KEY: ${{ secrets.BALLDONTLIE_API_KEY }}
           NEXT_PUBLIC_BASE_URL: ${{ secrets.NEXT_PUBLIC_BASE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: pnpm tsx scripts/sync-daily.ts
+        run: .github/scripts/retry.sh pnpm tsx scripts/sync-daily.ts
 
       - name: Check data health
         if: always()
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
-        run: pnpm health:data
+        run: .github/scripts/retry.sh pnpm health:data
