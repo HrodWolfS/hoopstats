@@ -12,6 +12,7 @@ import { validateStatisticalContext } from "../lib/stats/context";
 import { validatePlayerIdentityResolver } from "../lib/stats/player-identity";
 import { validateAnalyticsPayload } from "../lib/analytics";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
+import { validateCareerAggregation } from "../lib/stats/career";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -59,6 +60,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const identityResolverErrors = validatePlayerIdentityResolver();
   const analyticsErrors = validateAnalyticsPayload();
   const similarityErrors = validatePlayerSimilarity();
+  const careerErrors = validateCareerAggregation();
 
   const [
     teamCount,
@@ -231,6 +233,13 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       similarityErrors.length === 0
         ? "distance normalisée et classement validés"
         : similarityErrors.join("; "),
+    ),
+    check(
+      "Agrégation carrière",
+      careerErrors.length === 0,
+      careerErrors.length === 0
+        ? "pondération par matchs et consolidation des transferts validées"
+        : careerErrors.join("; "),
     ),
     check("Équipes", teamCount === 30, `${teamCount}/30 équipes présentes`),
     check(

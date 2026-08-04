@@ -1,20 +1,16 @@
 import { LineChart } from "@/components/ui/line-chart";
 import { stat, pct } from "@/lib/format";
+import {
+  computeCareerAverages,
+  consolidateSeasons,
+  type SeasonStint,
+} from "@/lib/stats/career";
 
-export type CareerSeason = {
-  season: string;
-  teamAbbr: string;
-  gamesPlayed: number;
-  minutesPerGame: number;
-  pointsPerGame: number;
-  reboundsPerGame: number;
-  assistsPerGame: number;
-  stealsPerGame: number;
-  blocksPerGame: number;
-  fgPct: number | null;
-  threePtPct: number | null;
-  ftPct: number | null;
-};
+/**
+ * Une ligne `PlayerSeason` brute : un joueur transféré en produit plusieurs
+ * pour une même saison. La consolidation est faite ici, à l'affichage.
+ */
+export type CareerSeason = SeasonStint;
 
 type CareerViewProps = {
   seasons: CareerSeason[];
@@ -22,20 +18,16 @@ type CareerViewProps = {
 };
 
 export function CareerView({ seasons, primaryColor }: CareerViewProps) {
-  // Ordre chronologique pour le chart
-  const chrono = [...seasons].sort((a, b) => a.season.localeCompare(b.season));
+  // Une ligne par saison (transferts fusionnés), en ordre chronologique.
+  const chrono = consolidateSeasons(seasons);
+  const career = computeCareerAverages(seasons);
 
   const chartData = chrono.map((d) => ({
     s: d.season.slice(2),
     v: d.pointsPerGame,
   }));
 
-  const careerPpg =
-    chrono.length > 0
-      ? (
-          chrono.reduce((s, d) => s + d.pointsPerGame, 0) / chrono.length
-        ).toFixed(1)
-      : "—";
+  const careerPpg = stat(career.pointsPerGame);
 
   return (
     <div className="space-y-6">
@@ -89,7 +81,14 @@ export function CareerView({ seasons, primaryColor }: CareerViewProps) {
                     {row.season}
                   </td>
                   <td className="px-3 py-3 text-white/60 font-sans text-xs">
-                    {row.teamAbbr}
+                    {row.isMultiTeam ? (
+                      <span title={`Saison en ${row.teams.length} équipes : ${row.teams.join(", ")}`}>
+                        {row.teamAbbr}
+                        <span className="text-white/30"> ({row.teams.length})</span>
+                      </span>
+                    ) : (
+                      row.teamAbbr
+                    )}
                   </td>
                   <td className="px-3 py-3 text-right text-white/60">
                     {row.gamesPlayed}
@@ -123,6 +122,15 @@ export function CareerView({ seasons, primaryColor }: CareerViewProps) {
             </tbody>
           </table>
         </div>
+        {chrono.some((row) => row.isMultiTeam) && (
+          <p className="border-t border-white/[0.06] px-5 py-3 text-xs text-white/40">
+            <span className="font-mono text-white/60">TOT</span>{" "}
+            regroupe les équipes d&apos;une même saison. Les moyennes sont
+            pondérées par les
+            matchs joués ; les pourcentages ne sont pas affichés faute des
+            volumes de tirs nécessaires à un calcul exact.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -251,7 +251,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
 export const PLAYER_SEASON_AGGREGATION_POLICY = {
   mode: "team-stints",
   description:
-    "Une saison transférée conserve une ligne par équipe. Aucune ligne TOT n’est calculée tant que les volumes de tirs et de possessions nécessaires aux pondérations exactes ne sont pas stockés.",
+    "Le stockage conserve une ligne par équipe et par saison. À l’affichage, une saison transférée est consolidée en une ligne TOT dont les moyennes sont pondérées par les matchs joués. Les pourcentages restent indisponibles sur cette ligne tant que les volumes de tirs nécessaires au calcul exact ne sont pas stockés.",
 } as const;
 
 export function getPlayerMetric(key: PlayerMetricKey): PlayerMetricDefinition {
