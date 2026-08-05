@@ -9,6 +9,7 @@ import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { PlayerPicker } from "@/components/compare/player-picker";
 import { stat, pct } from "@/lib/format";
 import { getPlayerMetric } from "@/lib/stats/metrics";
+import { mostRecentCommonSeason, weightedBy } from "@/lib/stats/career";
 import { AnalyticsEvent } from "@/components/analytics/analytics-event";
 import { ShareButton } from "@/components/analytics/share-button";
 
@@ -51,12 +52,13 @@ type PlayerWithSeasons = {
 // ── Fetch helper ──────────────────────────────────────────────────────────────
 
 async function fetchPlayer(slug: string): Promise<PlayerWithSeasons | null> {
+  // Carrière complète : une saison commune aux deux joueurs peut être
+  // ancienne, la tronquer empêcherait de la trouver.
   return prisma.player.findUnique({
     where: { slug },
     include: {
       seasons: {
         orderBy: { season: "desc" },
-        take: 8,
         include: {
           team: {
             select: { abbr: true, primaryColor: true, secondaryColor: true },
@@ -65,6 +67,55 @@ async function fetchPlayer(slug: string): Promise<PlayerWithSeasons | null> {
       },
     },
   });
+}
+
+type SeasonRow = PlayerWithSeasons["seasons"][number];
+
+/**
+ * Regroupe les lignes d'une même saison en une seule.
+ *
+ * Sans cela, `seasons[0]` d'un joueur transféré désigne un passage en équipe
+ * choisi arbitrairement, donc une saison partielle. Les statistiques de
+ * comptage sont pondérées par les matchs ; les taux ne sont pas agrégés,
+ * faute des volumes nécessaires (même politique que la page carrière).
+ */
+function seasonRowsBySeason(rows: readonly SeasonRow[]): Map<string, SeasonRow> {
+  const bySeason = new Map<string, SeasonRow[]>();
+  for (const row of rows) {
+    const stints = bySeason.get(row.season);
+    if (stints) stints.push(row);
+    else bySeason.set(row.season, [row]);
+  }
+
+  const merged = new Map<string, SeasonRow>();
+  for (const [season, stints] of bySeason) {
+    if (stints.length === 1) {
+      merged.set(season, stints[0]);
+      continue;
+    }
+
+    const games = (row: SeasonRow) => row.gamesPlayed;
+    const weighted = (value: (row: SeasonRow) => number) =>
+      weightedBy(stints, games, value) ?? 0;
+    const primary = [...stints].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0];
+
+    merged.set(season, {
+      ...primary,
+      gamesPlayed: stints.reduce((sum, row) => sum + row.gamesPlayed, 0),
+      pointsPerGame: weighted((row) => row.pointsPerGame),
+      reboundsPerGame: weighted((row) => row.reboundsPerGame),
+      assistsPerGame: weighted((row) => row.assistsPerGame),
+      stealsPerGame: weighted((row) => row.stealsPerGame),
+      blocksPerGame: weighted((row) => row.blocksPerGame),
+      fgPct: null,
+      threePtPct: null,
+      trueShooting: null,
+      per: null,
+      netRating: null,
+    });
+  }
+
+  return merged;
 }
 
 // ── Stat row helpers ──────────────────────────────────────────────────────────
@@ -240,15 +291,28 @@ export default async function ComparerPage({
 
   if (!p1 || !p2) notFound();
 
-  const s1 = p1.seasons[0] ?? null;
-  const s2 = p2.seasons[0] ?? null;
+  // Comparer la même saison par défaut. À défaut de recouvrement, on garde la
+  // dernière saison de chacun mais on l'affiche explicitement : pas de
+  // substitution silencieuse (feuille de route § 0.3).
+  const seasons1 = seasonRowsBySeason(p1.seasons);
+  const seasons2 = seasonRowsBySeason(p2.seasons);
+  const commonSeason = mostRecentCommonSeason(p1.seasons, p2.seasons);
+
+  const s1 = commonSeason
+    ? (seasons1.get(commonSeason) ?? null)
+    : (seasons1.get(p1.seasons[0]?.season) ?? null);
+  const s2 = commonSeason
+    ? (seasons2.get(commonSeason) ?? null)
+    : (seasons2.get(p2.seasons[0]?.season) ?? null);
+
+  const seasonsDiffer = s1 != null && s2 != null && s1.season !== s2.season;
 
   const p1Primary = s1?.team.primaryColor ?? "#7C3AED";
   const p1Secondary = s1?.team.secondaryColor ?? "#06B6D4";
   const p2Primary = s2?.team.primaryColor ?? "#7C3AED";
   const p2Secondary = s2?.team.secondaryColor ?? "#06B6D4";
 
-  const season = s1?.season ?? s2?.season ?? CURRENT_SEASON;
+  const season = commonSeason ?? s1?.season ?? s2?.season ?? CURRENT_SEASON;
 
   return (
     <div className="space-y-8">
@@ -381,27 +445,52 @@ export default async function ComparerPage({
           {/* Table header */}
           <div className="grid grid-cols-3 border-b border-white/[0.06] px-4 py-3">
             <div className="text-xs text-white/40 uppercase tracking-wider">
-              STATS {season}
+              {seasonsDiffer ? "STATS" : `STATS ${season}`}
             </div>
-            <div className="flex items-center justify-center gap-1.5">
-              <span
-                className="h-2 w-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: p1Primary }}
-              />
-              <span className="text-xs font-medium text-white/70 truncate">
-                {p1.lastName}
-              </span>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: p1Primary }}
+                />
+                <span className="text-xs font-medium text-white/70 truncate">
+                  {p1.lastName}
+                </span>
+              </div>
+              {seasonsDiffer && (
+                <span className="text-[10px] text-amber-300/70 font-mono">
+                  {s1?.season}
+                </span>
+              )}
             </div>
-            <div className="flex items-center justify-center gap-1.5">
-              <span
-                className="h-2 w-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: p2Primary }}
-              />
-              <span className="text-xs font-medium text-white/70 truncate">
-                {p2.lastName}
-              </span>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: p2Primary }}
+                />
+                <span className="text-xs font-medium text-white/70 truncate">
+                  {p2.lastName}
+                </span>
+              </div>
+              {seasonsDiffer && (
+                <span className="text-[10px] text-amber-300/70 font-mono">
+                  {s2?.season}
+                </span>
+              )}
             </div>
           </div>
+
+          {seasonsDiffer && (
+            <div className="flex items-start gap-3 border-b border-white/[0.06] bg-amber-500/[0.04] px-4 py-3">
+              <span className="shrink-0 text-amber-400/70">⚠</span>
+              <p className="text-xs leading-relaxed text-white/50">
+                Ces deux joueurs n&apos;ont aucune saison en commun : la
+                comparaison porte sur des saisons différentes, dans des
+                contextes de jeu qui ne sont pas équivalents.
+              </p>
+            </div>
+          )}
 
           {/* Stat rows */}
           {STAT_ROWS.map((row, i) => {

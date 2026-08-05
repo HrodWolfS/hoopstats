@@ -67,11 +67,54 @@ export function weightedPerGame(
   rows: readonly SeasonStint[],
   key: CountingKey,
 ): number | null {
-  const games = totalGamesPlayed(rows);
-  if (games === 0) return null;
+  return weightedBy(
+    rows,
+    (row) => row.gamesPlayed,
+    (row) => row[key],
+  );
+}
 
-  const total = rows.reduce((sum, row) => sum + row[key] * row.gamesPlayed, 0);
-  return total / games;
+/**
+ * Moyenne pondérée générique, pour les appelants dont les lignes ne suivent
+ * pas la forme `SeasonStint` (comparateur, vues dérivées).
+ *
+ * Retourne `null` si le poids total est nul.
+ */
+export function weightedBy<T>(
+  rows: readonly T[],
+  games: (row: T) => number,
+  value: (row: T) => number,
+): number | null {
+  let totalGames = 0;
+  let total = 0;
+
+  for (const row of rows) {
+    const played = Math.max(0, games(row));
+    totalGames += played;
+    total += value(row) * played;
+  }
+
+  return totalGames === 0 ? null : total / totalGames;
+}
+
+/**
+ * Saison la plus récente présente chez les deux joueurs.
+ *
+ * Sert à comparer deux joueurs sur la même période plutôt que sur leurs
+ * dernières saisons respectives. Retourne `null` si les carrières ne se
+ * recoupent pas : l'appelant doit alors le signaler, pas choisir à l'aveugle.
+ */
+export function mostRecentCommonSeason(
+  left: readonly { season: string }[],
+  right: readonly { season: string }[],
+): string | null {
+  const rightSeasons = new Set(right.map((row) => row.season));
+
+  return (
+    [...new Set(left.map((row) => row.season))]
+      .filter((season) => rightSeasons.has(season))
+      .sort((a, b) => b.localeCompare(a))[0] ?? null
+  );
 }
 
 /** Somme des matchs joués, en ignorant les valeurs aberrantes négatives. */
@@ -264,6 +307,18 @@ export function validateCareerAggregation(): string[] {
   const [kept] = consolidateSeasons([stint("2023-24", "SAS", 70, 21)]);
   if (kept.fgPct === null) {
     errors.push("équipe unique : pourcentage perdu à tort");
+  }
+
+  // Saison commune : la plus récente partagée, pas la plus récente de l'un.
+  const left = [stint("2023-24", "LAL", 70, 25), stint("2021-22", "LAL", 70, 30)];
+  const right = [stint("2021-22", "GSW", 70, 27), stint("2019-20", "GSW", 70, 20)];
+  if (mostRecentCommonSeason(left, right) !== "2021-22") {
+    errors.push("saison commune : mauvaise saison retenue");
+  }
+
+  // Carrières sans recouvrement : aucune saison commune ne doit être inventée.
+  if (mostRecentCommonSeason(left, [stint("2015-16", "CHI", 70, 20)]) !== null) {
+    errors.push("saison commune : recouvrement inexistant non détecté");
   }
 
   return errors;
