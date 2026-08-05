@@ -310,6 +310,7 @@ export default async function SourcesPage() {
             "Les métriques BPM (Box Plus/Minus), VORP et Win Shares, exclusives à Basketball-Reference, ne sont pas intégrées.",
             "Le PIE affiché est la métrique propriétaire de NBA.com et diffère du PER (Player Efficiency Rating) de John Hollinger.",
             "Les données de la saison en cours peuvent présenter un délai de quelques heures selon la dernière synchronisation.",
+            "Sur quelques matchs, la somme des points des joueurs est inférieure au score final. L'écart est présent dans le box score publié par ESPN, notre source : nous affichons le score officiel et les lignes telles que reçues, sans les corriger. Un bandeau le signale sur les matchs concernés.",
           ].map((item) => (
             <div key={item} className="flex items-start gap-3 text-xs">
               <span className="text-amber-400/70 mt-0.5 shrink-0">⚠</span>

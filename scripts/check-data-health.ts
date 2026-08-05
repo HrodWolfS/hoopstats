@@ -51,6 +51,47 @@ function expectedRegularSeasonGames(now: Date): number {
   return Math.floor(1230 * progress * 0.9);
 }
 
+type MismatchedGame = {
+  homeScore: number | null;
+  awayScore: number | null;
+  homeTeam: { abbr: string };
+  awayTeam: { abbr: string };
+  playerBoxScores: { teamAbbr: string; pts: number | null }[];
+};
+
+/**
+ * Résume les écarts par équipe déficitaire.
+ *
+ * Un écart concentré sur une seule équipe indique un box score incomplet chez
+ * le fournisseur ; un écart réparti sur plusieurs équipes signalerait plutôt
+ * un défaut de notre import.
+ */
+function summarizeMismatches(games: readonly MismatchedGame[]): string {
+  const perTeam = new Map<string, { games: number; points: number }>();
+
+  for (const game of games) {
+    for (const side of [
+      { abbr: game.homeTeam.abbr, score: game.homeScore },
+      { abbr: game.awayTeam.abbr, score: game.awayScore },
+    ]) {
+      const total = game.playerBoxScores
+        .filter((row) => row.teamAbbr === side.abbr)
+        .reduce((sum, row) => sum + (row.pts ?? 0), 0);
+      if (total === side.score) continue;
+
+      const entry = perTeam.get(side.abbr) ?? { games: 0, points: 0 };
+      entry.games += 1;
+      entry.points += Math.abs((side.score ?? 0) - total);
+      perTeam.set(side.abbr, entry);
+    }
+  }
+
+  return [...perTeam.entries()]
+    .sort((a, b) => b[1].games - a[1].games)
+    .map(([abbr, { games: n, points }]) => `${abbr} ${n} match(s)/${points} pts`)
+    .join(", ");
+}
+
 async function runHealthChecks(): Promise<HealthCheck[]> {
   const now = new Date();
   const staleBefore = new Date(now.getTime() - 36 * 60 * 60 * 1000);
@@ -298,7 +339,11 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
     check(
       "Totaux des box scores",
       scoreMismatches.length === 0,
-      `${scoreMismatches.length} match(s) dont les points joueurs diffèrent du score final`,
+      scoreMismatches.length === 0
+        ? "les points joueurs reconstituent le score final sur tous les matchs"
+        : `${scoreMismatches.length} match(s) dont les points joueurs diffèrent du score final` +
+          ` (lignes manquantes chez ESPN, signalées par un bandeau sur la page match) : ` +
+          summarizeMismatches(scoreMismatches),
       "warn",
     ),
     check(
