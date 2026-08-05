@@ -248,6 +248,29 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
   },
 ];
 
+/**
+ * Métriques exposées dont la colonne `PlayerSeason` est optionnelle.
+ *
+ * Une métrique publiée doit être alimentée : une colonne vide affichée comme
+ * une donnée réelle est pire qu'une métrique absente. `pnpm health:data`
+ * vérifie que chacune de ces colonnes contient au moins une valeur.
+ *
+ * BPM, VORP et Win Shares sont volontairement absents du registre : les
+ * colonnes existent en base mais ne sont alimentées par aucun import, faute
+ * de source autorisée. Tant que c'est le cas, ils ne doivent pas être exposés.
+ */
+export const NULLABLE_METRIC_COLUMNS = [
+  "fgPct",
+  "threePtPct",
+  "ftPct",
+  "trueShooting",
+  "usageRate",
+  "per",
+  "offRating",
+  "defRating",
+  "netRating",
+] as const satisfies readonly PlayerMetricKey[];
+
 export const PLAYER_SEASON_AGGREGATION_POLICY = {
   mode: "team-stints",
   description:

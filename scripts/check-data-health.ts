@@ -7,7 +7,10 @@
 
 import { PrismaClient } from "@prisma/client";
 import { CURRENT_SEASON } from "../lib/nba";
-import { validatePlayerMetricRegistry } from "../lib/stats/metrics";
+import {
+  NULLABLE_METRIC_COLUMNS,
+  validatePlayerMetricRegistry,
+} from "../lib/stats/metrics";
 import { validateStatisticalContext } from "../lib/stats/context";
 import { validatePlayerIdentityResolver } from "../lib/stats/player-identity";
 import { validateAnalyticsPayload } from "../lib/analytics";
@@ -102,6 +105,19 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const analyticsErrors = validateAnalyticsPayload();
   const similarityErrors = validatePlayerSimilarity();
   const careerErrors = validateCareerAggregation();
+
+  // Une métrique publiée mais jamais alimentée s'afficherait comme une donnée
+  // réelle : on vérifie que chaque colonne optionnelle exposée porte des valeurs.
+  const emptyMetrics = (
+    await Promise.all(
+      NULLABLE_METRIC_COLUMNS.map(async (column) => ({
+        column,
+        filled: await prisma.playerSeason.count({
+          where: { [column]: { not: null } } as never,
+        }),
+      })),
+    )
+  ).filter((metric) => metric.filled === 0);
 
   const [
     teamCount,
@@ -281,6 +297,15 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       careerErrors.length === 0
         ? "pondération par matchs et consolidation des transferts validées"
         : careerErrors.join("; "),
+    ),
+    check(
+      "Métriques exposées alimentées",
+      emptyMetrics.length === 0,
+      emptyMetrics.length === 0
+        ? `${NULLABLE_METRIC_COLUMNS.length} métriques optionnelles exposées portent des valeurs`
+        : `métrique(s) publiée(s) sans aucune donnée : ${emptyMetrics
+            .map((metric) => metric.column)
+            .join(", ")}`,
     ),
     check("Équipes", teamCount === 30, `${teamCount}/30 équipes présentes`),
     check(
