@@ -16,6 +16,7 @@ import { validatePlayerIdentityResolver } from "../lib/stats/player-identity";
 import { validateAnalyticsPayload } from "../lib/analytics";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
 import { validateCareerAggregation } from "../lib/stats/career";
+import { isStaleStatus, validateGameStatus } from "../lib/game-status";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -105,6 +106,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const analyticsErrors = validateAnalyticsPayload();
   const similarityErrors = validatePlayerSimilarity();
   const careerErrors = validateCareerAggregation();
+  const gameStatusErrors = validateGameStatus();
 
   // Une métrique publiée mais jamais alimentée s'afficherait comme une donnée
   // réelle : on vérifie que chaque colonne optionnelle exposée porte des valeurs.
@@ -118,6 +120,15 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       })),
     )
   ).filter((metric) => metric.filled === 0);
+
+  // Un match dont la date est passée depuis longtemps sans être terminé ni
+  // reporté trahit un statut figé : il resterait affiché comme « en cours ».
+  const staleStatusGames = (
+    await prisma.game.findMany({
+      where: { gameDate: { lt: now }, status: { notIn: ["final", "postponed"] } },
+      select: { gameDate: true, status: true },
+    })
+  ).filter((game) => isStaleStatus(game.status, game.gameDate, now));
 
   const [
     teamCount,
@@ -297,6 +308,22 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       careerErrors.length === 0
         ? "pondération par matchs et consolidation des transferts validées"
         : careerErrors.join("; "),
+    ),
+    check(
+      "Statuts de matchs à jour",
+      staleStatusGames.length === 0,
+      staleStatusGames.length === 0
+        ? "aucun match passé bloqué dans un statut non terminé"
+        : `${staleStatusGames.length} match(s) passé(s) encore en « ${[
+            ...new Set(staleStatusGames.map((game) => game.status)),
+          ].join(", ")} » : lancer scripts/fix-stale-game-status.ts`,
+    ),
+    check(
+      "Statuts de matchs (correspondance ESPN)",
+      gameStatusErrors.length === 0,
+      gameStatusErrors.length === 0
+        ? "reports, matchs terminés et matchs en cours correctement distingués"
+        : gameStatusErrors.join("; "),
     ),
     check(
       "Métriques exposées alimentées",

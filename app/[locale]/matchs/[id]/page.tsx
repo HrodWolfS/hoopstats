@@ -858,14 +858,17 @@ export default async function MatchPage({
   const isFinal = game.status === "final";
   const isLive = game.status === "in_progress";
   const isScheduled = game.status === "scheduled";
+  const isPostponed = game.status === "postponed";
 
-  // Try DB first (cron-synced), fallback ESPN API for fresh/live games
-  const dbBoxScore = !isScheduled
+  // Try DB first (cron-synced), fallback ESPN API for fresh/live games.
+  // Un match programmé ou reporté n'a jamais de box score.
+  const hasBoxScore = !isScheduled && !isPostponed;
+  const dbBoxScore = hasBoxScore
     ? await loadBoxScoreFromDb(game.id, game.awayTeam.abbr, game.homeTeam.abbr)
     : null;
 
   const espnData =
-    !isScheduled && !dbBoxScore ? await fetchEspnBoxScore(game.espnId) : null;
+    hasBoxScore && !dbBoxScore ? await fetchEspnBoxScore(game.espnId) : null;
 
   const boxScore = dbBoxScore
     ? { away: dbBoxScore.away, home: dbBoxScore.home }
@@ -1008,6 +1011,11 @@ export default async function MatchPage({
                 <span className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   En cours
+                </span>
+              )}
+              {isPostponed && (
+                <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400/70">
+                  Reporté
                 </span>
               )}
               <span className="text-[11px] text-white/25 capitalize">

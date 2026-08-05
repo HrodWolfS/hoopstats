@@ -16,6 +16,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import { CURRENT_SEASON } from "../lib/nba";
+import { gameStatusFromEspn } from "../lib/game-status";
 import { syncBoxScores } from "./sync-box-scores";
 
 const prisma = new PrismaClient({ log: ["error"] });
@@ -192,13 +193,8 @@ async function syncRecentGames(): Promise<{
       }
 
       const statusName = comp.status.type.name;
-      const isFinal = statusName === "STATUS_FINAL";
-      // ESPN status : FINAL → "final" | SCHEDULED → "scheduled" | tout autre (en cours) → "in_progress"
-      const status = isFinal
-        ? "final"
-        : statusName === "STATUS_SCHEDULED"
-          ? "scheduled"
-          : "in_progress";
+      const status = gameStatusFromEspn(statusName);
+      const isFinal = status === "final";
       const homeScore = isFinal ? parseInt(home.score, 10) : null;
       const awayScore = isFinal ? parseInt(away.score, 10) : null;
 

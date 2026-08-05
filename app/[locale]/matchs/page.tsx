@@ -160,6 +160,13 @@ function StatusBadge({ status }: { status: string }) {
       </span>
     );
   }
+  if (status === "postponed") {
+    return (
+      <span className="text-[9px] font-mono uppercase tracking-widest text-amber-400/70">
+        Reporté
+      </span>
+    );
+  }
   return null;
 }
 

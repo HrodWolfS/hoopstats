@@ -9,6 +9,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import { CURRENT_SEASON } from "../lib/nba";
+import { gameStatusFromEspn } from "../lib/game-status";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -127,12 +128,7 @@ async function main() {
     }
 
     const statusName = competition.status?.type?.name;
-    const status =
-      statusName === "STATUS_FINAL"
-        ? "final"
-        : statusName === "STATUS_SCHEDULED"
-          ? "scheduled"
-          : "in_progress";
+    const status = gameStatusFromEspn(statusName);
     const homeScore = status === "final" ? Number.parseInt(home.score ?? "", 10) : null;
     const awayScore = status === "final" ? Number.parseInt(away.score ?? "", 10) : null;
 
