@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_SEASON } from "@/lib/nba";
 import { stat } from "@/lib/format";
+import { hasSeriesStarted, seriesWinnerTeamId } from "@/lib/playoff-series";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
 
@@ -26,7 +27,8 @@ const BADGE_PILL =
  * Construit une map teamId → badge à partir des PlayoffSeries de la saison.
  *
  * Pour chaque équipe, on cherche le round le plus profond où elle apparaît.
- * team1 = gagnant de la série, team2 = perdant.
+ * Le vainqueur se lit dans le décompte des victoires : `team1` est la tête de
+ * série, pas la gagnante. Une série encore en cours ne désigne personne.
  *
  * Rounds : 1 = 1er tour · 2 = Demi-finale conf. · 3 = Finale conf. · 4 = Finale NBA
  */
@@ -44,9 +46,9 @@ function buildPlayoffBadges(
   const depth = new Map<string, { maxRound: number; isWinner: boolean }>();
 
   for (const s of series) {
-    // Série commencée (au moins 1 victoire) ou terminée
-    const started = s.completed || s.team1Wins + s.team2Wins > 0;
-    if (!started) continue;
+    if (!hasSeriesStarted(s)) continue;
+
+    const winnerId = seriesWinnerTeamId(s);
 
     const update = (teamId: string, round: number, winner: boolean) => {
       const prev = depth.get(teamId);
@@ -55,8 +57,8 @@ function buildPlayoffBadges(
       }
     };
 
-    update(s.team1Id, s.round, true);
-    update(s.team2Id, s.round, false);
+    update(s.team1Id, s.round, winnerId === s.team1Id);
+    update(s.team2Id, s.round, winnerId === s.team2Id);
   }
 
   const badges = new Map<string, Badge>();

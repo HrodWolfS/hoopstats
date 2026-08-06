@@ -17,6 +17,10 @@ import { validateAnalyticsPayload } from "../lib/analytics";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
 import { validateCareerAggregation } from "../lib/stats/career";
 import { isStaleStatus, validateGameStatus } from "../lib/game-status";
+import {
+  seriesWinsRequired,
+  validatePlayoffSeriesWinner,
+} from "../lib/playoff-series";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -107,6 +111,20 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const similarityErrors = validatePlayerSimilarity();
   const careerErrors = validateCareerAggregation();
   const gameStatusErrors = validateGameStatus();
+  const seriesWinnerErrors = validatePlayoffSeriesWinner();
+
+  // Une série terminée dont aucune équipe n'atteint le total requis trahit un
+  // décompte incomplet : le vainqueur affiché serait alors arbitraire. Le
+  // format d'époque compte — le premier tour se jouait au meilleur des cinq.
+  const inconsistentSeries = (
+    await prisma.playoffSeries.findMany({
+      where: { completed: true, team1Wins: { lt: 4 }, team2Wins: { lt: 4 } },
+      select: { season: true, round: true, team1Wins: true, team2Wins: true },
+    })
+  ).filter((series) => {
+    const required = seriesWinsRequired(series.season, series.round);
+    return series.team1Wins < required && series.team2Wins < required;
+  });
 
   // Une métrique publiée mais jamais alimentée s'afficherait comme une donnée
   // réelle : on vérifie que chaque colonne optionnelle exposée porte des valeurs.
@@ -317,6 +335,23 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
         : `${staleStatusGames.length} match(s) passé(s) encore en « ${[
             ...new Set(staleStatusGames.map((game) => game.status)),
           ].join(", ")} » : lancer scripts/fix-stale-game-status.ts`,
+    ),
+    check(
+      "Vainqueurs de séries playoffs",
+      seriesWinnerErrors.length === 0,
+      seriesWinnerErrors.length === 0
+        ? "vainqueur déduit du décompte, y compris quand la tête de série tombe"
+        : seriesWinnerErrors.join("; "),
+    ),
+    check(
+      "Décomptes de séries playoffs",
+      inconsistentSeries.length === 0,
+      inconsistentSeries.length === 0
+        ? "chaque série terminée compte une équipe au total de victoires requis"
+        : `${inconsistentSeries.length} série(s) au décompte incomplet : ${inconsistentSeries
+            .map((s) => `${s.season} R${s.round} ${s.team1Wins}-${s.team2Wins}`)
+            .join(", ")}`,
+      "warn",
     ),
     check(
       "Statuts de matchs (correspondance ESPN)",
