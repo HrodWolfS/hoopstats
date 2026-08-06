@@ -21,6 +21,11 @@ import {
   seriesWinsRequired,
   validatePlayoffSeriesWinner,
 } from "../lib/playoff-series";
+import {
+  PLAYOFF_SERIES_CORRECTIONS,
+  findPlayoffSeriesCorrection,
+  validatePlayoffCorrections,
+} from "../lib/playoff-corrections";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -112,6 +117,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const careerErrors = validateCareerAggregation();
   const gameStatusErrors = validateGameStatus();
   const seriesWinnerErrors = validatePlayoffSeriesWinner();
+  const correctionErrors = validatePlayoffCorrections();
 
   // Une série terminée dont aucune équipe n'atteint le total requis trahit un
   // décompte incomplet : le vainqueur affiché serait alors arbitraire. Le
@@ -124,6 +130,41 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   ).filter((series) => {
     const required = seriesWinsRequired(series.season, series.round);
     return series.team1Wins < required && series.team2Wins < required;
+  });
+
+  // Réimporter l'archive ESPN réécrit les séries historiques : on vérifie que
+  // les corrections tiennent toujours en base, faute de quoi la finale 1990
+  // repasserait silencieusement à 3-2 et 1986 changerait de champion.
+  const unappliedCorrections = (
+    await prisma.playoffSeries.findMany({
+      where: {
+        season: { in: [...new Set(PLAYOFF_SERIES_CORRECTIONS.map((c) => c.season))] },
+      },
+      select: {
+        season: true,
+        round: true,
+        team1Wins: true,
+        team2Wins: true,
+        completed: true,
+        team1: { select: { abbr: true } },
+        team2: { select: { abbr: true } },
+      },
+    })
+  ).filter((series) => {
+    const correction = findPlayoffSeriesCorrection(
+      series.season,
+      series.team1.abbr,
+      series.team2.abbr,
+    );
+    if (!correction) return false;
+
+    const team1Won = series.team1.abbr === correction.winnerAbbr;
+    return (
+      !series.completed ||
+      series.round !== correction.round ||
+      series.team1Wins !== (team1Won ? correction.winnerWins : correction.loserWins) ||
+      series.team2Wins !== (team1Won ? correction.loserWins : correction.winnerWins)
+    );
   });
 
   // Une métrique publiée mais jamais alimentée s'afficherait comme une donnée
@@ -352,6 +393,22 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
             .map((s) => `${s.season} R${s.round} ${s.team1Wins}-${s.team2Wins}`)
             .join(", ")}`,
       "warn",
+    ),
+    check(
+      "Corrections séries playoffs",
+      correctionErrors.length === 0,
+      correctionErrors.length === 0
+        ? `${PLAYOFF_SERIES_CORRECTIONS.length} séries rectifiées, chacune jouable au format de son époque`
+        : correctionErrors.join("; "),
+    ),
+    check(
+      "Corrections séries playoffs appliquées",
+      unappliedCorrections.length === 0,
+      unappliedCorrections.length === 0
+        ? "l'archive ESPN n'a pas réécrit les séries historiques rectifiées"
+        : `${unappliedCorrections.length} série(s) revenue(s) à la version ESPN (${unappliedCorrections
+            .map((s) => `${s.season} ${s.team1.abbr}-${s.team2.abbr}`)
+            .join(", ")}) : lancer pnpm fix:playoff-history`,
     ),
     check(
       "Statuts de matchs (correspondance ESPN)",

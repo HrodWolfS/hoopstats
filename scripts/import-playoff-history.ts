@@ -9,6 +9,9 @@
  *    Si le couple team1/team2 est inversé en DB, skip (la clé unique ne matche pas
  *    mais c'est suffisant pour l'historique — on ne casse pas les données courantes)
  *  - team1 = vainqueur de la série (plus de victoires)
+ *  - Les séries que l'archive ESPN décrit mal sont rectifiées en fin d'import
+ *    depuis `lib/playoff-corrections.ts` : sans cette passe, réimporter
+ *    réintroduirait les décomptes figés au milieu de la série.
  *
  * Run: npm run import:playoff-history
  */
@@ -16,6 +19,7 @@
 import { PrismaClient } from "@prisma/client";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { applyPlayoffCorrections } from "./apply-playoff-corrections";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -119,6 +123,17 @@ async function main() {
   }
 
   process.stdout.write(`\r  ${processed}/${rows.length} traités.   \n`);
+
+  // ── Corrections des séries mal décrites par l'archive ESPN ───────────────
+  const corrections = await applyPlayoffCorrections(prisma);
+  console.log(
+    `🩹 ${corrections.updated.length} série(s) corrigée(s), ${corrections.alreadyCorrect.length} déjà conforme(s)`,
+  );
+  if (corrections.unmatched.length > 0) {
+    errors.push(
+      `corrections sans série en base : ${corrections.unmatched.join(", ")}`,
+    );
+  }
 
   // ── SyncLog ──────────────────────────────────────────────────────────────
   await prisma.syncLog.create({
