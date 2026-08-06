@@ -100,6 +100,19 @@ function summarizeMismatches(games: readonly MismatchedGame[]): string {
     .join(", ");
 }
 
+/** Retard médian, en matchs, entre les box scores et les agrégats de saison. */
+function medianLag(
+  rows: readonly { playerId: string; gamesPlayed: number }[],
+  playedPerPlayer: ReadonlyMap<string | null, number>,
+): number {
+  const lags = rows
+    .map((row) => (playedPerPlayer.get(row.playerId) ?? 0) - row.gamesPlayed)
+    .sort((a, b) => a - b);
+
+  if (lags.length === 0) return 0;
+  return lags[Math.floor(lags.length / 2)];
+}
+
 async function runHealthChecks(): Promise<HealthCheck[]> {
   const now = new Date();
   const staleBefore = new Date(now.getTime() - 36 * 60 * 60 * 1000);
@@ -125,6 +138,31 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
     const required = seriesWinsRequired(series.season, series.round);
     return series.team1Wins < required && series.team2Wins < required;
   });
+
+  // Les box scores sont synchronisés chaque jour, pas les agrégats de saison.
+  // Comparer les deux mesure le retard réel des moyennes affichées.
+  const [boxScoreGameCounts, storedSeasons] = await Promise.all([
+    prisma.playerBoxScore.groupBy({
+      by: ["playerId"],
+      where: {
+        didNotPlay: false,
+        playerId: { not: null },
+        game: { season: CURRENT_SEASON, status: "final" },
+      },
+      _count: { _all: true },
+    }),
+    prisma.playerSeason.findMany({
+      where: { season: CURRENT_SEASON },
+      select: { playerId: true, gamesPlayed: true },
+    }),
+  ]);
+
+  const playedPerPlayer = new Map(
+    boxScoreGameCounts.map((row) => [row.playerId, row._count._all]),
+  );
+  const staleSeasonRows = storedSeasons.filter(
+    (row) => (playedPerPlayer.get(row.playerId) ?? 0) > row.gamesPlayed,
+  );
 
   // Une métrique publiée mais jamais alimentée s'afficherait comme une donnée
   // réelle : on vérifie que chaque colonne optionnelle exposée porte des valeurs.
@@ -359,6 +397,15 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       gameStatusErrors.length === 0
         ? "reports, matchs terminés et matchs en cours correctement distingués"
         : gameStatusErrors.join("; "),
+    ),
+    check(
+      "Fraîcheur des agrégats joueurs",
+      staleSeasonRows.length === 0,
+      staleSeasonRows.length === 0
+        ? "les moyennes de saison couvrent tous les matchs synchronisés"
+        : `${staleSeasonRows.length}/${storedSeasons.length} joueur(s) dont les moyennes ignorent des matchs déjà synchronisés` +
+          ` (retard médian ${medianLag(staleSeasonRows, playedPerPlayer)} match(s)) :` +
+          " PlayerSeason n'est pas alimenté par la synchronisation quotidienne",
     ),
     check(
       "Métriques exposées alimentées",
