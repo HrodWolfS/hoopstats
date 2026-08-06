@@ -15,6 +15,16 @@ Logique de round :
 
 Output : scripts/data/playoff-history.json
 
+Fiabilité des sources — les deux se trompent, ne pas croire ce fichier sur parole :
+  • L'archive ESPN est trouée (matchs manquants, rencontres dupliquées, vainqueur
+    parfois inversé, balayages du 1er tour comptés au meilleur des sept). Une
+    série dont ESPN ignore les derniers matchs ressort figée au milieu.
+  • La reconstitution des tours pré-2001 par tri sur le premier GAME_ID échange
+    deux séries dès que leurs premiers matchs s'entrelacent hors de cet ordre.
+Les séries concernées sont rectifiées à l'import depuis
+`lib/playoff-corrections.ts` ; toute nouvelle anomalie s'y ajoute plutôt que de
+se corriger ici, où l'on n'a pas de source fiable.
+
 Run: python3 scripts/fetch-playoff-history.py
      python3 scripts/fetch-playoff-history.py --from 1984-85 --to 1990-91
 """
