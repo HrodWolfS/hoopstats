@@ -13,6 +13,7 @@ import {
 } from "../lib/stats/metrics";
 import { validateStatisticalContext } from "../lib/stats/context";
 import { validatePlayerIdentityResolver } from "../lib/stats/player-identity";
+import { validatePlayerAliases } from "../lib/stats/player-aliases";
 import { validateAnalyticsPayload } from "../lib/analytics";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
 import { validateCareerAggregation } from "../lib/stats/career";
@@ -125,6 +126,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const metricRegistryErrors = validatePlayerMetricRegistry();
   const statisticalContextErrors = validateStatisticalContext();
   const identityResolverErrors = validatePlayerIdentityResolver();
+  const aliasErrors = validatePlayerAliases();
   const analyticsErrors = validateAnalyticsPayload();
   const similarityErrors = validatePlayerSimilarity();
   const careerErrors = validateCareerAggregation();
@@ -382,8 +384,15 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       "Résolveur d’identités",
       identityResolverErrors.length === 0,
       identityResolverErrors.length === 0
-        ? "identifiants, accents et suffixes validés"
+        ? "identifiants, accents, suffixes et alias validés"
         : identityResolverErrors.join("; "),
+    ),
+    check(
+      "Alias de noms joueurs",
+      aliasErrors.length === 0,
+      aliasErrors.length === 0
+        ? "chaque alias vise une fiche unique et distincte du nom observé"
+        : aliasErrors.join("; "),
     ),
     check(
       "Analytics privé",
