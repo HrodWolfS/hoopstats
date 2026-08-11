@@ -6,6 +6,7 @@ import { ALL_SEASONS } from "@/lib/nba";
 import { pct, stat } from "@/lib/format";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import {
+  consolidateForRanking,
   getLeaderboard,
   leaderboardValue,
   LEADERBOARDS,
@@ -49,18 +50,20 @@ export default async function LeaderboardPage({
   const leaderboard = getLeaderboard(metric);
   if (!leaderboard || !ALL_SEASONS.includes(season)) notFound();
   const definition = getPlayerMetric(leaderboard.metric);
+  // Le seuil de qualification s'applique après regroupement : un joueur
+  // transféré ne doit pas être écarté parce qu'aucune de ses deux lignes ne
+  // l'atteint séparément.
   const rows = await prisma.playerSeason.findMany({
-    where: {
-      season,
-      gamesPlayed: { gte: definition.minimumGames },
-    },
+    where: { season },
     include: {
       player: { select: { firstName: true, lastName: true, slug: true } },
       team: { select: { abbr: true, slug: true } },
     },
   });
-  const leaders = rows
-    .map((row) => ({ row, value: leaderboardValue(row, leaderboard.metric) }))
+  const leaders = consolidateForRanking(rows, leaderboard.metric, (row) =>
+    leaderboardValue(row, leaderboard.metric),
+  )
+    .filter((entry) => entry.gamesPlayed >= definition.minimumGames)
     .filter((entry): entry is typeof entry & { value: number } => entry.value != null)
     .sort((left, right) =>
       definition.higherIsBetter ? right.value - left.value : left.value - right.value,
@@ -101,7 +104,7 @@ export default async function LeaderboardPage({
       <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111114]">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-white/[0.06] text-[10px] uppercase tracking-wider text-white/30"><th className="px-5 py-3 text-left">#</th><th className="px-3 py-3 text-left">Joueur</th><th className="px-3 py-3 text-left">Équipe</th><th className="px-3 py-3 text-right">MJ</th><th className="px-5 py-3 text-right text-orange-300">{definition.shortLabel}</th></tr></thead>
-          <tbody>{leaders.map(({ row, value }, index) => <tr key={row.id} className="border-b border-white/[0.04]"><td className="px-5 py-3 font-mono text-white/25">{index + 1}</td><td className="px-3 py-3"><Link href={`/${locale}/joueurs/${row.player.slug}`} className="font-medium text-white/80 hover:text-orange-300">{row.player.firstName} {row.player.lastName}</Link></td><td className="px-3 py-3"><Link href={`/${locale}/equipes/${row.team.slug}`} className="text-white/40 hover:text-white">{row.team.abbr}</Link></td><td className="px-3 py-3 text-right font-mono text-white/35">{row.gamesPlayed}</td><td className="px-5 py-3 text-right font-mono font-semibold">{definition.mode === "percentage" ? `${pct(value)} %` : stat(value)}</td></tr>)}</tbody>
+          <tbody>{leaders.map(({ row, value, gamesPlayed }, index) => <tr key={row.id} className="border-b border-white/[0.04]"><td className="px-5 py-3 font-mono text-white/25">{index + 1}</td><td className="px-3 py-3"><Link href={`/${locale}/joueurs/${row.player.slug}`} className="font-medium text-white/80 hover:text-orange-300">{row.player.firstName} {row.player.lastName}</Link></td><td className="px-3 py-3"><Link href={`/${locale}/equipes/${row.team.slug}`} className="text-white/40 hover:text-white">{row.team.abbr}</Link></td><td className="px-3 py-3 text-right font-mono text-white/35">{gamesPlayed}</td><td className="px-5 py-3 text-right font-mono font-semibold">{definition.mode === "percentage" ? `${pct(value)} %` : stat(value)}</td></tr>)}</tbody>
         </table>
       </div>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />

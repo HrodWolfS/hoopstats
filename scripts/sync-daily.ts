@@ -18,6 +18,7 @@ import { PrismaClient } from "@prisma/client";
 import { CURRENT_SEASON } from "../lib/nba";
 import { gameStatusFromEspn } from "../lib/game-status";
 import { syncBoxScores } from "./sync-box-scores";
+import { syncPlayerSeasons } from "./sync-player-seasons";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -590,6 +591,18 @@ async function main() {
     console.log("\n📊 Sync box scores ESPN…");
     const boxScoreResult = await syncBoxScores({ recent: true });
 
+    // Agrégats de saison, recalculés depuis les box scores qui viennent
+    // d'arriver. Sans cette étape, les moyennes affichées restent figées à
+    // la dernière exécution manuelle (décision 001).
+    console.log("\n🧮 Recalcul des agrégats joueurs…");
+    const seasonResult = await syncPlayerSeasons(CURRENT_SEASON);
+    console.log(`  ✅ ${seasonResult.written} ligne(s) écrites`);
+    if (seasonResult.skipped.length > 0) {
+      console.log(
+        `  ⚠️  ${seasonResult.skipped.length} conservée(s) : le total de matchs reculerait`,
+      );
+    }
+
     await revalidateVercel();
 
     const issueCount =
@@ -607,12 +620,14 @@ async function main() {
           standingsResult.upserted +
           gamesResult.upserted +
           playoffsResult.upserted +
-          boxScoreResult.synced,
+          boxScoreResult.synced +
+          seasonResult.written,
         errors: {
           standingsSkipped: standingsResult.skipped,
           gamesSkipped: gamesResult.skipped,
           playoffsSkipped: playoffsResult.skipped,
           boxScoresErrors: boxScoreResult.errors,
+          playerSeasonsSkipped: seasonResult.skipped.length,
           issueCount,
         },
         startedAt,

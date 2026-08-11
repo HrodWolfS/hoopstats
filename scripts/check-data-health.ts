@@ -17,6 +17,8 @@ import { validatePlayerAliases } from "../lib/stats/player-aliases";
 import { validateAnalyticsPayload } from "../lib/analytics";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
 import { validateCareerAggregation } from "../lib/stats/career";
+import { validateSeasonAggregation } from "../lib/stats/season-aggregation";
+import { validateLeaderboardConsolidation } from "../lib/stats/leaders";
 import { isStaleStatus, validateGameStatus } from "../lib/game-status";
 import {
   seriesWinsRequired,
@@ -130,6 +132,8 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const analyticsErrors = validateAnalyticsPayload();
   const similarityErrors = validatePlayerSimilarity();
   const careerErrors = validateCareerAggregation();
+  const seasonAggregationErrors = validateSeasonAggregation();
+  const leaderboardErrors = validateLeaderboardConsolidation();
   const gameStatusErrors = validateGameStatus();
   const seriesWinnerErrors = validatePlayoffSeriesWinner();
   const correctionErrors = validatePlayoffCorrections();
@@ -168,9 +172,19 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const playedPerPlayer = new Map(
     boxScoreGameCounts.map((row) => [row.playerId, row._count._all]),
   );
-  const staleSeasonRows = storedSeasons.filter(
-    (row) => (playedPerPlayer.get(row.playerId) ?? 0) > row.gamesPlayed,
-  );
+
+  // Comparaison par joueur, pas par ligne : une saison transférée compte une
+  // ligne par équipe, dont aucune ne porte le total de la saison.
+  const storedPerPlayer = new Map<string, number>();
+  for (const row of storedSeasons) {
+    storedPerPlayer.set(
+      row.playerId,
+      (storedPerPlayer.get(row.playerId) ?? 0) + row.gamesPlayed,
+    );
+  }
+  const staleSeasonRows = [...storedPerPlayer.entries()]
+    .map(([playerId, gamesPlayed]) => ({ playerId, gamesPlayed }))
+    .filter((row) => (playedPerPlayer.get(row.playerId) ?? 0) > row.gamesPlayed);
 
   // Réimporter l'archive ESPN réécrit les séries historiques : on vérifie que
   // les corrections tiennent toujours en base, faute de quoi la finale 1990
@@ -416,6 +430,20 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
         : careerErrors.join("; "),
     ),
     check(
+      "Classements sans doublon",
+      leaderboardErrors.length === 0,
+      leaderboardErrors.length === 0
+        ? "une saison transférée ne produit qu'une entrée, pondérée par les matchs"
+        : leaderboardErrors.join("; "),
+    ),
+    check(
+      "Agrégation saison depuis les box scores",
+      seasonAggregationErrors.length === 0,
+      seasonAggregationErrors.length === 0
+        ? "moyennes calculées sur les totaux, pourcentages pondérés par le volume"
+        : seasonAggregationErrors.join("; "),
+    ),
+    check(
       "Statuts de matchs à jour",
       staleStatusGames.length === 0,
       staleStatusGames.length === 0
@@ -469,7 +497,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       staleSeasonRows.length === 0,
       staleSeasonRows.length === 0
         ? "les moyennes de saison couvrent tous les matchs synchronisés"
-        : `${staleSeasonRows.length}/${storedSeasons.length} joueur(s) dont les moyennes ignorent des matchs déjà synchronisés` +
+        : `${staleSeasonRows.length}/${storedPerPlayer.size} joueur(s) dont les moyennes ignorent des matchs déjà synchronisés` +
           ` (retard médian ${medianLag(staleSeasonRows, playedPerPlayer)} match(s)) :` +
           " PlayerSeason n'est pas alimenté par la synchronisation quotidienne",
     ),
