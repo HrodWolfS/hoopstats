@@ -49,9 +49,27 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: .github/scripts/retry.sh pnpm tsx scripts/sync-daily.ts
 
+      # --strict fait échouer le job en cas d'anomalie : c'est le signal
+      # d'alerte. GitHub notifie le propriétaire du dépôt quand un workflow
+      # planifié échoue, sans service tiers à brancher.
       - name: Check data health
         if: always()
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
-        run: .github/scripts/retry.sh pnpm health:data
+        run: |
+          set -o pipefail
+          .github/scripts/retry.sh pnpm tsx scripts/check-data-health.ts --strict 2>&1 \
+            | tee health-report.txt
+
+      # Le rapport est lisible depuis la page du run, sans dérouler les logs.
+      - name: Publier le rapport de santé
+        if: always()
+        run: |
+          {
+            echo "## Santé des données"
+            echo ''
+            echo '```'
+            cat health-report.txt 2>/dev/null || echo 'rapport indisponible'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -19,10 +19,10 @@ const SOURCES = [
     name: "NBA Stats API",
     domain: "stats.nba.com",
     description:
-      "Source principale. API officielle de la NBA utilisée pour les statistiques de base (points, rebonds, passes, etc.) et les statistiques avancées (TS%, USG%, PIE, ORtg, DRtg, NRtg). Données disponibles depuis la saison 1980-81.",
+      "API officielle de la NBA. Source des statistiques des saisons révolues, depuis 1980-81, et des métriques avancées (USG%, PIE, ORtg, DRtg, NRtg) qu'aucun box score ne permet de recalculer. Elle n'alimente plus la saison en cours : l'API ne répond plus depuis une infrastructure de production.",
     provides: [
-      "Stats de base — toutes saisons depuis 1980-81",
-      "Stats avancées — saisons 2015-16 à aujourd'hui",
+      "Stats de base — saisons révolues, depuis 1980-81",
+      "Stats avancées — saisons 2015-16 à 2024-25",
       "Profils joueurs (taille, poids, position)",
     ],
     badge: "Officielle NBA",
@@ -62,6 +62,20 @@ const SOURCES = [
     badgeColor: "text-sky-400 bg-sky-500/10 border-sky-500/20",
     logSources: ["sync-daily", "sync-playoffs", "sync-box-scores"],
   },
+  {
+    name: "Moyennes de la saison en cours",
+    domain: "calculées par hoopstats",
+    description:
+      "Les moyennes de la saison en cours ne sont pas reprises d'un fournisseur : nous les recalculons chaque jour en additionnant les box scores ESPN match par match. Les moyennes portent donc sur les totaux réels, et les pourcentages sur les volumes de tirs plutôt que sur une moyenne de moyennes.",
+    provides: [
+      "Points, rebonds, passes, interceptions, contres et minutes par match",
+      "FG%, 3P%, LF% et True Shooting, calculés sur les totaux",
+      "Une ligne par équipe pour un joueur transféré",
+    ],
+    badge: "Calculée",
+    badgeColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    logSources: ["sync-daily"],
+  },
 ];
 
 function formatUpdatedAt(date: Date): string {
@@ -78,14 +92,14 @@ const COVERAGE = [
     detail: "PTS, REB, AST, STL, BLK, FG%, 3P%, FT%, MJ",
     from: "1980-81",
     to: "2025-26",
-    note: "Roster complet depuis 1996-97. Avant 1996 : top ~160-200 joueurs/saison uniquement (NBA Leaders).",
+    note: "Saison en cours calculée à partir des box scores ; saisons révolues importées de l'API NBA. Roster complet depuis 1996-97. Avant 1996 : top ~160-200 joueurs/saison uniquement (NBA Leaders).",
   },
   {
     type: "Stats avancées",
     detail: "TS%, USG%, PIE, ORtg, DRtg, NRtg",
     from: "2015-16",
     to: "2025-26",
-    note: "Non disponibles pour les saisons antérieures à 2015-16 via l'API NBA.",
+    note: "Non disponibles pour les saisons antérieures à 2015-16 via l'API NBA. Sur la saison en cours, seul le TS% est recalculé quotidiennement : USG%, PIE et les ratings exigent des données de possession qu'un box score ne contient pas, et restent à leur dernière valeur importée.",
   },
   {
     type: "Profils joueurs",

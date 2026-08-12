@@ -339,7 +339,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
         status: { in: ["success", "partial"] },
       },
       orderBy: { completedAt: "desc" },
-      select: { completedAt: true, status: true },
+      select: { completedAt: true, status: true, itemsProcessed: true },
     }),
     prisma.game.count({ where: { season: CURRENT_SEASON, status: "final" } }),
     prisma.playerBoxScore.count({
@@ -573,6 +573,15 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
           ` (lignes manquantes chez ESPN, signalées par un bandeau sur la page match) : ` +
           summarizeMismatches(scoreMismatches),
       "warn",
+    ),
+    check(
+      "Volume de la dernière synchronisation",
+      latestDailySync == null || latestDailySync.itemsProcessed > 0,
+      latestDailySync == null
+        ? "aucune synchronisation à évaluer"
+        : latestDailySync.itemsProcessed > 0
+          ? `${latestDailySync.itemsProcessed} élément(s) traité(s)`
+          : "la dernière synchronisation n'a traité aucun élément : source muette ou pipeline interrompu",
     ),
     check(
       "Fraîcheur sync quotidienne",
