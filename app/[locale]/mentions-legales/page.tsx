@@ -59,8 +59,15 @@ export default function MentionsLegalesPage() {
           et non commerciale.
         </p>
         <p className="text-white/70 text-sm leading-relaxed">
-          Les photos de joueurs sont issues de Wikimedia Commons sous licences
-          libres (Creative Commons CC-BY-SA ou domaine public).
+          La majorité des photos de joueurs proviennent de Wikimedia Commons
+          sous licences libres (Creative Commons CC-BY-SA ou domaine public) ;
+          leur auteur est cité sur la page du joueur. Une minorité de photos,
+          ainsi que les logos d&apos;équipes, sont affichées depuis le CDN de la
+          NBA et restent la propriété de leurs détenteurs.
+        </p>
+        <p className="text-white/70 text-sm leading-relaxed">
+          Les biographies sont adaptées de Wikipédia, sous licence CC BY-SA. Le
+          lien vers l&apos;article d&apos;origine figure sous chaque biographie.
         </p>
         <p className="text-white/70 text-sm leading-relaxed">
           Les statistiques présentées proviennent de sources publiques et sont

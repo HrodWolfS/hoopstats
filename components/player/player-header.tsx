@@ -14,6 +14,10 @@ export type PlayerHeaderData = {
   secondaryColor: string;
   photoUrl?: string | null;
   summaryFr?: string | null;
+  /** Source de la biographie : Wikipédia impose d'attribuer le texte réutilisé. */
+  wikipediaUrlFr?: string | null;
+  /** Auteur et licence de la photo, exigés par les licences Creative Commons. */
+  photoAttribution?: string | null;
   // Stats saison courante
   ppg: number | null;
   rpg: number | null;
@@ -33,6 +37,8 @@ export function PlayerHeader({
   secondaryColor,
   photoUrl,
   summaryFr,
+  wikipediaUrlFr,
+  photoAttribution,
   ppg,
   rpg,
   apg,
@@ -74,9 +80,29 @@ export function PlayerHeader({
         </div>
 
         {summaryFr && (
-          <p className="text-sm text-white/50 leading-relaxed max-w-2xl">
-            {summaryFr}
-          </p>
+          <div className="max-w-2xl space-y-1.5">
+            <p className="text-sm leading-relaxed text-white/50">{summaryFr}</p>
+            {/* CC BY-SA impose de créditer la source du texte réutilisé. */}
+            <p className="text-[11px] text-white/25">
+              Biographie adaptée de{" "}
+              {wikipediaUrlFr ? (
+                <a
+                  href={wikipediaUrlFr}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-white/20 underline-offset-2 hover:text-white/50"
+                >
+                  Wikipédia
+                </a>
+              ) : (
+                "Wikipédia"
+              )}{" "}
+              · CC BY-SA
+            </p>
+          </div>
+        )}
+        {photoAttribution && (
+          <p className="text-[11px] text-white/25">Photo : {photoAttribution}</p>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

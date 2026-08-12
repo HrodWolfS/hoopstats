@@ -512,6 +512,8 @@ export default async function PlayerPage({
         secondaryColor={secondaryColor}
         photoUrl={player.photoUrl}
         summaryFr={player.summaryFr}
+        wikipediaUrlFr={player.wikipediaUrlFr}
+        photoAttribution={player.photoAttribution}
         ppg={currentSeason?.pointsPerGame ?? null}
         rpg={currentSeason?.reboundsPerGame ?? null}
         apg={currentSeason?.assistsPerGame ?? null}

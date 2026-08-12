@@ -9,8 +9,9 @@ export function Footer() {
           hoopstats les utilise dans un contexte éditorial et de référence.
         </p>
         <p>
-          Photos sous licence Creative Commons. Attributions disponibles sur
-          chaque page joueur.
+          La plupart des photos proviennent de Wikimedia Commons sous licence
+          Creative Commons, avec leur attribution sur la page du joueur. Les
+          autres, comme les logos, sont servies par le CDN de la NBA.
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1">
           <span>© {new Date().getFullYear()} hoopstats</span>

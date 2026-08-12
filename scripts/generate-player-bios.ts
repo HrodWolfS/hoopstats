@@ -49,23 +49,36 @@ function firstSentences(text: string, n = 3): string {
 
 // ─── Fetch extrait Wikipedia ──────────────────────────────────────────────────
 
-async function wikiSummary(url: string): Promise<string | null> {
+/**
+ * Extrait d'article et URL canonique.
+ *
+ * L'URL est conservée pour créditer la source : CC BY-SA impose d'attribuer
+ * le texte réutilisé, et un lien mort ou reconstruit à la main ne vaut pas
+ * l'adresse que l'API nous donne.
+ */
+async function wikiSummary(
+  url: string,
+): Promise<{ extract: string; pageUrl: string | null } | null> {
   const res = await fetch(url, { headers: { "User-Agent": WIKI_UA } });
   if (!res.ok) return null;
   const d = (await res.json()) as {
     extract?: string;
     type?: string;
     title?: string;
+    content_urls?: { desktop?: { page?: string } };
   };
   if (!d.extract || d.extract.length < 80 || d.type === "disambiguation")
     return null;
-  return d.extract;
+  return {
+    extract: d.extract,
+    pageUrl: d.content_urls?.desktop?.page ?? null,
+  };
 }
 
 async function fetchBioFr(
   firstName: string,
   lastName: string,
-): Promise<{ text: string; source: string } | null> {
+): Promise<{ text: string; source: string; pageUrl: string | null } | null> {
   const frName = encodeURIComponent(`${firstName}_${lastName}`);
   const enName = encodeURIComponent(`${firstName}_${lastName}`);
 
@@ -73,32 +86,34 @@ async function fetchBioFr(
   const fr1 = await wikiSummary(
     `https://fr.wikipedia.org/api/rest_v1/page/summary/${frName}_(basketteur)`,
   );
-  if (fr1) return { text: firstSentences(fr1), source: "fr-wiki" };
+  if (fr1)
+    return { text: firstSentences(fr1.extract), source: "fr-wiki", pageUrl: fr1.pageUrl };
 
   // 2. Wikipedia FR — page directe
   const fr2 = await wikiSummary(
     `https://fr.wikipedia.org/api/rest_v1/page/summary/${frName}`,
   );
   if (fr2) {
-    const lower = fr2.toLowerCase();
+    const lower = fr2.extract.toLowerCase();
     if (lower.includes("basket") || lower.includes("nba"))
-      return { text: firstSentences(fr2), source: "fr-wiki" };
+      return { text: firstSentences(fr2.extract), source: "fr-wiki", pageUrl: fr2.pageUrl };
   }
 
   // 3. Wikipedia EN — disambiguation basketball
   const en1 = await wikiSummary(
     `https://en.wikipedia.org/api/rest_v1/page/summary/${enName}_(basketball)`,
   );
-  if (en1) return { text: firstSentences(en1), source: "en-wiki" };
+  if (en1)
+    return { text: firstSentences(en1.extract), source: "en-wiki", pageUrl: en1.pageUrl };
 
   // 4. Wikipedia EN — page directe
   const en2 = await wikiSummary(
     `https://en.wikipedia.org/api/rest_v1/page/summary/${enName}`,
   );
   if (en2) {
-    const lower = en2.toLowerCase();
+    const lower = en2.extract.toLowerCase();
     if (lower.includes("basketball") || lower.includes("nba"))
-      return { text: firstSentences(en2), source: "en-wiki" };
+      return { text: firstSentences(en2.extract), source: "en-wiki", pageUrl: en2.pageUrl };
   }
 
   return null;
@@ -146,7 +161,13 @@ async function main() {
 
       await prisma.player.update({
         where: { id: player.id },
-        data: { summaryFr: result.text, summaryGeneratedAt: new Date() },
+        data: {
+          summaryFr: result.text,
+          summaryGeneratedAt: new Date(),
+          ...(result.source === "fr-wiki"
+            ? { wikipediaUrlFr: result.pageUrl }
+            : { wikipediaUrlEn: result.pageUrl }),
+        },
       });
 
       console.log(`✅ (${result.source})`);
