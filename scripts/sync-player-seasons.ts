@@ -24,6 +24,9 @@ import {
 
 const prisma = new PrismaClient({ log: ["error"] });
 
+/** Lignes écrites par transaction : compromis entre allers-retours et mémoire. */
+const WRITE_BATCH_SIZE = 100;
+
 export type SyncOutcome = {
   written: number;
   /** Lignes ignorées parce que le total de matchs reculerait. */
@@ -120,6 +123,7 @@ export async function syncPlayerSeasons(
     unknownTeams: [],
   };
   const unknownTeams = new Set<string>();
+  const pending: ReturnType<typeof prisma.playerSeason.upsert>[] = [];
 
   for (const stint of stints.values()) {
     const teamId = teamIdByAbbr.get(stint.teamAbbr);
@@ -147,8 +151,8 @@ export async function syncPlayerSeasons(
 
     // Réécrit même à nombre de matchs égal : une correction de box score sur
     // un match déjà compté doit se répercuter sur les moyennes.
-    if (!dryRun) {
-      await prisma.playerSeason.upsert({
+    pending.push(
+      prisma.playerSeason.upsert({
         where: {
           playerId_season_teamId: {
             playerId: stint.playerId,
@@ -159,9 +163,17 @@ export async function syncPlayerSeasons(
         // Métriques avancées absentes de l'update : elles restent intactes.
         update: derived,
         create: { playerId: stint.playerId, season, teamId, ...derived },
-      });
-    }
+      }),
+    );
     outcome.written += 1;
+  }
+
+  // Un aller-retour par ligne coûtait dix minutes depuis un runner GitHub,
+  // sur un job qui en a quinze. Les écritures partent par lots.
+  if (!dryRun) {
+    for (let index = 0; index < pending.length; index += WRITE_BATCH_SIZE) {
+      await prisma.$transaction(pending.slice(index, index + WRITE_BATCH_SIZE));
+    }
   }
 
   outcome.unknownTeams = [...unknownTeams];
