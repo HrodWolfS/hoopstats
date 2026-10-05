@@ -17,6 +17,7 @@
 import { PrismaClient } from "@prisma/client";
 import { CURRENT_SEASON } from "../lib/nba";
 import { gameStatusFromEspn } from "../lib/game-status";
+import { seasonAndPhaseFromEspn } from "../lib/season-phase";
 import { syncBoxScores } from "./sync-box-scores";
 import { syncPlayerSeasons } from "./sync-player-seasons";
 
@@ -151,7 +152,9 @@ async function syncRecentGames(): Promise<{
     type EspnEvent = {
       id: string;
       date: string;
+      season?: { year?: number; type?: number };
       competitions: Array<{
+        type?: { abbreviation?: string };
         status: { type: { name: string } };
         competitors: Array<{
           homeAway: string;
@@ -193,6 +196,15 @@ async function syncRecentGames(): Promise<{
         continue;
       }
 
+      // Saison et phase viennent de l'événement : un match de présaison
+      // d'octobre appartient à la saison qui commence, pas à CURRENT_SEASON.
+      const classification = seasonAndPhaseFromEspn(event);
+      if (!classification) {
+        skipped++;
+        continue;
+      }
+      const { season, phase } = classification;
+
       const statusName = comp.status.type.name;
       const status = gameStatusFromEspn(statusName);
       const isFinal = status === "final";
@@ -204,13 +216,16 @@ async function syncRecentGames(): Promise<{
           where: { espnId: event.id },
           // Ne mettre à jour le score que si le match est terminé
           // (évite d'écraser "final" avec un statut en cours lors d'un retry)
-          update: isFinal ? { homeScore, awayScore, status } : { status },
+          update: isFinal
+            ? { homeScore, awayScore, status, season, phase }
+            : { status, season, phase },
           create: {
             espnId: event.id,
             homeTeamId,
             awayTeamId,
             gameDate: new Date(event.date),
-            season: CURRENT_SEASON,
+            season,
+            phase,
             homeScore,
             awayScore,
             status,

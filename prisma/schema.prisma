@@ -132,6 +132,10 @@ model Game {
   awayTeamId String
   gameDate   DateTime
   season     String
+  // "preseason" | "regular" | "cup_final" | "play_in" | "playoffs" | "other"
+  // (lib/season-phase.ts). Null tant que le match n'a pas été classé : il est
+  // alors exclu des moyennes de saison régulière.
+  phase      String?
   homeScore  Int?
   awayScore  Int?
   status     String // "scheduled" | "final"
@@ -143,6 +147,7 @@ model Game {
   playerBoxScores PlayerBoxScore[]
 
   @@index([season, status])
+  @@index([season, phase])
   @@index([homeTeamId, season])
   @@index([awayTeamId, season])
 }

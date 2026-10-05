@@ -10,6 +10,7 @@
 import { PrismaClient } from "@prisma/client";
 import { CURRENT_SEASON } from "../lib/nba";
 import { gameStatusFromEspn } from "../lib/game-status";
+import { seasonAndPhaseFromEspn } from "../lib/season-phase";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -25,7 +26,9 @@ const ESPN_TO_DB: Record<string, string> = {
 type EspnEvent = {
   id: string;
   date: string;
+  season?: { year?: number; type?: number };
   competitions?: Array<{
+    type?: { abbreviation?: string };
     status?: { type?: { name?: string } };
     competitors?: Array<{
       homeAway?: "home" | "away";
@@ -127,6 +130,20 @@ async function main() {
       continue;
     }
 
+    const classification = seasonAndPhaseFromEspn(event);
+    if (!classification) {
+      skipped++;
+      errors.push(`${event.id}: saison ESPN absente`);
+      continue;
+    }
+    if (classification.season !== season) {
+      // Une plage mensuelle peut déborder sur la saison voisine (présaison
+      // d'octobre) : ce match sera repris avec la bonne saison, pas forcé ici.
+      skipped++;
+      continue;
+    }
+    const { phase } = classification;
+
     const statusName = competition.status?.type?.name;
     const status = gameStatusFromEspn(statusName);
     const homeScore = status === "final" ? Number.parseInt(home.score ?? "", 10) : null;
@@ -151,6 +168,7 @@ async function main() {
         awayTeamId,
         gameDate: new Date(event.date),
         season,
+        phase,
         homeScore,
         awayScore,
         status,
@@ -161,6 +179,7 @@ async function main() {
         awayTeamId,
         gameDate: new Date(event.date),
         season,
+        phase,
         homeScore,
         awayScore,
         status,

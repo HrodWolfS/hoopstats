@@ -7,6 +7,7 @@ import { stat, pct, record } from "@/lib/format";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { TeamMono } from "@/components/ui/team-mono";
 import { FadeIn } from "@/components/ui/fade-in";
+import { COMPETITIVE_PHASES, REGULAR_SEASON_PHASE } from "@/lib/season-phase";
 
 export const metadata: Metadata = {
   title: "hoopstats — Stats NBA en français",
@@ -87,11 +88,21 @@ async function getLeaders(
   }));
 }
 
+/**
+ * Sans seuil de volume, le TS% sacre des pivots à 3 tirs par match (Sims,
+ * Kalkbrenner) ou un vétéran qui tire à peine. 20 minutes et 10 points par
+ * match réservent ce classement aux joueurs dont l'efficacité porte une attaque.
+ */
+const TS_MIN_MINUTES = 20;
+const TS_MIN_POINTS = 10;
+
 async function getTsLeaders(limit = 5): Promise<LeaderRow[]> {
   const rows = await prisma.playerSeason.findMany({
     where: {
       season: CURRENT_SEASON,
       gamesPlayed: { gte: 20 },
+      minutesPerGame: { gte: TS_MIN_MINUTES },
+      pointsPerGame: { gte: TS_MIN_POINTS },
       trueShooting: { not: null },
     },
     orderBy: { trueShooting: "desc" },
@@ -150,7 +161,11 @@ type RecentGameRow = {
 
 async function getRecentGames(limit = 6): Promise<RecentGameRow[]> {
   return prisma.game.findMany({
-    where: { status: "final", season: CURRENT_SEASON },
+    where: {
+      status: "final",
+      season: CURRENT_SEASON,
+      phase: { in: COMPETITIVE_PHASES },
+    },
     orderBy: { gameDate: "desc" },
     take: limit,
     select: {
@@ -210,7 +225,9 @@ async function getCounts() {
       where: { season: CURRENT_SEASON, gamesPlayed: { gte: 1 } },
     }),
     prisma.teamSeason.count({ where: { season: CURRENT_SEASON } }),
-    prisma.game.count({ where: { season: CURRENT_SEASON, status: "final" } }),
+    prisma.game.count({
+      where: { season: CURRENT_SEASON, status: "final", phase: REGULAR_SEASON_PHASE },
+    }),
   ]);
   return { playersCount, teamsCount, gamesCount };
 }
@@ -617,7 +634,7 @@ export default async function HomePage({
             />
             <LeadersPanel
               title="True Shooting"
-              unit="TS% · min. 20MJ"
+              unit={`TS% · min. 20MJ, ${TS_MIN_MINUTES} min, ${TS_MIN_POINTS} pts`}
               rows={tsLeaders}
               format={(v) => `${pct(v)}%`}
               locale={locale}

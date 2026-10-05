@@ -23,6 +23,7 @@ import {
   type SimilarPlayerCard,
 } from "@/components/player/player-context-sections";
 import { ShareButton } from "@/components/analytics/share-button";
+import { REGULAR_SEASON_PHASE } from "@/lib/season-phase";
 
 export const revalidate = 21600;
 
@@ -190,7 +191,12 @@ export default async function PlayerPage({
         where: {
           playerId: player.id,
           didNotPlay: false,
-          game: { season: currentSeason.season, status: "final" },
+          // Même périmètre que les moyennes de saison : saison régulière seule.
+          game: {
+            season: currentSeason.season,
+            status: "final",
+            phase: REGULAR_SEASON_PHASE,
+          },
         },
         include: {
           game: {

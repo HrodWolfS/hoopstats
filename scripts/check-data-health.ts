@@ -29,6 +29,7 @@ import {
   findPlayoffSeriesCorrection,
   validatePlayoffCorrections,
 } from "../lib/playoff-corrections";
+import { REGULAR_SEASON_PHASE, validateSeasonPhase } from "../lib/season-phase";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -137,6 +138,18 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const gameStatusErrors = validateGameStatus();
   const seriesWinnerErrors = validatePlayoffSeriesWinner();
   const correctionErrors = validatePlayoffCorrections();
+  const seasonPhaseErrors = validateSeasonPhase();
+
+  // Un match non classé est exclu des moyennes : s'il en reste, la
+  // synchronisation n'a pas lu la saison ESPN ou le rattrapage n'a pas tourné.
+  // Une équipe joue 82 matchs de saison régulière : au-delà, des matchs d'une
+  // autre phase se sont glissés dans l'agrégat.
+  const [unclassifiedGames, overflowingSeasonRows] = await Promise.all([
+    prisma.game.count({ where: { phase: null } }),
+    prisma.playerSeason.count({
+      where: { season: CURRENT_SEASON, gamesPlayed: { gt: 82 } },
+    }),
+  ]);
 
   // Une série terminée dont aucune équipe n'atteint le total requis trahit un
   // décompte incomplet : le vainqueur affiché serait alors arbitraire. Le
@@ -159,7 +172,11 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       where: {
         didNotPlay: false,
         playerId: { not: null },
-        game: { season: CURRENT_SEASON, status: "final" },
+        game: {
+          season: CURRENT_SEASON,
+          status: "final",
+          phase: REGULAR_SEASON_PHASE,
+        },
       },
       _count: { _all: true },
     }),
@@ -295,7 +312,9 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
         boxScore: { is: null },
       },
     }),
-    prisma.game.count({ where: { season: CURRENT_SEASON } }),
+    prisma.game.count({
+      where: { season: CURRENT_SEASON, phase: REGULAR_SEASON_PHASE },
+    }),
     prisma.game.count({
       where: {
         season: CURRENT_SEASON,
@@ -484,6 +503,27 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
         : `${unappliedCorrections.length} série(s) revenue(s) à la version ESPN (${unappliedCorrections
             .map((s) => `${s.season} ${s.team1.abbr}-${s.team2.abbr}`)
             .join(", ")}) : lancer pnpm fix:playoff-history`,
+    ),
+    check(
+      "Phases de saison (lecture ESPN)",
+      seasonPhaseErrors.length === 0,
+      seasonPhaseErrors.length === 0
+        ? "présaison, saison régulière, finale NBA Cup, play-in et playoffs distingués"
+        : seasonPhaseErrors.join("; "),
+    ),
+    check(
+      "Matchs classés par phase",
+      unclassifiedGames === 0,
+      unclassifiedGames === 0
+        ? "chaque match porte sa saison et sa phase ESPN"
+        : `${unclassifiedGames} match(s) sans phase, exclus des moyennes : lancer pnpm tsx scripts/backfill-game-phases.ts --apply`,
+    ),
+    check(
+      "Matchs joués par saison",
+      overflowingSeasonRows === 0,
+      overflowingSeasonRows === 0
+        ? "aucune ligne ne dépasse 82 matchs de saison régulière"
+        : `${overflowingSeasonRows} ligne(s) au-delà de 82 matchs en ${CURRENT_SEASON} : présaison ou playoffs comptés dans les moyennes`,
     ),
     check(
       "Statuts de matchs (correspondance ESPN)",

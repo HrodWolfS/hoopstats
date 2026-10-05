@@ -12,6 +12,7 @@ import type { RosterPlayer } from "@/components/team/roster-view";
 import type { SeasonStats, ConferenceRow } from "@/components/team/season-view";
 import type { HistorySeason } from "@/components/team/history-view";
 import type { GameRow } from "@/components/team/recent-games";
+import { COMPETITIVE_PHASES } from "@/lib/season-phase";
 
 export const revalidate = 21600; // 6h ISR
 
@@ -189,6 +190,7 @@ export default async function TeamPage({
       where: {
         status: "final",
         season: CURRENT_SEASON,
+        phase: { in: COMPETITIVE_PHASES },
         OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
       },
       orderBy: { gameDate: "desc" },

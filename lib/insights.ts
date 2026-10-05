@@ -9,6 +9,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { REGULAR_SEASON_PHASE } from "@/lib/season-phase";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ async function loadGameData(
     where: {
       season,
       status: "final",
+      phase: REGULAR_SEASON_PHASE,
       OR: [{ homeTeamId: teamId }, { awayTeamId: teamId }],
     },
     select: {
