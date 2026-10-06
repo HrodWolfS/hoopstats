@@ -6,6 +6,7 @@ import { CommandPalette } from "@/components/ui/command-palette";
 import { PageTransition } from "@/components/ui/page-transition";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
 import { MainWrapper } from "@/components/layout/main-wrapper";
+import { currentSeason } from "@/lib/nba";
 
 export function generateStaticParams() {
   return [{ locale: "fr" }];
@@ -31,7 +32,7 @@ export default function LocaleLayout({
           <Suspense
             fallback={<div className="h-14 border-b border-white/[0.06]" />}
           >
-            <TopBar />
+            <TopBar currentSeason={currentSeason()} />
           </Suspense>
           <div className="px-4 md:px-8 lg:px-12 py-6 md:py-8 max-w-[1400px] mx-auto w-full flex-1">
             <PageTransition>{children}</PageTransition>

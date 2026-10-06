@@ -6,7 +6,11 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { CURRENT_SEASON } from "../lib/nba";
+import {
+  SEASON_OPENERS,
+  currentSeason,
+  espnSeasonYear,
+} from "../lib/nba";
 import {
   NULLABLE_METRIC_COLUMNS,
   validatePlayerMetricRegistry,
@@ -29,9 +33,15 @@ import {
   findPlayoffSeriesCorrection,
   validatePlayoffCorrections,
 } from "../lib/playoff-corrections";
-import { REGULAR_SEASON_PHASE, validateSeasonPhase } from "../lib/season-phase";
+import {
+  COMPETITIVE_PHASES,
+  REGULAR_SEASON_PHASE,
+  validateSeasonPhase,
+} from "../lib/season-phase";
 
 const prisma = new PrismaClient({ log: ["error"] });
+
+const CURRENT_SEASON = currentSeason();
 
 type CheckStatus = "pass" | "warn" | "fail";
 
@@ -56,7 +66,7 @@ function check(
 
 function expectedRegularSeasonGames(now: Date): number {
   const startYear = Number.parseInt(CURRENT_SEASON.split("-")[0], 10);
-  const seasonStart = new Date(Date.UTC(startYear, 9, 1));
+  const seasonStart = new Date(SEASON_OPENERS[CURRENT_SEASON]);
   const regularSeasonEnd = new Date(Date.UTC(startYear + 1, 3, 15));
 
   if (now <= seasonStart) return 0;
@@ -66,6 +76,50 @@ function expectedRegularSeasonGames(now: Date): number {
     (now.getTime() - seasonStart.getTime()) /
     (regularSeasonEnd.getTime() - seasonStart.getTime());
   return Math.floor(1230 * progress * 0.9);
+}
+
+type SeasonCalendarCheck = { ok: boolean; message: string } | null;
+
+/**
+ * Compare le calendrier codé dans `SEASON_OPENERS` à celui d'ESPN. La bascule
+ * de saison du site en dépend : une saison ESPN absente du calendrier ou une
+ * date de reprise déplacée doit être corrigée avant le premier match.
+ * `null` quand ESPN ne répond pas : l'audit ne doit pas échouer pour ça.
+ */
+async function checkSeasonCalendar(): Promise<SeasonCalendarCheck> {
+  try {
+    const res = await fetch(
+      "https://site.api.espn.com/apis/common/v3/sports/basketball/nba/season",
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      year?: number;
+      types?: { type?: number; startDate?: string }[];
+    };
+    const regular = data.types?.find((type) => type.type === 2);
+    if (!data.year || !regular?.startDate) return null;
+
+    const season = `${data.year - 1}-${String(data.year).slice(-2)}`;
+    const known = SEASON_OPENERS[season];
+    if (!known) {
+      return {
+        ok: false,
+        message: `saison ESPN ${season} absente de SEASON_OPENERS (lib/nba.ts) : ajouter "${season}": "${new Date(regular.startDate).toISOString().replace(".000", "")}"`,
+      };
+    }
+    if (Date.parse(known) !== Date.parse(regular.startDate)) {
+      return {
+        ok: false,
+        message: `reprise ${season} déplacée par ESPN : ${regular.startDate} au lieu de ${known} dans lib/nba.ts`,
+      };
+    }
+    return {
+      ok: true,
+      message: `reprise ${season} le ${known}, saison affichée ${CURRENT_SEASON} (ESPN ${espnSeasonYear(CURRENT_SEASON)})`,
+    };
+  } catch {
+    return null;
+  }
 }
 
 type MismatchedGame = {
@@ -144,11 +198,15 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   // synchronisation n'a pas lu la saison ESPN ou le rattrapage n'a pas tourné.
   // Une équipe joue 82 matchs de saison régulière : au-delà, des matchs d'une
   // autre phase se sont glissés dans l'agrégat.
-  const [unclassifiedGames, overflowingSeasonRows] = await Promise.all([
+  const [unclassifiedGames, overflowingSeasonRows, regularFinalGames, seasonCalendar] = await Promise.all([
     prisma.game.count({ where: { phase: null } }),
     prisma.playerSeason.count({
       where: { season: CURRENT_SEASON, gamesPlayed: { gt: 82 } },
     }),
+    prisma.game.count({
+      where: { season: CURRENT_SEASON, status: "final", phase: REGULAR_SEASON_PHASE },
+    }),
+    checkSeasonCalendar(),
   ]);
 
   // Une série terminée dont aucune équipe n'atteint le total requis trahit un
@@ -309,6 +367,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       where: {
         season: CURRENT_SEASON,
         status: "final",
+        phase: { in: COMPETITIVE_PHASES },
         boxScore: { is: null },
       },
     }),
@@ -338,6 +397,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       where: {
         season: CURRENT_SEASON,
         status: "final",
+        phase: { in: COMPETITIVE_PHASES },
         boxScore: { isNot: null },
       },
       select: {
@@ -360,19 +420,25 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       orderBy: { completedAt: "desc" },
       select: { completedAt: true, status: true, itemsProcessed: true },
     }),
-    prisma.game.count({ where: { season: CURRENT_SEASON, status: "final" } }),
+    prisma.game.count({
+      where: {
+        season: CURRENT_SEASON,
+        status: "final",
+        phase: { in: COMPETITIVE_PHASES },
+      },
+    }),
     prisma.playerBoxScore.count({
       where: {
         didNotPlay: false,
         playerId: { not: null },
-        game: { season: CURRENT_SEASON },
+        game: { season: CURRENT_SEASON, phase: { in: COMPETITIVE_PHASES } },
       },
     }),
     prisma.playerBoxScore.count({
       where: {
         didNotPlay: false,
         playerName: { not: "—" },
-        game: { season: CURRENT_SEASON },
+        game: { season: CURRENT_SEASON, phase: { in: COMPETITIVE_PHASES } },
       },
     }),
   ]);
@@ -389,16 +455,20 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       homePlayerPoints !== game.homeScore || awayPlayerPoints !== game.awayScore
     );
   });
+  // Le matin de la reprise, aucun match n'est terminé : rien n'est incomplet.
   const completeBoxScoreRate =
     finalGameCount === 0
-      ? 0
+      ? 100
       : ((finalGameCount - finalGamesWithoutBoxScore - scoreMismatches.length) /
           finalGameCount) *
         100;
   const identityResolutionRate =
-    eligiblePlayerRows === 0 ? 0 : (resolvedPlayerRows / eligiblePlayerRows) * 100;
+    eligiblePlayerRows === 0 ? 100 : (resolvedPlayerRows / eligiblePlayerRows) * 100;
 
   return [
+    seasonCalendar
+      ? check("Calendrier des saisons", seasonCalendar.ok, seasonCalendar.message)
+      : check("Calendrier des saisons", false, "ESPN injoignable, calendrier non vérifié", "warn"),
     check(
       "Registre statistique",
       metricRegistryErrors.length === 0,
@@ -553,13 +623,17 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
     check("Équipes", teamCount === 30, `${teamCount}/30 équipes présentes`),
     check(
       "Saisons équipes",
-      currentTeamSeasonCount === 30,
-      `${currentTeamSeasonCount}/30 équipes couvertes en ${CURRENT_SEASON}`,
+      currentTeamSeasonCount === 30 || regularFinalGames === 0,
+      regularFinalGames === 0
+        ? `aucun match de saison régulière terminé en ${CURRENT_SEASON} : bilans à venir`
+        : `${currentTeamSeasonCount}/30 équipes couvertes en ${CURRENT_SEASON}`,
     ),
     check(
       "Saisons joueurs",
-      currentPlayerSeasonCount > 0,
-      `${currentPlayerSeasonCount} lignes en ${CURRENT_SEASON}`,
+      currentPlayerSeasonCount > 0 || regularFinalGames === 0,
+      regularFinalGames === 0
+        ? `aucun match de saison régulière terminé en ${CURRENT_SEASON} : rien à agréger`
+        : `${currentPlayerSeasonCount} lignes en ${CURRENT_SEASON}`,
     ),
     check(
       "Valeurs joueurs",

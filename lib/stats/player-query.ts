@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { ALL_SEASONS, CURRENT_SEASON } from "@/lib/nba";
+import { ALL_SEASONS, currentSeason } from "@/lib/nba";
 import {
   getPlayerMetric,
   type PlayerMetricKey,
@@ -90,7 +90,7 @@ export function parsePlayerExplorerParams(
   return {
     season: ALL_SEASONS.includes(requestedSeason)
       ? requestedSeason
-      : CURRENT_SEASON,
+      : currentSeason(),
     query: first(input.q).trim().slice(0, 80),
     team: first(input.equipe).trim().toUpperCase().slice(0, 3),
     position: POSITIONS.has(requestedPosition) ? requestedPosition : "",

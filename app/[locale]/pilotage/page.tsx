@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON } from "@/lib/nba";
+import { currentSeason } from "@/lib/nba";
 
 export const metadata: Metadata = {
   title: "Pilotage mensuel | hoopstats",
@@ -36,11 +36,11 @@ export default async function PilotagePage({
       prisma.syncLog.count({
         where: { completedAt: { gte: start, lt: end }, status: "error" },
       }),
-      prisma.game.count({ where: { season: CURRENT_SEASON } }),
+      prisma.game.count({ where: { season: currentSeason() } }),
       prisma.player.count({ where: { seasons: { some: {} } } }),
       prisma.team.count(),
       prisma.game.count({
-        where: { season: CURRENT_SEASON, status: "final", boxScore: { is: null } },
+        where: { season: currentSeason(), status: "final", boxScore: { is: null } },
       }),
       prisma.playerBoxScore.count({
         where: { didNotPlay: false, playerName: { not: "—" }, playerId: null },

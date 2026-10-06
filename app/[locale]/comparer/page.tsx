@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON } from "@/lib/nba";
+import { currentSeason } from "@/lib/nba";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
@@ -312,7 +312,7 @@ export default async function ComparerPage({
   const p2Primary = s2?.team.primaryColor ?? "#7C3AED";
   const p2Secondary = s2?.team.secondaryColor ?? "#06B6D4";
 
-  const season = commonSeason ?? s1?.season ?? s2?.season ?? CURRENT_SEASON;
+  const season = commonSeason ?? s1?.season ?? s2?.season ?? currentSeason();
 
   return (
     <div className="space-y-8">

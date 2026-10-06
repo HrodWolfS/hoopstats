@@ -10,7 +10,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON } from "@/lib/nba";
+import { currentSeason } from "@/lib/nba";
 
 const LIMIT_ARG = process.argv.includes("--limit")
   ? parseInt(process.argv[process.argv.indexOf("--limit") + 1] ?? "10")
@@ -196,7 +196,7 @@ async function main() {
   const players = await prisma.player.findMany({
     where: {
       summaryFr: null,
-      seasons: { some: { season: CURRENT_SEASON } },
+      seasons: { some: { season: currentSeason() } },
     },
     include: {
       seasons: {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON } from "@/lib/nba";
+import { currentSeason } from "@/lib/nba";
 
 export const runtime = "nodejs";
 
@@ -29,13 +29,13 @@ export async function GET(req: NextRequest) {
           { firstName: { contains: q, mode: "insensitive" } },
           { lastName: { contains: q, mode: "insensitive" } },
         ],
-        seasons: { some: { season: CURRENT_SEASON } },
+        seasons: { some: { season: currentSeason() } },
       },
       take: 6,
       orderBy: { lastName: "asc" },
       include: {
         seasons: {
-          where: { season: CURRENT_SEASON },
+          where: { season: currentSeason() },
           take: 1,
           include: {
             team: {

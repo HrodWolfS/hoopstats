@@ -24,7 +24,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { CURRENT_SEASON } from "../lib/nba";
+import { currentSeason } from "../lib/nba";
 import { REGULAR_SEASON_PHASE } from "../lib/season-phase";
 import {
   deriveSeasonFromBoxScores,
@@ -48,7 +48,7 @@ export type SyncOutcome = {
 
 function seasonArg(argv: readonly string[]): string {
   const index = argv.indexOf("--season");
-  return index >= 0 && argv[index + 1] ? argv[index + 1] : CURRENT_SEASON;
+  return index >= 0 && argv[index + 1] ? argv[index + 1] : currentSeason();
 }
 
 export async function syncPlayerSeasons(

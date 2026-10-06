@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
 import { type Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON } from "@/lib/nba";
+import { currentSeason } from "@/lib/nba";
 import { stat, pct } from "@/lib/format";
 import { Crumbs } from "@/components/ui/crumbs";
 import { PlayerHeader } from "@/components/player/player-header";
@@ -169,7 +169,7 @@ export default async function PlayerPage({
 }) {
   const { locale, slug, saison } = await params;
   if (saison !== undefined && !isSeasonParam(saison)) notFound();
-  const season = saison ?? CURRENT_SEASON;
+  const season = saison ?? currentSeason();
 
   const player = await prisma.player.findUnique({
     where: { slug },
@@ -182,23 +182,23 @@ export default async function PlayerPage({
   });
   if (!player) notFound();
 
-  const currentSeason =
+  const seasonRow =
     player.seasons.find((s) => s.season === season) ??
     player.seasons[player.seasons.length - 1] ??
     null;
 
-  const currentTeam = currentSeason?.team ?? null;
+  const currentTeam = seasonRow?.team ?? null;
   const primaryColor = currentTeam?.primaryColor ?? "#7C3AED";
   const secondaryColor = currentTeam?.secondaryColor ?? "#06B6D4";
 
-  const gameRows = currentSeason
+  const gameRows = seasonRow
     ? await prisma.playerBoxScore.findMany({
         where: {
           playerId: player.id,
           didNotPlay: false,
           // Même périmètre que les moyennes de saison : saison régulière seule.
           game: {
-            season: currentSeason.season,
+            season: seasonRow.season,
             status: "final",
             phase: REGULAR_SEASON_PHASE,
           },
@@ -243,10 +243,10 @@ export default async function PlayerPage({
 
   const posGroup = positionGroup(player.position);
 
-  const peers = currentSeason
+  const peers = seasonRow
     ? await prisma.playerSeason.findMany({
         where: {
-          season: currentSeason.season,
+          season: seasonRow.season,
           gamesPlayed: { gte: 15 },
           ...(posGroup ? { player: { position: { in: posGroup } } } : {}),
         },
@@ -278,87 +278,87 @@ export default async function PlayerPage({
       })
     : [];
 
-  const radarStats: RadarStat[] = currentSeason
+  const radarStats: RadarStat[] = seasonRow
     ? [
         {
           key: "PTS",
           label: "Points",
-          value: stat(currentSeason.pointsPerGame),
+          value: stat(seasonRow.pointsPerGame),
           ...radarContext(
             "pointsPerGame",
             peers.map((p) => p.pointsPerGame),
-            currentSeason.pointsPerGame,
+            seasonRow.pointsPerGame,
           ),
         },
         {
           key: "REB",
           label: "Rebonds",
-          value: stat(currentSeason.reboundsPerGame),
+          value: stat(seasonRow.reboundsPerGame),
           ...radarContext(
             "reboundsPerGame",
             peers.map((p) => p.reboundsPerGame),
-            currentSeason.reboundsPerGame,
+            seasonRow.reboundsPerGame,
           ),
         },
         {
           key: "AST",
           label: "Passes",
-          value: stat(currentSeason.assistsPerGame),
+          value: stat(seasonRow.assistsPerGame),
           ...radarContext(
             "assistsPerGame",
             peers.map((p) => p.assistsPerGame),
-            currentSeason.assistsPerGame,
+            seasonRow.assistsPerGame,
           ),
         },
         {
           key: "TS%",
           label: "True Shooting",
           value:
-            currentSeason.trueShooting != null
-              ? `${pct(currentSeason.trueShooting)}%`
+            seasonRow.trueShooting != null
+              ? `${pct(seasonRow.trueShooting)}%`
               : "—",
           ...radarContext(
             "trueShooting",
             peers
               .filter((p) => p.trueShooting != null)
               .map((p) => p.trueShooting!),
-            currentSeason.trueShooting,
+            seasonRow.trueShooting,
           ),
         },
         {
           key: "STL",
           label: "Interceptions",
-          value: stat(currentSeason.stealsPerGame),
+          value: stat(seasonRow.stealsPerGame),
           ...radarContext(
             "stealsPerGame",
             peers.map((p) => p.stealsPerGame),
-            currentSeason.stealsPerGame,
+            seasonRow.stealsPerGame,
           ),
         },
         {
           key: "BLK",
           label: "Contres",
-          value: stat(currentSeason.blocksPerGame),
+          value: stat(seasonRow.blocksPerGame),
           ...radarContext(
             "blocksPerGame",
             peers.map((p) => p.blocksPerGame),
-            currentSeason.blocksPerGame,
+            seasonRow.blocksPerGame,
           ),
         },
       ]
     : [];
 
-  const similarityResults = currentSeason
+  const similarityResults = seasonRow
     ? findSimilarPlayers(
         {
-          id: currentSeason.id,
+          id: seasonRow.id,
           values: [
-            currentSeason.pointsPerGame,
-            currentSeason.reboundsPerGame,
-            currentSeason.assistsPerGame,
-            currentSeason.stealsPerGame,
-            currentSeason.blocksPerGame,
-            currentSeason.trueShooting,
+            seasonRow.pointsPerGame,
+            seasonRow.reboundsPerGame,
+            seasonRow.assistsPerGame,
+            seasonRow.stealsPerGame,
+            seasonRow.blocksPerGame,
+            seasonRow.trueShooting,
           ],
         },
         peers
@@ -525,10 +525,10 @@ export default async function PlayerPage({
         summaryFr={player.summaryFr}
         wikipediaUrlFr={player.wikipediaUrlFr}
         photoAttribution={player.photoAttribution}
-        ppg={currentSeason?.pointsPerGame ?? null}
-        rpg={currentSeason?.reboundsPerGame ?? null}
-        apg={currentSeason?.assistsPerGame ?? null}
-        tsPct={currentSeason?.trueShooting ?? null}
+        ppg={seasonRow?.pointsPerGame ?? null}
+        rpg={seasonRow?.reboundsPerGame ?? null}
+        apg={seasonRow?.assistsPerGame ?? null}
+        tsPct={seasonRow?.trueShooting ?? null}
       />
 
       {/* Radar chart — percentiles vs même position */}
@@ -540,7 +540,7 @@ export default async function PlayerPage({
                 stats={radarStats}
                 color={primaryColor}
                 positionLabel={positionLabel(player.position)}
-                season={currentSeason?.season ?? season}
+                season={seasonRow?.season ?? season}
               />
             </div>
           </div>
@@ -551,7 +551,7 @@ export default async function PlayerPage({
               {/* Header */}
               <div className="flex items-baseline justify-between mb-5">
                 <p className="text-[10px] text-white/30 uppercase tracking-[0.18em] font-medium">
-                  Profil statistique · {currentSeason?.season ?? season}
+                  Profil statistique · {seasonRow?.season ?? season}
                 </p>
                 <p className="text-[10px] text-white/20 font-mono">
                   vs {positionLabel(player.position)}

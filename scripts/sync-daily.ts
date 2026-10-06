@@ -15,11 +15,14 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { CURRENT_SEASON } from "../lib/nba";
+import { currentSeason, espnSeasonYear } from "../lib/nba";
 import { gameStatusFromEspn } from "../lib/game-status";
 import { seasonAndPhaseFromEspn } from "../lib/season-phase";
 import { syncBoxScores } from "./sync-box-scores";
 import { syncPlayerSeasons } from "./sync-player-seasons";
+
+/** Saison synchronisée : figée au lancement pour que toutes les étapes concordent. */
+const CURRENT_SEASON = currentSeason();
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -42,11 +45,12 @@ async function syncStandings(): Promise<{
   upserted: number;
   skipped: number;
 }> {
-  console.log("\n🏆 Sync standings 2025-26 (ESPN API)…");
+  console.log(`\n🏆 Sync standings ${CURRENT_SEASON} (ESPN API)…`);
 
-  // ESPN season = année de FIN de saison : "2025-26" → 2026
-  const espnSeason = "20" + CURRENT_SEASON.split("-")[1];
-  const url = `https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?season=${espnSeason}`;
+  // ESPN season = année de FIN de saison : "2025-26" → 2026. Sans
+  // seasontype=2, ESPN renvoie les bilans de présaison avant la reprise.
+  const espnSeason = espnSeasonYear(CURRENT_SEASON);
+  const url = `https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?season=${espnSeason}&seasontype=2`;
 
   const res = await fetch(url);
 

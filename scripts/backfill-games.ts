@@ -8,7 +8,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { CURRENT_SEASON } from "../lib/nba";
+import { currentSeason } from "../lib/nba";
 import { gameStatusFromEspn } from "../lib/game-status";
 import { seasonAndPhaseFromEspn } from "../lib/season-phase";
 
@@ -42,7 +42,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   const season =
     args.find((arg) => arg.startsWith("--season="))?.split("=")[1] ??
-    CURRENT_SEASON;
+    currentSeason();
 
   if (!/^\d{4}-\d{2}$/.test(season)) {
     throw new Error(`Saison invalide : ${season}`);

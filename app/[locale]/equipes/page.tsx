@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON } from "@/lib/nba";
+import { currentSeason } from "@/lib/nba";
 import { TeamMono } from "@/components/ui/team-mono";
 import { FadeIn, StaggerList, StaggerItem } from "@/components/ui/fade-in";
 
 export const metadata: Metadata = {
   title: "Les 30 équipes NBA — hoopstats",
-  description: `Stats, roster et historique des 30 franchises NBA. Données saison ${CURRENT_SEASON}.`,
+  description: `Stats, roster et historique des 30 franchises NBA. Saison en cours et archives depuis 1980-81.`,
   alternates: { canonical: "/fr/equipes" },
 };
 
@@ -22,7 +22,7 @@ export default async function TeamsPage({
 }) {
   const { locale, saison } = await params;
   if (saison !== undefined && !isSeasonParam(saison)) notFound();
-  const season = saison ?? CURRENT_SEASON;
+  const season = saison ?? currentSeason();
 
   const teams = await prisma.team.findMany({
     orderBy: { conference: "asc" },

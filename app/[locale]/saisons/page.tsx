@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON } from "@/lib/nba";
+import { currentSeason } from "@/lib/nba";
 import { stat } from "@/lib/format";
 import { hasSeriesStarted, seriesWinnerTeamId } from "@/lib/playoff-series";
 import { Crumbs } from "@/components/ui/crumbs";
@@ -144,7 +144,7 @@ export default async function SaisonsPage({
 }) {
   const { locale, saison } = await params;
   if (saison !== undefined && !isSeasonParam(saison)) notFound();
-  const season = saison ?? CURRENT_SEASON;
+  const season = saison ?? currentSeason();
 
   // Fetch en parallèle : standings + séries playoff + leaders stats
   const [teamSeasons, playoffSeries, playerSeasons] = await Promise.all([

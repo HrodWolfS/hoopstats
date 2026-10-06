@@ -26,6 +26,8 @@ type TeamTabsProps = {
   upcomingGames: GameRow[];
   rosterDate: string;
   locale: string;
+  /** Saison en cours : un effectif vide veut dire qu'aucun match n'est encore joué. */
+  isLiveSeason: boolean;
 };
 
 const TABS = [
@@ -46,6 +48,7 @@ export function TeamTabs({
   upcomingGames,
   rosterDate,
   locale,
+  isLiveSeason,
 }: TeamTabsProps) {
   const [active, setActive] = useState("roster");
 
@@ -56,7 +59,17 @@ export function TeamTabs({
       {active === "roster" && roster.length > 0 && (
         <RosterView players={roster} updatedAt={rosterDate} locale={locale} />
       )}
-      {active === "roster" && roster.length === 0 && (
+      {active === "roster" && roster.length === 0 && isLiveSeason && (
+        <div className="py-16 text-center space-y-2">
+          <p className="text-white/40 text-sm font-mono">
+            Effectif à venir.
+          </p>
+          <p className="text-white/20 text-xs font-mono">
+            Il apparaît après le premier match de l&apos;équipe cette saison.
+          </p>
+        </div>
+      )}
+      {active === "roster" && roster.length === 0 && !isLiveSeason && (
         <div className="py-16 text-center space-y-2">
           <p className="text-white/40 text-sm font-mono">
             Effectif non disponible pour cette saison.

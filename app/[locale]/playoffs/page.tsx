@@ -1,7 +1,7 @@
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
-import { CURRENT_SEASON } from "@/lib/nba";
+import { currentSeason, previousSeason } from "@/lib/nba";
 import { getPlayoffBracket } from "@/lib/playoffs";
 import { PlayoffBracket } from "@/components/ui/playoff-bracket";
 import { FadeIn } from "@/components/ui/fade-in";
@@ -17,6 +17,14 @@ export const metadata: Metadata = {
 // Revalidate every 5 min during playoffs season, 6h otherwise
 export const revalidate = 300;
 
+function hasBracket(bracket: Awaited<ReturnType<typeof getPlayoffBracket>>): boolean {
+  return (
+    bracket.west.r1.length > 0 ||
+    bracket.east.r1.length > 0 ||
+    bracket.nbaFinals !== null
+  );
+}
+
 export default async function PlayoffsPage({
   params,
 }: {
@@ -24,14 +32,18 @@ export default async function PlayoffsPage({
 }) {
   const { locale, saison } = await params;
   if (saison !== undefined && !isSeasonParam(saison)) notFound();
-  const season = saison ?? CURRENT_SEASON;
+  const requested = saison ?? currentSeason();
+  let season = requested;
+  let bracket = await getPlayoffBracket(season);
 
-  const bracket = await getPlayoffBracket(season);
+  // D'octobre à avril, les playoffs de la saison en cours n'existent pas
+  // encore : l'adresse par défaut montre le dernier tableau joué.
+  if (saison === undefined && !hasBracket(bracket)) {
+    season = previousSeason(requested);
+    bracket = await getPlayoffBracket(season);
+  }
 
-  const hasData =
-    bracket.west.r1.length > 0 ||
-    bracket.east.r1.length > 0 ||
-    bracket.nbaFinals !== null;
+  const hasData = hasBracket(bracket);
 
   return (
     <div className="space-y-6">

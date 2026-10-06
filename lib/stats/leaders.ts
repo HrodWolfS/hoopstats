@@ -98,6 +98,15 @@ export function consolidateForRanking<T extends RankableRow>(
   });
 }
 
+/**
+ * Seuil de matchs adapté à l'avancement de la saison. Un seuil fixe de 10
+ * matchs viderait les classements pendant les trois premières semaines : on
+ * exige 70 % des matchs déjà joués par une équipe, plafonné au seuil normal.
+ */
+export function scaledMinimumGames(teamGames: number, cap: number): number {
+  return Math.min(cap, Math.max(1, Math.ceil(teamGames * 0.7)));
+}
+
 /** Auto-contrôles exécutés par `pnpm health:data`. */
 export function validateLeaderboardConsolidation(): string[] {
   const errors: string[] = [];

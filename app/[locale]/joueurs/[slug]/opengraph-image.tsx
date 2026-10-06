@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON } from "@/lib/nba";
+import { currentSeason } from "@/lib/nba";
 
 export const runtime = "nodejs";
 export const revalidate = 21600;
@@ -12,6 +12,7 @@ export default async function Image({
 }: {
   params: Promise<{ locale: string; slug: string }>;
 }) {
+  const liveSeason = currentSeason();
   const { slug } = await params;
 
   const player = await prisma.player.findUnique({
@@ -22,7 +23,7 @@ export default async function Image({
       position: true,
       photoUrl: true,
       seasons: {
-        where: { season: CURRENT_SEASON },
+        where: { season: liveSeason },
         include: {
           team: {
             select: {
@@ -155,7 +156,7 @@ export default async function Image({
             ·
           </span>
           <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 18 }}>
-            {CURRENT_SEASON}
+            {liveSeason}
           </span>
         </div>
 

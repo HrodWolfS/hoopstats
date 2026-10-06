@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
 import { type Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON, confFr, divFr } from "@/lib/nba";
+import { currentSeason, confFr, divFr } from "@/lib/nba";
 import { winPct } from "@/lib/format";
 import { TeamMono } from "@/components/ui/team-mono";
 import { Crumbs } from "@/components/ui/crumbs";
@@ -33,8 +33,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug } = await params;
   const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
+  const season = currentSeason();
 
-  const [team, currentSeason] = await Promise.all([
+  const [team, seasonRow] = await Promise.all([
     prisma.team.findUnique({
       where: { slug },
       select: {
@@ -46,24 +47,24 @@ export async function generateMetadata({
       },
     }),
     prisma.teamSeason.findFirst({
-      where: { team: { slug }, season: CURRENT_SEASON },
+      where: { team: { slug }, season },
       select: { wins: true, losses: true, conferenceRank: true },
     }),
   ]);
   if (!team) return {};
 
-  const recordStr = currentSeason
-    ? `${currentSeason.wins}-${currentSeason.losses}`
+  const recordStr = seasonRow
+    ? `${seasonRow.wins}-${seasonRow.losses}`
     : null;
-  const rankStr = currentSeason?.conferenceRank
-    ? `, ${currentSeason.conferenceRank}e Conférence ${confFr(team.conference)}`
+  const rankStr = seasonRow?.conferenceRank
+    ? `, ${seasonRow.conferenceRank}e Conférence ${confFr(team.conference)}`
     : ` · Conférence ${confFr(team.conference)}`;
 
   const description = recordStr
-    ? `Stats NBA ${CURRENT_SEASON} des ${team.city} ${team.name} (${team.abbr}) : ${recordStr}${rankStr}. Roster, rating offensif/défensif, matchs récents et historique.`
+    ? `Stats NBA ${season} des ${team.city} ${team.name} (${team.abbr}) : ${recordStr}${rankStr}. Roster, rating offensif/défensif, matchs récents et historique.`
     : `Roster, stats saison et historique des ${team.city} ${team.name} (Conférence ${confFr(team.conference)}). Stats avancées, classement et historique NBA.`;
 
-  const title = `${team.city} ${team.name} — Stats NBA ${CURRENT_SEASON}, roster et historique | hoopstats`;
+  const title = `${team.city} ${team.name} — Stats NBA ${season}, roster et historique | hoopstats`;
 
   return {
     title,
@@ -98,7 +99,7 @@ export default async function TeamPage({
 }) {
   const { locale, slug, saison } = await params;
   if (saison !== undefined && !isSeasonParam(saison)) notFound();
-  const season = saison ?? CURRENT_SEASON;
+  const season = saison ?? currentSeason();
 
   const team = await prisma.team.findUnique({ where: { slug } });
   if (!team) notFound();
@@ -129,7 +130,7 @@ export default async function TeamPage({
   } as const;
 
   const [
-    currentSeason,
+    seasonRow,
     history,
     rosterRows,
     conferenceStandings,
@@ -188,7 +189,7 @@ export default async function TeamPage({
     prisma.game.findMany({
       where: {
         status: "final",
-        season: CURRENT_SEASON,
+        season: currentSeason(),
         phase: { in: COMPETITIVE_PHASES },
         OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
       },
@@ -200,7 +201,7 @@ export default async function TeamPage({
     prisma.game.findMany({
       where: {
         status: "scheduled",
-        season: CURRENT_SEASON,
+        gameDate: { gte: new Date() },
         OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
       },
       orderBy: { gameDate: "asc" },
@@ -225,16 +226,16 @@ export default async function TeamPage({
     assistsPerGame: ps.assistsPerGame,
   }));
 
-  const seasonStats: SeasonStats | null = currentSeason
+  const seasonStats: SeasonStats | null = seasonRow
     ? {
-        wins: currentSeason.wins,
-        losses: currentSeason.losses,
-        offRating: currentSeason.offRating,
-        defRating: currentSeason.defRating,
-        netRating: currentSeason.netRating,
-        pace: currentSeason.pace,
+        wins: seasonRow.wins,
+        losses: seasonRow.losses,
+        offRating: seasonRow.offRating,
+        defRating: seasonRow.defRating,
+        netRating: seasonRow.netRating,
+        pace: seasonRow.pace,
         trueShooting: null,
-        summaryFr: currentSeason.summaryFr ?? null,
+        summaryFr: seasonRow.summaryFr ?? null,
       }
     : null;
 
@@ -275,8 +276,8 @@ export default async function TeamPage({
   const recentGames: GameRow[] = recentGamesRaw.map(toGameRow);
   const upcomingGames: GameRow[] = upcomingGamesRaw.map(toGameRow);
 
-  const wPct = currentSeason
-    ? winPct(currentSeason.wins, currentSeason.losses)
+  const wPct = seasonRow
+    ? winPct(seasonRow.wins, seasonRow.losses)
     : null;
 
   const rosterDate = new Date().toLocaleDateString("fr-FR");
@@ -367,28 +368,28 @@ export default async function TeamPage({
           </div>
 
           <div className="flex flex-wrap items-baseline gap-x-10 gap-y-4 pt-2">
-            {currentSeason && (
+            {seasonRow && (
               <>
                 <div>
                   <div className="text-[11px] text-white/40 uppercase tracking-wider">
                     Bilan
                   </div>
                   <div className="font-display font-semibold text-3xl tabular-nums mt-1">
-                    {currentSeason.wins}
+                    {seasonRow.wins}
                     <span className="text-white/30 mx-1">–</span>
-                    {currentSeason.losses}
+                    {seasonRow.losses}
                   </div>
                   <div className="text-xs text-white/40 font-mono mt-0.5">
                     {wPct}% de victoires
                   </div>
                 </div>
-                {currentSeason.conferenceRank && (
+                {seasonRow.conferenceRank && (
                   <div>
                     <div className="text-[11px] text-white/40 uppercase tracking-wider">
                       Classement
                     </div>
                     <div className="font-display font-semibold text-3xl tabular-nums mt-1">
-                      {currentSeason.conferenceRank}
+                      {seasonRow.conferenceRank}
                       <span className="text-white/40 text-lg">e</span>
                       <span className="text-white/30 text-base font-sans">
                         {" "}
@@ -429,6 +430,7 @@ export default async function TeamPage({
         upcomingGames={upcomingGames}
         rosterDate={rosterDate}
         locale={locale}
+        isLiveSeason={season === currentSeason()}
       />
 
       <script

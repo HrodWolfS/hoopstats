@@ -2,7 +2,7 @@ import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON, CURRENT_DRAFT_YEAR } from "@/lib/nba";
+import { currentSeason, draftYearOf, previousSeason } from "@/lib/nba";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
@@ -12,13 +12,26 @@ import {
 } from "@/components/ui/sortable-player-table";
 
 export const metadata: Metadata = {
-  title: "Rookies NBA 2025-26 — hoopstats",
+  title: "Rookies NBA — hoopstats",
   description:
-    "Découvrez les rookies de la saison NBA 2025-26 : stats, draft et premières performances en carrière.",
+    "Découvrez les rookies NBA saison par saison : stats, draft et premières performances en carrière.",
   alternates: { canonical: "/fr/rookies" },
 };
 
 export const revalidate = 21600;
+
+/**
+ * Saison affichée sans paramètre. Les draftés de l'été n'ont pas encore
+ * d'année de draft en base au début de la saison : on garde alors la classe
+ * précédente plutôt qu'une page vide.
+ */
+async function defaultRookieSeason(): Promise<string> {
+  const season = currentSeason();
+  const rookies = await prisma.player.count({
+    where: { draftYear: draftYearOf(season) },
+  });
+  return rookies > 0 ? season : previousSeason(season);
+}
 
 export default async function RookiesPage({
   params,
@@ -27,8 +40,8 @@ export default async function RookiesPage({
 }) {
   const { locale, saison } = await params;
   if (saison !== undefined && !isSeasonParam(saison)) notFound();
-  const season = saison ?? CURRENT_SEASON;
-  const draftYear = parseInt(season.split("-")[0]);
+  const season = saison ?? (await defaultRookieSeason());
+  const draftYear = draftYearOf(season);
 
   // Requête depuis Player pour inclure tous les draftés même sans stats
   const players = await prisma.player.findMany({
@@ -146,7 +159,7 @@ export default async function RookiesPage({
             defaultDir="asc"
             locale={locale}
             showCollege
-            footerNote={`Classe ${CURRENT_DRAFT_YEAR} · Cliquer sur une colonne pour trier`}
+            footerNote={`Classe ${draftYear} · Cliquer sur une colonne pour trier`}
           />
         </FadeIn>
       )}

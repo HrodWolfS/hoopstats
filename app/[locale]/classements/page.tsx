@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ALL_SEASONS, CURRENT_SEASON } from "@/lib/nba";
+import { ALL_SEASONS, currentSeason } from "@/lib/nba";
 import { LEADERBOARDS } from "@/lib/stats/leaders";
 
 export const metadata: Metadata = {
@@ -16,6 +16,9 @@ export default async function LeaderboardsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  const season = currentSeason();
+  // La saison suivante n'a pas encore de leaders tant qu'elle n'a pas commencé.
+  const archives = ALL_SEASONS.filter((s) => s <= season);
   return (
     <div className="space-y-8">
       <div>
@@ -34,14 +37,14 @@ export default async function LeaderboardsPage({
         {LEADERBOARDS.map((leaderboard) => (
           <Link
             key={leaderboard.slug}
-            href={`/${locale}/classements/${CURRENT_SEASON}/${leaderboard.slug}`}
+            href={`/${locale}/classements/${season}/${leaderboard.slug}`}
             className="rounded-2xl border border-white/[0.07] bg-[#111114] p-5 transition hover:border-orange-500/25 hover:bg-orange-500/[0.03]"
           >
             <div className="font-display text-xl text-white/85">
               {leaderboard.label}
             </div>
             <div className="mt-2 font-mono text-[11px] text-white/30">
-              Saison {CURRENT_SEASON} →
+              Saison {season} →
             </div>
           </Link>
         ))}
@@ -52,13 +55,13 @@ export default async function LeaderboardsPage({
           Archives disponibles
         </h2>
         <div className="flex flex-wrap gap-2">
-          {ALL_SEASONS.map((season) => (
+          {archives.map((archive) => (
             <Link
-              key={season}
-              href={`/${locale}/classements/${season}/points`}
+              key={archive}
+              href={`/${locale}/classements/${archive}/points`}
               className="rounded-lg border border-white/[0.06] px-3 py-2 text-xs text-white/45 hover:text-white"
             >
-              {season}
+              {archive}
             </Link>
           ))}
         </div>

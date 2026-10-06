@@ -9,26 +9,16 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { ALL_SEASONS, currentSeason } from "../lib/nba";
 
 const prisma = new PrismaClient();
 
-// ─── Saisons à backfiller avec --all ─────────────────────────────────────────
+// ─── Saisons ─────────────────────────────────────────────────────────────────
 
-const ALL_SEASONS = [
-  "2025-26",
-  "2024-25",
-  "2023-24",
-  "2022-23",
-  "2021-22",
-  "2020-21",
-  "2019-20",
-  "2018-19",
-  "2017-18",
-  "2016-17",
-  "2015-16",
-];
+const CURRENT_SEASON = currentSeason();
 
-const CURRENT_SEASON = "2025-26";
+/** Saisons à backfiller avec --all : celles déjà commencées, depuis 2015-16. */
+const PLAYOFF_SEASONS = ALL_SEASONS.filter((season) => season <= CURRENT_SEASON);
 
 // ─── Types ESPN ───────────────────────────────────────────────────────────────
 
@@ -333,7 +323,7 @@ async function main() {
     args.find((a) => a.startsWith("--season="))?.split("=")[1] ??
     args[args.indexOf("--season") + 1];
 
-  const seasons = allFlag ? ALL_SEASONS : [seasonArg ?? CURRENT_SEASON];
+  const seasons = allFlag ? PLAYOFF_SEASONS : [seasonArg ?? CURRENT_SEASON];
 
   console.log(`🏀 Sync playoffs — ${seasons.join(", ")}`);
   const startedAt = new Date();

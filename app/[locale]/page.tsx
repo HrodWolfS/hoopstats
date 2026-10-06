@@ -2,7 +2,14 @@ import { type Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SEASON } from "@/lib/nba";
+import { scaledMinimumGames } from "@/lib/stats/leaders";
+import {
+  SEASON_OPENERS,
+  currentSeason,
+  draftYearOf,
+  espnSeasonYear,
+  previousSeason,
+} from "@/lib/nba";
 import { stat, pct, record } from "@/lib/format";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { TeamMono } from "@/components/ui/team-mono";
@@ -12,7 +19,7 @@ import { COMPETITIVE_PHASES, REGULAR_SEASON_PHASE } from "@/lib/season-phase";
 export const metadata: Metadata = {
   title: "hoopstats — Stats NBA en français",
   description:
-    "Stats NBA complètes en français. Joueurs, équipes, saison 2025-26.",
+    "Stats NBA complètes en français : joueurs, équipes, classements et matchs, mis à jour chaque jour.",
   alternates: { canonical: "/fr" },
 };
 
@@ -67,11 +74,13 @@ type FinalsSpotlightRow = {
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 async function getLeaders(
+  season: string,
   orderBy: "pointsPerGame" | "reboundsPerGame" | "assistsPerGame",
+  minGames: number,
   limit = 5,
 ): Promise<LeaderRow[]> {
   const rows = await prisma.playerSeason.findMany({
-    where: { season: CURRENT_SEASON, gamesPlayed: { gte: 10 } },
+    where: { season, gamesPlayed: { gte: minGames } },
     orderBy: { [orderBy]: "desc" },
     take: limit,
     include: {
@@ -115,11 +124,19 @@ async function getLeaders(
 const TS_MIN_MINUTES = 20;
 const TS_MIN_POINTS = 10;
 
-async function getTsLeaders(limit = 5): Promise<LeaderRow[]> {
+/** Matchs minimum une fois la saison bien lancée. */
+const LEADER_MIN_GAMES = 10;
+const TS_MIN_GAMES = 20;
+
+async function getTsLeaders(
+  season: string,
+  minGames: number,
+  limit = 5,
+): Promise<LeaderRow[]> {
   const rows = await prisma.playerSeason.findMany({
     where: {
-      season: CURRENT_SEASON,
-      gamesPlayed: { gte: 20 },
+      season,
+      gamesPlayed: { gte: minGames },
       minutesPerGame: { gte: TS_MIN_MINUTES },
       pointsPerGame: { gte: TS_MIN_POINTS },
       trueShooting: { not: null },
@@ -178,11 +195,14 @@ type RecentGameRow = {
   };
 };
 
-async function getRecentGames(limit = 6): Promise<RecentGameRow[]> {
+async function getRecentGames(
+  season: string,
+  limit = 6,
+): Promise<RecentGameRow[]> {
   return prisma.game.findMany({
     where: {
       status: "final",
-      season: CURRENT_SEASON,
+      season,
       phase: { in: COMPETITIVE_PHASES },
     },
     orderBy: { gameDate: "desc" },
@@ -203,11 +223,12 @@ async function getRecentGames(limit = 6): Promise<RecentGameRow[]> {
 }
 
 async function getStandings(
+  season: string,
   conference: "East" | "West",
   limit = 5,
 ): Promise<StandingRow[]> {
   const rows = await prisma.teamSeason.findMany({
-    where: { season: CURRENT_SEASON, team: { conference } },
+    where: { season, team: { conference } },
     orderBy: [{ wins: "desc" }, { losses: "asc" }],
     take: limit,
     include: {
@@ -238,26 +259,45 @@ async function getStandings(
   }));
 }
 
-async function getCounts() {
+async function getCounts(season: string) {
   const [playersCount, teamsCount, gamesCount] = await Promise.all([
     prisma.playerSeason.count({
-      where: { season: CURRENT_SEASON, gamesPlayed: { gte: 1 } },
+      where: { season, gamesPlayed: { gte: 1 } },
     }),
-    prisma.teamSeason.count({ where: { season: CURRENT_SEASON } }),
+    prisma.teamSeason.count({ where: { season } }),
     prisma.game.count({
-      where: { season: CURRENT_SEASON, status: "final", phase: REGULAR_SEASON_PHASE },
+      where: { season, status: "final", phase: REGULAR_SEASON_PHASE },
     }),
   ]);
   return { playersCount, teamsCount, gamesCount };
 }
 
-async function getFinalsSpotlight(): Promise<FinalsSpotlightRow | null> {
+async function getFinalsSpotlight(
+  season: string,
+): Promise<FinalsSpotlightRow | null> {
   const award = await prisma.award.findFirst({
-    where: { type: "FMVP", season: CURRENT_SEASON, playerId: { not: null }, teamId: { not: null } },
+    where: {
+      type: "FMVP",
+      season,
+      playerId: { not: null },
+      teamId: { not: null },
+    },
     select: {
       notes: true,
-      player: { select: { slug: true, firstName: true, lastName: true, photoUrl: true } },
-      team: { select: { slug: true, abbr: true, city: true, name: true, primaryColor: true, secondaryColor: true, logoUrl: true } },
+      player: {
+        select: { slug: true, firstName: true, lastName: true, photoUrl: true },
+      },
+      team: {
+        select: {
+          slug: true,
+          abbr: true,
+          city: true,
+          name: true,
+          primaryColor: true,
+          secondaryColor: true,
+          logoUrl: true,
+        },
+      },
     },
   });
   return award?.player && award.team
@@ -393,9 +433,11 @@ function StandingsPanel({
 
 function SpotlightCard({
   leader,
+  season,
   locale,
 }: {
   leader: LeaderRow;
+  season: string;
   locale: string;
 }) {
   return (
@@ -418,7 +460,7 @@ function SpotlightCard({
         <div className="min-w-0">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300 text-[10px] font-mono uppercase tracking-widest mb-4">
             <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
-            Top scorer · saison {CURRENT_SEASON}
+            Top scorer · saison {season}
           </div>
           <h3 className="font-display font-bold text-3xl sm:text-4xl tracking-tight leading-[1.05] mb-2 group-hover:text-orange-300 transition">
             {leader.firstName}
@@ -460,42 +502,167 @@ function SpotlightCard({
   );
 }
 
-function FinalsSpotlight({ spotlight, locale }: { spotlight: FinalsSpotlightRow; locale: string }) {
+/**
+ * Récit éditorial des Finales, rédigé à la main pour la saison concernée.
+ * Sans récit, l'encart se construit à partir du trophée de MVP des Finales.
+ */
+const FINALS_STORIES: Record<string, { headline: string; text: string }> = {
+  "2025-26": {
+    headline: "Les Knicks au sommet",
+    text: "New York décroche son premier titre depuis 1973. Jalen Brunson remporte le trophée Bill Russell avec 32,6 points de moyenne en Finales.",
+  },
+};
+
+function FinalsSpotlight({
+  spotlight,
+  season,
+  locale,
+}: {
+  spotlight: FinalsSpotlightRow;
+  season: string;
+  locale: string;
+}) {
   const { player, team } = spotlight;
+  const story = FINALS_STORIES[season];
+  const headline = story?.headline ?? `Les ${team.name} champions`;
+  const text = story?.text ?? spotlight.notes;
+  const playerName = `${player.firstName} ${player.lastName}`;
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/[0.08]"
-      style={{ background: `linear-gradient(125deg, ${team.primaryColor}32 0%, #111114 55%, #111114 100%)` }}
+      style={{
+        background: `linear-gradient(125deg, ${team.primaryColor}32 0%, #111114 55%, #111114 100%)`,
+      }}
     >
-      <div aria-hidden className="absolute -right-24 -top-32 h-96 w-96 rounded-full opacity-30 blur-3xl" style={{ background: team.primaryColor }} />
+      <div
+        aria-hidden
+        className="absolute -right-24 -top-32 h-96 w-96 rounded-full opacity-30 blur-3xl"
+        style={{ background: team.primaryColor }}
+      />
       <div className="relative grid gap-6 p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
         <div>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-orange-300">
-            Saison terminée · Champions NBA 2026
+            Saison terminée · Champions NBA {espnSeasonYear(season)}
           </div>
           <h1 className="font-display text-3xl font-bold tracking-tight sm:text-5xl">
-            Les Knicks au sommet,
-            <span className="block text-white/65">Brunson MVP des Finales</span>
+            {headline},
+            <span className="block text-white/65">
+              {player.lastName} MVP des Finales
+            </span>
           </h1>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">
-            New York décroche son premier titre depuis 1973. Jalen Brunson remporte le trophée Bill Russell avec 32,6 points de moyenne en Finales.
-          </p>
+          {text && (
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">
+              {text}
+            </p>
+          )}
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href={`/${locale}/joueurs/${player.slug}`} className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-black transition hover:bg-orange-400">
-              Voir Jalen Brunson
+            <Link
+              href={`/${locale}/joueurs/${player.slug}`}
+              className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-black transition hover:bg-orange-400"
+            >
+              Voir {playerName}
             </Link>
-            <Link href={`/${locale}/trophees`} className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-white/70 transition hover:border-white/20 hover:text-white">
-              Palmarès 2025-26
+            <Link
+              href={`/${locale}/trophees`}
+              className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-white/70 transition hover:border-white/20 hover:text-white"
+            >
+              Palmarès {season}
             </Link>
-            <Link href={`/${locale}/draft`} className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-white/70 transition hover:border-white/20 hover:text-white">
-              Draft 2026 →
+            <Link
+              href={`/${locale}/draft`}
+              className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-white/70 transition hover:border-white/20 hover:text-white"
+            >
+              Draft {espnSeasonYear(season)} →
             </Link>
           </div>
         </div>
         <div className="flex items-end justify-center gap-2 sm:justify-end">
-          {team.logoUrl && <Image src={team.logoUrl} alt={`Logo ${team.city} ${team.name}`} width={104} height={104} className="h-20 w-20 object-contain opacity-90 sm:h-24 sm:w-24" loading="eager" unoptimized />}
-          <PlayerAvatar firstName={player.firstName} lastName={player.lastName} primaryColor={team.primaryColor} secondaryColor={team.secondaryColor} photoUrl={player.photoUrl} size="xl" showNum={false} />
+          {team.logoUrl && (
+            <Image
+              src={team.logoUrl}
+              alt={`Logo ${team.city} ${team.name}`}
+              width={104}
+              height={104}
+              className="h-20 w-20 object-contain opacity-90 sm:h-24 sm:w-24"
+              loading="eager"
+              unoptimized
+            />
+          )}
+          <PlayerAvatar
+            firstName={player.firstName}
+            lastName={player.lastName}
+            primaryColor={team.primaryColor}
+            secondaryColor={team.secondaryColor}
+            photoUrl={player.photoUrl}
+            size="xl"
+            showNum={false}
+          />
         </div>
+      </div>
+    </section>
+  );
+}
+
+/** Premier match de la saison, en heure de Paris : « mardi 20 octobre ». */
+function openerLabel(season: string): string | null {
+  const opener = SEASON_OPENERS[season];
+  if (!opener) return null;
+  return new Date(opener).toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "Europe/Paris",
+  });
+}
+
+/** Encart des premiers jours, tant qu'aucun match de saison régulière n'est joué. */
+function SeasonOpenerCard({
+  season,
+  locale,
+}: {
+  season: string;
+  locale: string;
+}) {
+  const previous = previousSeason(season);
+  const opener = openerLabel(season);
+  return (
+    <section className="relative overflow-hidden rounded-3xl border border-orange-500/20 bg-gradient-to-br from-orange-500/[0.12] via-[#111114] to-[#111114] p-6 sm:p-8">
+      <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-orange-300">
+        <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
+        Reprise de la saison {season}
+      </div>
+      <h1 className="font-display text-3xl font-bold tracking-tight sm:text-5xl">
+        La NBA est de retour
+        {opener && (
+          <span className="block text-white/65">
+            Premiers matchs le {opener}
+          </span>
+        )}
+      </h1>
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">
+        Classements, leaders et fiches joueurs se remplissent après chaque nuit
+        de matchs. Les statistiques {previous} restent consultables avec le
+        sélecteur de saison.
+      </p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link
+          href={`/${locale}/matchs`}
+          className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-black transition hover:bg-orange-400"
+        >
+          Voir les matchs
+        </Link>
+        <Link
+          href={`/${locale}/draft?saison=${season}`}
+          className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-white/70 transition hover:border-white/20 hover:text-white"
+        >
+          Draft {draftYearOf(season)}
+        </Link>
+        <Link
+          href={`/${locale}/trophees`}
+          className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-white/70 transition hover:border-white/20 hover:text-white"
+        >
+          Palmarès {previous}
+        </Link>
       </div>
     </section>
   );
@@ -509,6 +676,13 @@ export default async function HomePage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  const season = currentSeason();
+
+  const counts = await getCounts(season);
+  // Chaque match compte pour deux équipes : moyenne de matchs joués par équipe.
+  const teamGames = (counts.gamesCount * 2) / 30;
+  const leaderMinGames = scaledMinimumGames(teamGames, LEADER_MIN_GAMES);
+  const tsMinGames = scaledMinimumGames(teamGames, TS_MIN_GAMES);
 
   const [
     ptsLeaders,
@@ -518,21 +692,26 @@ export default async function HomePage({
     eastStandings,
     westStandings,
     recentGames,
-    counts,
     finalsSpotlight,
   ] = await Promise.all([
-    getLeaders("pointsPerGame"),
-    getLeaders("reboundsPerGame"),
-    getLeaders("assistsPerGame"),
-    getTsLeaders(),
-    getStandings("East"),
-    getStandings("West"),
-    getRecentGames(),
-    getCounts(),
-    getFinalsSpotlight(),
+    getLeaders(season, "pointsPerGame", leaderMinGames),
+    getLeaders(season, "reboundsPerGame", leaderMinGames),
+    getLeaders(season, "assistsPerGame", leaderMinGames),
+    getTsLeaders(season, tsMinGames),
+    getStandings(season, "East"),
+    getStandings(season, "West"),
+    getRecentGames(season),
+    getFinalsSpotlight(season),
   ]);
 
   const topScorer = ptsLeaders[0];
+  const hasLeaders = ptsLeaders.length > 0;
+  const hasStandings = eastStandings.length > 0 || westStandings.length > 0;
+  const seasonStatus = finalsSpotlight
+    ? "Terminée"
+    : counts.gamesCount === 0
+      ? "Reprise"
+      : "En cours";
 
   return (
     <div className="space-y-8">
@@ -541,43 +720,49 @@ export default async function HomePage({
         <section className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300 text-[11px] font-medium uppercase tracking-wider">
             <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
-            Saison {CURRENT_SEASON} · Terminée
+            Saison {season} · {seasonStatus}
           </div>
-          <div className="flex items-center gap-x-6 text-sm text-white/40">
-            <span>
-              <span className="font-display font-semibold text-white tabular-nums">
-                {counts.playersCount}
-              </span>{" "}
-              joueurs
-            </span>
-            <span className="text-white/15">·</span>
-            <span>
-              <span className="font-display font-semibold text-white tabular-nums">
-                {counts.teamsCount}
-              </span>{" "}
-              franchises
-            </span>
-            <span className="text-white/15">·</span>
-            <span>
-              <span className="font-display font-semibold text-white tabular-nums">
-                {counts.gamesCount}
-              </span>{" "}
-              matchs joués
-            </span>
-          </div>
+          {counts.gamesCount > 0 && (
+            <div className="flex items-center gap-x-6 text-sm text-white/40">
+              <span>
+                <span className="font-display font-semibold text-white tabular-nums">
+                  {counts.playersCount}
+                </span>{" "}
+                joueurs
+              </span>
+              <span className="text-white/15">·</span>
+              <span>
+                <span className="font-display font-semibold text-white tabular-nums">
+                  {counts.teamsCount}
+                </span>{" "}
+                franchises
+              </span>
+              <span className="text-white/15">·</span>
+              <span>
+                <span className="font-display font-semibold text-white tabular-nums">
+                  {counts.gamesCount}
+                </span>{" "}
+                matchs joués
+              </span>
+            </div>
+          )}
         </section>
       </FadeIn>
 
       {/* ── À la une : le fait majeur de la saison, puis leader en fallback ── */}
-      {(finalsSpotlight || topScorer) && (
-        <FadeIn delay={0.05}>
-          {finalsSpotlight ? (
-            <FinalsSpotlight spotlight={finalsSpotlight} locale={locale} />
-          ) : topScorer ? (
-            <SpotlightCard leader={topScorer} locale={locale} />
-          ) : null}
-        </FadeIn>
-      )}
+      <FadeIn delay={0.05}>
+        {finalsSpotlight ? (
+          <FinalsSpotlight
+            spotlight={finalsSpotlight}
+            season={season}
+            locale={locale}
+          />
+        ) : topScorer && counts.gamesCount > 0 ? (
+          <SpotlightCard leader={topScorer} season={season} locale={locale} />
+        ) : (
+          <SeasonOpenerCard season={season} locale={locale} />
+        )}
+      </FadeIn>
 
       {/* ── Résultats récents ─────────────────────────────────────────────── */}
       {recentGames.length > 0 && (
@@ -682,70 +867,74 @@ export default async function HomePage({
       )}
 
       {/* ── Leaders ──────────────────────────────────────────────────────── */}
-      <FadeIn delay={0.24}>
-        <section>
-          <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
-            Leaders de la saison{" "}
-            <span className="text-white/25 font-normal text-base">
-              {CURRENT_SEASON}
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <LeadersPanel
-              title="Points"
-              unit="PPG"
-              rows={ptsLeaders}
-              format={(v) => stat(v)}
-              locale={locale}
-            />
-            <LeadersPanel
-              title="Rebonds"
-              unit="RPG"
-              rows={rebLeaders}
-              format={(v) => stat(v)}
-              locale={locale}
-            />
-            <LeadersPanel
-              title="Passes décisives"
-              unit="APG"
-              rows={astLeaders}
-              format={(v) => stat(v)}
-              locale={locale}
-            />
-            <LeadersPanel
-              title="True Shooting"
-              unit={`TS% · min. 20MJ, ${TS_MIN_MINUTES} min, ${TS_MIN_POINTS} pts`}
-              rows={tsLeaders}
-              format={(v) => `${pct(v)}%`}
-              locale={locale}
-            />
-          </div>
-        </section>
-      </FadeIn>
+      {hasLeaders && (
+        <FadeIn delay={0.24}>
+          <section>
+            <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
+              Leaders de la saison{" "}
+              <span className="text-white/25 font-normal text-base">
+                {season}
+              </span>
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <LeadersPanel
+                title="Points"
+                unit="PPG"
+                rows={ptsLeaders}
+                format={(v) => stat(v)}
+                locale={locale}
+              />
+              <LeadersPanel
+                title="Rebonds"
+                unit="RPG"
+                rows={rebLeaders}
+                format={(v) => stat(v)}
+                locale={locale}
+              />
+              <LeadersPanel
+                title="Passes décisives"
+                unit="APG"
+                rows={astLeaders}
+                format={(v) => stat(v)}
+                locale={locale}
+              />
+              <LeadersPanel
+                title="True Shooting"
+                unit={`TS% · min. ${tsMinGames}MJ, ${TS_MIN_MINUTES} min, ${TS_MIN_POINTS} pts`}
+                rows={tsLeaders}
+                format={(v) => `${pct(v)}%`}
+                locale={locale}
+              />
+            </div>
+          </section>
+        </FadeIn>
+      )}
 
       {/* ── Standings ────────────────────────────────────────────────────── */}
-      <FadeIn delay={0.32}>
-        <section>
-          <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
-            Classement{" "}
-            <span className="text-white/25 font-normal text-base">
-              top 5 par conférence
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <StandingsPanel
-              title="Conférence Est"
-              rows={eastStandings}
-              locale={locale}
-            />
-            <StandingsPanel
-              title="Conférence Ouest"
-              rows={westStandings}
-              locale={locale}
-            />
-          </div>
-        </section>
-      </FadeIn>
+      {hasStandings && (
+        <FadeIn delay={0.32}>
+          <section>
+            <h2 className="font-display font-semibold text-xl tracking-tight mb-4">
+              Classement{" "}
+              <span className="text-white/25 font-normal text-base">
+                top 5 par conférence
+              </span>
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <StandingsPanel
+                title="Conférence Est"
+                rows={eastStandings}
+                locale={locale}
+              />
+              <StandingsPanel
+                title="Conférence Ouest"
+                rows={westStandings}
+                locale={locale}
+              />
+            </div>
+          </section>
+        </FadeIn>
+      )}
     </div>
   );
 }

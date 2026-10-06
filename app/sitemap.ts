@@ -1,6 +1,6 @@
 import { type MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
-import { ALL_SEASONS } from "@/lib/nba";
+import { ALL_SEASONS, currentSeason } from "@/lib/nba";
 import { LEADERBOARDS } from "@/lib/stats/leaders";
 import { GUIDES } from "@/lib/guides";
 
@@ -90,13 +90,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  const leaderboardRoutes: MetadataRoute.Sitemap = ALL_SEASONS.flatMap((season) =>
+  const liveSeason = currentSeason();
+  // La saison suivante n'a aucun leader avant son premier match : rien à indexer.
+  const leaderboardSeasons = ALL_SEASONS.filter((season) => season <= liveSeason);
+  const leaderboardRoutes: MetadataRoute.Sitemap = leaderboardSeasons.flatMap((season) =>
     LEADERBOARDS.map((leaderboard) => ({
       url: `${BASE_URL}/fr/classements/${season}/${leaderboard.slug}`,
       lastModified:
-        season === ALL_SEASONS[0] ? contentUpdatedAt : seasonArchiveDate(season),
-      changeFrequency: season === ALL_SEASONS[0] ? ("daily" as const) : ("yearly" as const),
-      priority: season === ALL_SEASONS[0] ? 0.8 : 0.6,
+        season === liveSeason ? contentUpdatedAt : seasonArchiveDate(season),
+      changeFrequency: season === liveSeason ? ("daily" as const) : ("yearly" as const),
+      priority: season === liveSeason ? 0.8 : 0.6,
     })),
   );
   const guideRoutes: MetadataRoute.Sitemap = GUIDES.map((guide) => ({

@@ -4,16 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ALL_NAV_ITEMS, isItemActive } from "./sidebar-client";
-import {
-  ALL_SEASONS,
-  ALL_HISTORY_SEASONS,
-  CURRENT_SEASON,
-  UPCOMING_SEASON,
-} from "@/lib/nba";
+import { ALL_SEASONS, ALL_HISTORY_SEASONS, UPCOMING_SEASON } from "@/lib/nba";
 
 // ─── Season Selector ─────────────────────────────────────────────────────────
 
-function SeasonSelector() {
+function SeasonSelector({ currentSeason }: { currentSeason: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -29,7 +24,7 @@ function SeasonSelector() {
 
   const defaultSeason = pathname.includes("/draft")
     ? UPCOMING_SEASON
-    : CURRENT_SEASON;
+    : currentSeason;
   const season = searchParams.get("saison") ?? defaultSeason;
 
   function navigate(s: string) {
@@ -239,7 +234,8 @@ function MobileDrawer({
 
 // ─── TopBar ───────────────────────────────────────────────────────────────────
 
-export function TopBar() {
+/** `currentSeason` vient du serveur : il suit la page mise en cache, pas l'horloge du visiteur. */
+export function TopBar({ currentSeason }: { currentSeason: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -299,7 +295,7 @@ export function TopBar() {
 
           {/* Season selector — poussé à droite */}
           <div className="shrink-0 ml-auto">
-            <SeasonSelector />
+            <SeasonSelector currentSeason={currentSeason} />
           </div>
         </div>
       </header>
