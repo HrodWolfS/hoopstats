@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { isSeasonParam } from "@/lib/query-routes";
 import { type Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_SEASON } from "@/lib/nba";
@@ -26,6 +27,12 @@ import { ShareButton } from "@/components/analytics/share-button";
 import { REGULAR_SEASON_PHASE } from "@/lib/season-phase";
 
 export const revalidate = 21600;
+
+// Plus de 500 joueurs : aucun n'est pré-rendu au build, chacun est généré à la
+// première visite puis gardé en cache (ISR) au lieu d'être rendu à chaque visite.
+export function generateStaticParams() {
+  return [];
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -157,13 +164,11 @@ export async function generateMetadata({
 
 export default async function PlayerPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ locale: string; slug: string }>;
-  searchParams: Promise<{ saison?: string }>;
+  params: Promise<{ locale: string; slug: string; saison?: string }>;
 }) {
-  const { locale, slug } = await params;
-  const { saison } = await searchParams;
+  const { locale, slug, saison } = await params;
+  if (saison !== undefined && !isSeasonParam(saison)) notFound();
   const season = saison ?? CURRENT_SEASON;
 
   const player = await prisma.player.findUnique({

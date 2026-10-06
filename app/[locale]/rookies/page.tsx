@@ -1,4 +1,6 @@
 import { type Metadata } from "next";
+import { notFound } from "next/navigation";
+import { isSeasonParam } from "@/lib/query-routes";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_SEASON, CURRENT_DRAFT_YEAR } from "@/lib/nba";
 import { getPlayerMetric } from "@/lib/stats/metrics";
@@ -20,13 +22,11 @@ export const revalidate = 21600;
 
 export default async function RookiesPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saison?: string }>;
+  params: Promise<{ locale: string; saison?: string }>;
 }) {
-  const { locale } = await params;
-  const { saison } = await searchParams;
+  const { locale, saison } = await params;
+  if (saison !== undefined && !isSeasonParam(saison)) notFound();
   const season = saison ?? CURRENT_SEASON;
   const draftYear = parseInt(season.split("-")[0]);
 

@@ -1,4 +1,6 @@
 import { type Metadata } from "next";
+import { notFound } from "next/navigation";
+import { isMatchTab, type MatchTab } from "@/lib/query-routes";
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
@@ -35,7 +37,7 @@ type GameRow = {
   };
 };
 
-type Tab = "recents" | "aujourd-hui" | "a-venir";
+type Tab = MatchTab;
 
 /** Plages de jours (offsets) couvertes par chaque onglet. */
 const TAB_OFFSETS: Record<Tab, number[]> = {
@@ -269,19 +271,12 @@ function GameCard({ game, locale }: { game: GameRow; locale: string }) {
 
 export default async function MatchsPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  params: Promise<{ locale: string; onglet?: string }>;
 }) {
-  const [{ locale }, { tab: rawTab = "aujourd-hui" }] = await Promise.all([
-    params,
-    searchParams,
-  ]);
-
-  const tab = (
-    Object.keys(TAB_OFFSETS).includes(rawTab) ? rawTab : "aujourd-hui"
-  ) as Tab;
+  const { locale, onglet = "aujourd-hui" } = await params;
+  if (!isMatchTab(onglet)) notFound();
+  const tab: Tab = onglet;
 
   const offsets = TAB_OFFSETS[tab];
 

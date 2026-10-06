@@ -1,4 +1,6 @@
 import { type Metadata } from "next";
+import { notFound } from "next/navigation";
+import { isSeasonParam } from "@/lib/query-routes";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_SEASON } from "@/lib/nba";
@@ -137,13 +139,11 @@ type TeamSeasonRow = {
 
 export default async function SaisonsPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saison?: string }>;
+  params: Promise<{ locale: string; saison?: string }>;
 }) {
-  const { locale } = await params;
-  const { saison } = await searchParams;
+  const { locale, saison } = await params;
+  if (saison !== undefined && !isSeasonParam(saison)) notFound();
   const season = saison ?? CURRENT_SEASON;
 
   // Fetch en parallèle : standings + séries playoff + leaders stats

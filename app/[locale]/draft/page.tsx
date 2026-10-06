@@ -1,4 +1,5 @@
 import { type Metadata } from "next";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ALL_HISTORY_SEASONS, UPCOMING_SEASON } from "@/lib/nba";
@@ -147,16 +148,12 @@ function DraftRound({
 
 export default async function DraftPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saison?: string }>;
+  params: Promise<{ locale: string; saison?: string }>;
 }) {
-  const [{ locale }, query] = await Promise.all([params, searchParams]);
-  const season =
-    query.saison && ALL_HISTORY_SEASONS.includes(query.saison)
-      ? query.saison
-      : UPCOMING_SEASON;
+  const { locale, saison } = await params;
+  if (saison !== undefined && !ALL_HISTORY_SEASONS.includes(saison)) notFound();
+  const season = saison ?? UPCOMING_SEASON;
   const draftYear = seasonToDraftYear(season);
   const rows = await getDraft(season);
   const firstPick = rows.find((row) => row.pick === 1);

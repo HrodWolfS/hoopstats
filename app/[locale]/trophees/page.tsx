@@ -1,4 +1,5 @@
 import { type Metadata } from "next";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
@@ -378,16 +379,14 @@ function CoachCard({
 
 export default async function TropheesPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ season?: string }>;
+  params: Promise<{ locale: string; saison?: string }>;
 }) {
-  const [{ locale }, sp] = await Promise.all([params, searchParams]);
+  const { locale, saison } = await params;
   const seasons = await getSeasons();
+  if (saison !== undefined && !seasons.includes(saison)) notFound();
 
-  const selectedSeason =
-    sp.season && seasons.includes(sp.season) ? sp.season : seasons[0];
+  const selectedSeason = saison ?? seasons[0];
 
   if (!selectedSeason) {
     return (

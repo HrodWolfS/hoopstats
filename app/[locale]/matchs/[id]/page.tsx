@@ -6,6 +6,12 @@ import { prisma } from "@/lib/prisma";
 
 export const revalidate = 300;
 
+// Aucun match pré-rendu au build : chacun est généré à la première visite puis
+// gardé en cache (ISR). Sans cette fonction, la page serait rendue à chaque visite.
+export function generateStaticParams() {
+  return [];
+}
+
 // ── ESPN Types ────────────────────────────────────────────────────────────────
 
 type EspnCompetitor = {

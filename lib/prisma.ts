@@ -19,18 +19,27 @@ const rawDatasourceUrl =
  * Neon (offre gratuite) met la base en veille après quelques minutes
  * d'inactivité ; la réveiller prend plusieurs secondes, au-delà des 5 s que
  * Prisma accorde par défaut. Sans marge, la première visite après une pause
- * tombait en erreur 500 et le build échouait. Une valeur déjà présente dans
+ * tombait en erreur 500 et le build échouait.
+ *
+ * Le délai d'attente d'une connexion libre dans le pool (10 s par défaut) est
+ * relevé d'autant : pendant le réveil, les requêtes du build s'accumulent
+ * derrière les connexions en cours d'ouverture. Une valeur déjà présente dans
  * l'URL reste prioritaire.
  */
 const NEON_WAKE_TIMEOUT_SECONDS = 30;
 
-function withConnectTimeout(url: string | undefined): string | undefined {
-  if (!url || url.includes("connect_timeout=")) return url;
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}connect_timeout=${NEON_WAKE_TIMEOUT_SECONDS}`;
+function withNeonWakeTimeouts(url: string | undefined): string | undefined {
+  if (!url) return url;
+  let result = url;
+  for (const param of ["connect_timeout", "pool_timeout"]) {
+    if (result.includes(`${param}=`)) continue;
+    const separator = result.includes("?") ? "&" : "?";
+    result = `${result}${separator}${param}=${NEON_WAKE_TIMEOUT_SECONDS}`;
+  }
+  return result;
 }
 
-const datasourceUrl = withConnectTimeout(rawDatasourceUrl);
+const datasourceUrl = withNeonWakeTimeouts(rawDatasourceUrl);
 
 export const prisma =
   globalForPrisma.prisma ??

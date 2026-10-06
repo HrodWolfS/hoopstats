@@ -1,4 +1,6 @@
 import { type Metadata } from "next";
+import { notFound } from "next/navigation";
+import { isSeasonParam } from "@/lib/query-routes";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_SEASON } from "@/lib/nba";
@@ -15,13 +17,11 @@ export const revalidate = 21600;
 
 export default async function TeamsPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saison?: string }>;
+  params: Promise<{ locale: string; saison?: string }>;
 }) {
-  const { locale } = await params;
-  const { saison } = await searchParams;
+  const { locale, saison } = await params;
+  if (saison !== undefined && !isSeasonParam(saison)) notFound();
   const season = saison ?? CURRENT_SEASON;
 
   const teams = await prisma.team.findMany({

@@ -1,4 +1,6 @@
 import { type Metadata } from "next";
+import { notFound } from "next/navigation";
+import { isSeasonParam } from "@/lib/query-routes";
 import { CURRENT_SEASON } from "@/lib/nba";
 import { getPlayoffBracket } from "@/lib/playoffs";
 import { PlayoffBracket } from "@/components/ui/playoff-bracket";
@@ -17,13 +19,11 @@ export const revalidate = 300;
 
 export default async function PlayoffsPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saison?: string }>;
+  params: Promise<{ locale: string; saison?: string }>;
 }) {
-  const { locale } = await params;
-  const { saison } = await searchParams;
+  const { locale, saison } = await params;
+  if (saison !== undefined && !isSeasonParam(saison)) notFound();
   const season = saison ?? CURRENT_SEASON;
 
   const bracket = await getPlayoffBracket(season);

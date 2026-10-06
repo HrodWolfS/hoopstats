@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { isSeasonParam } from "@/lib/query-routes";
 import { type Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_SEASON, confFr, divFr } from "@/lib/nba";
@@ -92,13 +93,11 @@ export async function generateMetadata({
 
 export default async function TeamPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ locale: string; slug: string }>;
-  searchParams: Promise<{ saison?: string }>;
+  params: Promise<{ locale: string; slug: string; saison?: string }>;
 }) {
-  const { locale, slug } = await params;
-  const { saison } = await searchParams;
+  const { locale, slug, saison } = await params;
+  if (saison !== undefined && !isSeasonParam(saison)) notFound();
   const season = saison ?? CURRENT_SEASON;
 
   const team = await prisma.team.findUnique({ where: { slug } });
