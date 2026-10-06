@@ -79,3 +79,11 @@ body {
 .app-enter {
   animation: appIn 240ms ease-out;
 }
+
+/* Défilement horizontal sans barre visible (onglets sur mobile). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

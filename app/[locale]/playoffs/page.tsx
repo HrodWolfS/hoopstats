@@ -70,7 +70,7 @@ export default async function PlayoffsPage({
       {/* Bracket — breaks out of the page padding to use full content width */}
       <FadeIn delay={0.1}>
         {hasData ? (
-          <div className="-mx-8 lg:-mx-12">
+          <div className="-mx-4 md:-mx-8 lg:-mx-12">
             <PlayoffBracket data={bracket} locale={locale} />
           </div>
         ) : (

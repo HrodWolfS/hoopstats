@@ -13,15 +13,19 @@ type TabsProps = {
 
 export function Tabs({ tabs, active, onChange }: TabsProps) {
   return (
-    <div className="relative border-b border-white/[0.06]">
-      <div className="flex items-center gap-1">
+    // Sur mobile, les onglets défilent horizontalement plutôt que d'élargir
+    // la page ; la marge négative laisse le dernier onglet aller jusqu'au bord.
+    <div className="relative border-b border-white/[0.06] -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto no-scrollbar">
+      <div role="tablist" className="flex items-center gap-1 w-max">
         {tabs.map((t) => {
           const isActive = t.id === active;
           return (
             <button
               key={t.id}
+              role="tab"
+              aria-selected={isActive}
               onClick={() => onChange(t.id)}
-              className={`relative px-4 py-3 text-sm font-medium transition ${isActive ? "text-white" : "text-white/40 hover:text-white/70"}`}
+              className={`relative shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-sm font-medium transition ${isActive ? "text-white" : "text-white/40 hover:text-white/70"}`}
             >
               {t.label}
               <span

@@ -343,7 +343,7 @@ export default async function TeamPage({
       />
 
       {/* Header */}
-      <section className="grid grid-cols-12 gap-8 items-start">
+      <section className="grid grid-cols-12 gap-y-8 md:gap-x-8 items-start">
         <div className="col-span-12 md:col-span-4">
           <TeamMono
             abbr={team.abbr}
@@ -354,13 +354,13 @@ export default async function TeamPage({
             className="shadow-2xl"
           />
         </div>
-        <div className="col-span-12 md:col-span-8 space-y-5">
+        <div className="col-span-12 md:col-span-8 min-w-0 space-y-5">
           <div>
             <div className="text-[11px] text-white/40 uppercase tracking-[0.2em] font-medium mb-3">
               Conférence {confFr(team.conference)} · Division{" "}
               {divFr(team.division)}
             </div>
-            <h1 className="font-display font-semibold text-6xl md:text-7xl tracking-[-0.04em] leading-[0.95]">
+            <h1 className="font-display font-semibold text-[clamp(2.5rem,12vw,3.75rem)] md:text-7xl tracking-[-0.04em] leading-[0.95] break-words">
               {team.city}
               <br />
               <span className="text-white/40">{team.name}</span>

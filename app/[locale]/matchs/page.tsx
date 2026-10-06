@@ -318,12 +318,12 @@ export default async function MatchsPage({
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-white/[0.06] pb-0">
+      <div className="flex items-center gap-1 border-b border-white/[0.06] pb-0 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto no-scrollbar">
         {tabs.map((t) => (
           <Link
             key={t.id}
             href={`/${locale}/matchs${t.id === "aujourd-hui" ? "" : `?tab=${t.id}`}`}
-            className={`relative px-4 py-3 text-sm font-medium transition ${
+            className={`relative shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-sm font-medium transition ${
               tab === t.id ? "text-white" : "text-white/40 hover:text-white/70"
             }`}
           >

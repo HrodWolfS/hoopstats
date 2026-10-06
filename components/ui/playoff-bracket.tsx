@@ -42,7 +42,7 @@ export function PlayoffBracket({ data, locale }: Props) {
   const eastSemis = pad(east.semis, 2);
 
   return (
-    <div className="overflow-x-auto pb-4 px-8 lg:px-12">
+    <div className="overflow-x-auto pb-4 px-4 md:px-8 lg:px-12">
       <div className="min-w-[860px]">
         {/* Conference labels */}
         <div className="flex gap-2 mb-2">

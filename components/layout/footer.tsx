@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/[0.06] mt-auto py-6 px-8 lg:px-12">
+    <footer className="border-t border-white/[0.06] mt-auto py-6 px-4 md:px-8 lg:px-12">
       <div className="max-w-[1400px] mx-auto space-y-3 text-[11px] text-white/30 leading-relaxed">
         <p>
           Logos et marques NBA sont la propriété de leurs détenteurs respectifs.

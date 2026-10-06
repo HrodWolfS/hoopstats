@@ -962,25 +962,32 @@ export default async function MatchPage({
         </span>
       </div>
 
+      {/* Titre de la page pour les lecteurs d'écran et les moteurs : le
+          bandeau de score le montre déjà visuellement. */}
+      <h1 className="sr-only">
+        {game.awayTeam.city} {game.awayTeam.name} – {game.homeTeam.city}{" "}
+        {game.homeTeam.name}, {displayDate}
+      </h1>
+
       {/* Score header */}
-      <div className="rounded-2xl border border-white/[0.06] bg-[#111114] px-6 py-8">
-        <div className="flex items-center justify-between gap-6">
+      <div className="rounded-2xl border border-white/[0.06] bg-[#111114] px-3 py-6 sm:px-6 sm:py-8">
+        <div className="flex items-center justify-between gap-2 sm:gap-6">
           {/* Away team */}
           <Link
             href={`/${locale}/equipes/${game.awayTeam.slug}`}
-            className="flex flex-col items-center gap-3 flex-1 group"
+            className="flex flex-col items-center gap-3 flex-1 min-w-0 group"
           >
             <TeamLogo
               logoUrl={game.awayTeam.logoUrl}
               abbr={game.awayTeam.abbr}
               size={64}
             />
-            <div className="text-center">
+            <div className="text-center max-w-full break-words">
               <div className="text-xs text-white/40 font-mono">
                 {game.awayTeam.city}
               </div>
               <div
-                className={`font-display font-semibold text-base group-hover:opacity-80 transition ${awayWon ? "text-white" : "text-white/60"}`}
+                className={`font-display font-semibold text-sm sm:text-base break-words group-hover:opacity-80 transition ${awayWon ? "text-white" : "text-white/60"}`}
               >
                 {game.awayTeam.name}
               </div>
@@ -990,15 +997,15 @@ export default async function MatchPage({
           {/* Score center */}
           <div className="flex flex-col items-center gap-2 shrink-0">
             {isFinal || isLive ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <span
-                  className={`font-display font-bold text-5xl tabular-nums tracking-tight ${awayWon ? "text-white" : "text-white/40"}`}
+                  className={`font-display font-bold text-4xl sm:text-5xl tabular-nums tracking-tight ${awayWon ? "text-white" : "text-white/40"}`}
                 >
                   {game.awayScore ?? "–"}
                 </span>
-                <span className="text-white/20 text-2xl">—</span>
+                <span className="text-white/20 text-xl sm:text-2xl">—</span>
                 <span
-                  className={`font-display font-bold text-5xl tabular-nums tracking-tight ${homeWon ? "text-white" : "text-white/40"}`}
+                  className={`font-display font-bold text-4xl sm:text-5xl tabular-nums tracking-tight ${homeWon ? "text-white" : "text-white/40"}`}
                 >
                   {game.homeScore ?? "–"}
                 </span>
@@ -1033,19 +1040,19 @@ export default async function MatchPage({
           {/* Home team */}
           <Link
             href={`/${locale}/equipes/${game.homeTeam.slug}`}
-            className="flex flex-col items-center gap-3 flex-1 group"
+            className="flex flex-col items-center gap-3 flex-1 min-w-0 group"
           >
             <TeamLogo
               logoUrl={game.homeTeam.logoUrl}
               abbr={game.homeTeam.abbr}
               size={64}
             />
-            <div className="text-center">
+            <div className="text-center max-w-full break-words">
               <div className="text-xs text-white/40 font-mono">
                 {game.homeTeam.city}
               </div>
               <div
-                className={`font-display font-semibold text-base group-hover:opacity-80 transition ${homeWon ? "text-white" : "text-white/60"}`}
+                className={`font-display font-semibold text-sm sm:text-base break-words group-hover:opacity-80 transition ${homeWon ? "text-white" : "text-white/60"}`}
               >
                 {game.homeTeam.name}
               </div>

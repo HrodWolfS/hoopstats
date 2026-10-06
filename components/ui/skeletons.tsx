@@ -9,7 +9,7 @@ function Bone({ className = "" }: { className?: string }) {
 /** Skeleton pour le header joueur */
 export function PlayerHeaderSkeleton() {
   return (
-    <section className="grid grid-cols-12 gap-8 items-start">
+    <section className="grid grid-cols-12 gap-y-8 md:gap-x-8 items-start">
       <div className="col-span-12 md:col-span-3 flex justify-center md:justify-start">
         <div className="h-56 w-56 rounded-full animate-pulse bg-white/[0.06]" />
       </div>

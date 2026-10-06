@@ -569,9 +569,9 @@ export default async function PlayerPage({
 
       {/* Radar chart — percentiles vs même position */}
       {radarStats.length > 0 && (
-        <section className="grid grid-cols-12 gap-6 items-start">
+        <section className="grid grid-cols-12 gap-y-6 lg:gap-x-6 items-start">
           <div className="col-span-12 lg:col-span-5">
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6">
               <PlayerRadarChart
                 stats={radarStats}
                 color={accentColor}
@@ -583,7 +583,7 @@ export default async function PlayerPage({
 
           {/* Légende détaillée */}
           <div className="col-span-12 lg:col-span-7 self-stretch">
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 h-full">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6 h-full">
               {/* Header */}
               <div className="flex items-baseline justify-between mb-5">
                 <p className="text-[10px] text-white/30 uppercase tracking-[0.18em] font-medium">
@@ -595,8 +595,11 @@ export default async function PlayerPage({
               </div>
 
               {/* Colonne headers */}
-              <div className="flex items-center gap-3 sm:gap-4 mb-3 pb-2 border-b border-white/[0.04]">
-                <span className="hidden sm:block w-8 shrink-0" />
+              {/* En-têtes de colonnes dès sm seulement : sur mobile, chaque
+                  stat tient sur deux lignes (libellé, valeur, rang, puis la
+                  barre en pleine largeur) et se lit sans légende. */}
+              <div className="hidden sm:flex items-center gap-4 mb-3 pb-2 border-b border-white/[0.04]">
+                <span className="w-8 shrink-0" />
                 <span className="text-[9px] text-white/20 font-mono uppercase tracking-wider w-28 shrink-0">
                   Statistique
                 </span>
@@ -611,7 +614,7 @@ export default async function PlayerPage({
                 </span>
               </div>
 
-              <div className="space-y-3.5">
+              <div className="space-y-4 sm:space-y-3.5">
                 {radarStats.map((s) => {
                   const isElite = s.rank <= Math.ceil(s.total * 0.1);
                   const isGood = s.rank <= Math.ceil(s.total * 0.25);
@@ -619,19 +622,19 @@ export default async function PlayerPage({
                   return (
                     <div
                       key={s.key}
-                      className="flex items-center gap-3 sm:gap-4"
+                      className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-1.5 sm:flex sm:gap-4"
                     >
                       {/* Abréviation masquée sur mobile : le libellé suffit. */}
                       <span className="hidden sm:block text-[10px] text-white/25 font-mono w-8 shrink-0">
                         {s.key}
                       </span>
-                      <span className="text-sm text-white/55 w-28 shrink-0">
+                      <span className="text-sm text-white/55 min-w-0 truncate sm:w-28 sm:shrink-0">
                         {s.label}
                       </span>
-                      <span className="font-display font-semibold text-white w-14 tabular-nums">
+                      <span className="font-display font-semibold text-white text-right sm:text-left sm:w-14 shrink-0 tabular-nums">
                         {s.value}
                       </span>
-                      <div className="flex-1 h-[3px] bg-white/[0.05] rounded-full overflow-hidden">
+                      <div className="col-span-3 order-last sm:order-none sm:flex-1 min-w-0 h-[3px] bg-white/[0.05] rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full"
                           style={{

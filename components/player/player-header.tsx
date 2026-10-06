@@ -54,8 +54,10 @@ export function PlayerHeader({
   apg,
   tsPct,
 }: PlayerHeaderData) {
+  // Pas d'espace horizontal sous lg : les 11 gouttières de la grille
+  // (352 px) dépassaient à elles seules un écran de 360 px.
   return (
-    <section className="grid grid-cols-12 gap-8 items-start">
+    <section className="grid grid-cols-12 gap-y-8 lg:gap-x-8 items-start">
       {/* Avatar */}
       {/* Côte à côte dès lg seulement : entre 768 et 1024 px, la photo de
           224 px débordait sur le nom. */}
@@ -72,14 +74,14 @@ export function PlayerHeader({
       </div>
 
       {/* Infos */}
-      <div className="col-span-12 lg:col-span-9 flex flex-col gap-5">
+      <div className="col-span-12 lg:col-span-9 min-w-0 flex flex-col gap-5">
         <div>
           <div className="text-[11px] text-white/40 uppercase tracking-[0.2em] font-medium mb-3">
             {position ?? "—"}
             {country ? ` · ${country}` : ""}
             {teamAbbr ? ` · ${teamAbbr}` : ""}
           </div>
-          <h1 className="font-display font-semibold text-5xl md:text-6xl tracking-[-0.04em] leading-[0.95]">
+          <h1 className="font-display font-semibold text-[clamp(2.25rem,11vw,3rem)] md:text-6xl tracking-[-0.04em] leading-[0.95] break-words">
             {firstName}
             <br />
             <span className="text-white/40">{lastName}</span>
