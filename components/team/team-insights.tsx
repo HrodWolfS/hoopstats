@@ -11,12 +11,11 @@ export function TeamInsights({ insights, primaryColor }: Props) {
       <div className="rounded-2xl border border-white/[0.06] bg-[#111114] px-6 py-8 flex flex-col items-center gap-2 text-center">
         <div className="text-2xl opacity-20">🔍</div>
         <p className="text-white/30 text-sm">
-          Données insuffisantes pour générer des insights
+          Pas encore assez de matchs pour dégager des tendances
         </p>
         <p className="text-white/20 text-xs max-w-sm">
-          Il faut au moins ~15 matchs synchronisés avec leur box score. Les
-          insights apparaîtront automatiquement quand le cron aura backfillé la
-          saison.
+          Les tendances de l&apos;équipe s&apos;afficheront ici après une
+          quinzaine de matchs, mises à jour chaque matin.
         </p>
       </div>
     );

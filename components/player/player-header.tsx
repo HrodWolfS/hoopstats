@@ -19,7 +19,14 @@ export type PlayerHeaderData = {
   wikipediaUrlFr?: string | null;
   /** Auteur et licence de la photo, exigés par les licences Creative Commons. */
   photoAttribution?: string | null;
-  // Stats saison courante
+  /** Saison demandée (sélecteur ou saison en cours). */
+  season: string;
+  /**
+   * Saison d'où viennent les cartes. Elle diffère de `season` quand le
+   * joueur n'y a pas joué : les cartes montrent alors sa dernière saison,
+   * ce que la légende doit dire.
+   */
+  statsSeason: string | null;
   ppg: number | null;
   rpg: number | null;
   apg: number | null;
@@ -40,6 +47,8 @@ export function PlayerHeader({
   summaryFr,
   wikipediaUrlFr,
   photoAttribution,
+  season,
+  statsSeason,
   ppg,
   rpg,
   apg,
@@ -111,31 +120,44 @@ export function PlayerHeader({
           </p>
         )}
 
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 order-2 lg:order-none">
-          <KPI
-            label="Points"
-            value={stat(ppg)}
-            unit="par match"
-            accent={accentOnDark(primaryColor)}
-          />
-          <KPI
-            label="Rebonds"
-            value={stat(rpg)}
-            unit="par match"
-            accent={accentOnDark(secondaryColor)}
-          />
-          <KPI
-            label="Passes"
-            value={stat(apg)}
-            unit="par match"
-            accent="#7C3AED"
-          />
-          <KPI
-            label="True Shooting"
-            value={tsPct != null ? pct(tsPct) : "—"}
-            unit="%"
-            accent="#10B981"
-          />
+        <div className="flex flex-col gap-2 order-2 lg:order-none">
+          {statsSeason && (
+            <p className="text-[11px] uppercase tracking-[0.12em] text-white/40 font-medium">
+              Moyennes {statsSeason}
+              {statsSeason !== season && (
+                <span className="normal-case tracking-normal text-white/30">
+                  {" "}
+                  · aucun match en {season}
+                </span>
+              )}
+            </p>
+          )}
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+            <KPI
+              label="Points"
+              value={stat(ppg)}
+              unit="par match"
+              accent={accentOnDark(primaryColor)}
+            />
+            <KPI
+              label="Rebonds"
+              value={stat(rpg)}
+              unit="par match"
+              accent={accentOnDark(secondaryColor)}
+            />
+            <KPI
+              label="Passes"
+              value={stat(apg)}
+              unit="par match"
+              accent="#7C3AED"
+            />
+            <KPI
+              label="True Shooting"
+              value={tsPct != null ? pct(tsPct) : "—"}
+              unit="%"
+              accent="#10B981"
+            />
+          </div>
         </div>
       </div>
     </section>

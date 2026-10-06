@@ -559,6 +559,8 @@ export default async function PlayerPage({
         summaryFr={player.summaryFr}
         wikipediaUrlFr={player.wikipediaUrlFr}
         photoAttribution={player.photoAttribution}
+        season={season}
+        statsSeason={seasonRow?.season ?? null}
         ppg={seasonRow?.pointsPerGame ?? null}
         rpg={seasonRow?.reboundsPerGame ?? null}
         apg={seasonRow?.assistsPerGame ?? null}

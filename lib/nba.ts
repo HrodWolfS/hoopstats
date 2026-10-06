@@ -32,7 +32,7 @@ export const SEASON_OPENERS: Record<string, string> = {
  * 05:00 UTC : basculer avant elle lui fait créer les classements de la
  * nouvelle saison et revalider tout le site le matin même de la reprise.
  */
-const ROLLOVER_LEAD_MS = 3 * 60 * 60 * 1000;
+export const ROLLOVER_LEAD_MS = 3 * 60 * 60 * 1000;
 
 /** Saisons du calendrier, la plus récente en premier. */
 const KNOWN_SEASONS = Object.keys(SEASON_OPENERS).sort().reverse();

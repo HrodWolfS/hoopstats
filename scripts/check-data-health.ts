@@ -14,6 +14,7 @@ import {
 import { validateStatisticalContext } from "../lib/stats/context";
 import { validatePlayerIdentityResolver } from "../lib/stats/player-identity";
 import { validateEspnAthleteParsing } from "../lib/espn-athlete";
+import { validateScoreboardMonths } from "../lib/espn-scoreboard";
 import { validateAccentOnDark } from "../lib/color";
 import { validatePlayerAliases } from "../lib/stats/player-aliases";
 import { validateAnalyticsPayload } from "../lib/analytics";
@@ -203,6 +204,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const consolidationErrors = validateSeasonConsolidation();
   const gameStatusErrors = validateGameStatus();
   const seriesWinnerErrors = validatePlayoffSeriesWinner();
+  const scoreboardErrors = validateScoreboardMonths();
   const correctionErrors = validatePlayoffCorrections();
   const seasonPhaseErrors = validateSeasonPhase();
 
@@ -663,6 +665,13 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       seriesWinnerErrors.length === 0
         ? "vainqueur déduit du décompte, y compris quand la tête de série tombe"
         : seriesWinnerErrors.join("; "),
+    ),
+    check(
+      "Découpage du scoreboard ESPN",
+      scoreboardErrors.length === 0,
+      scoreboardErrors.length === 0
+        ? "plages de playoffs interrogées mois par mois"
+        : scoreboardErrors.join("; "),
     ),
     check(
       "Décomptes de séries playoffs",

@@ -10,6 +10,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import { ALL_SEASONS, currentSeason } from "../lib/nba";
+import { fetchPlayoffEvents } from "../lib/espn-scoreboard";
 
 const prisma = new PrismaClient();
 
@@ -31,6 +32,7 @@ type EspnCompetitor = {
 type EspnEvent = {
   id: string;
   date: string;
+  season?: { type?: number };
   competitions: Array<{
     notes?: Array<{ headline?: string; text?: string }>;
     series?: {
@@ -85,13 +87,13 @@ function normalizeAbbr(espnAbbr: string): string {
 }
 
 // ─── Plage de dates ESPN par saison ──────────────────────────────────────────
-// - Saison normale : playoffs avr–juin (parfois juillet pour 2020-21)
+// - Saison normale : avril–juillet (finales 2020-21 en juillet)
 // - 2019-20 (bulle COVID) : playoffs août–octobre 2020
 
-function playoffDateRange(season: string, endYear: number): string {
-  if (season === "2019-20") return `${endYear}0801-${endYear}1015`;
-  if (season === "2020-21") return `${endYear}0419-${endYear}0731`;
-  return `${endYear}0419-${endYear}0630`;
+function playoffDateRange(season: string, endYear: number): [string, string] {
+  if (season === "2019-20") return [`${endYear}0801`, `${endYear}1015`];
+  // Seuls les matchs de playoffs sont retenus : la plage peut être large.
+  return [`${endYear}0401`, `${endYear}0731`];
 }
 
 // ─── Sync d'une saison ────────────────────────────────────────────────────────
@@ -102,31 +104,26 @@ async function syncSeason(season: string): Promise<{
 }> {
   console.log(`\n📋 Sync playoffs ${season}…`);
 
-  const startYear = parseInt(season.split("-")[0]); // "2025-26" → 2025
   const endYear = 2000 + parseInt(season.split("-")[1]); // "2025-26" → 2026
 
   // ── 1. Fetch ESPN ──────────────────────────────────────────────────────────
-  const [gamesRes, standingsRes] = await Promise.all([
-    fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard` +
-        `?seasontype=3&season=${startYear}&dates=${playoffDateRange(season, endYear)}&limit=200`,
-    ),
+  const [games, standingsRes] = await Promise.all([
+    fetchPlayoffEvents<EspnEvent>(...playoffDateRange(season, endYear)),
     fetch(
       `https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?season=${endYear}`,
     ),
   ]);
 
-  if (!gamesRes.ok) {
-    console.warn(`  ⚠️  ESPN scoreboard ${gamesRes.status} — saison skippée`);
+  if (!games.ok) {
+    console.warn(`  ⚠️  ESPN scoreboard ${games.status} — saison skippée`);
     return { upserted: 0, skipped: 1 };
   }
 
-  const gamesData = await gamesRes.json();
   const standingsData = standingsRes.ok
     ? await standingsRes.json()
     : { children: [] };
 
-  const events: EspnEvent[] = gamesData.events ?? [];
+  const { events } = games;
   if (events.length === 0) {
     console.log(`  ℹ️  Aucun match playoff trouvé pour ${season}`);
     return { upserted: 0, skipped: 0 };

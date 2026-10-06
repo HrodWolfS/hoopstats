@@ -451,16 +451,16 @@ export async function syncBoxScores(
         }
       }
 
-      await Promise.all(
-        players
-          .filter((player) => player.playerId && player.espnAthleteId)
-          .map((player) =>
-            prisma.player.updateMany({
-              where: { id: player.playerId!, espnId: null },
-              data: { espnId: player.espnAthleteId },
-            }),
-          ),
-      );
+      // Une requête à la fois : lancées toutes ensemble, alors que plusieurs
+      // matchs se synchronisent en parallèle, elles épuisaient le pool de
+      // connexions Prisma et faisaient perdre le box score (5 octobre 2026).
+      for (const player of players) {
+        if (!player.playerId || !player.espnAthleteId) continue;
+        await prisma.player.updateMany({
+          where: { id: player.playerId, espnId: null },
+          data: { espnId: player.espnAthleteId },
+        });
+      }
 
       // Transaction : tout ou rien
       await prisma.$transaction([

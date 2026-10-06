@@ -18,6 +18,7 @@ import { PrismaClient } from "@prisma/client";
 import { currentSeason, espnSeasonYear } from "../lib/nba";
 import { gameStatusFromEspn } from "../lib/game-status";
 import { seasonAndPhaseFromEspn } from "../lib/season-phase";
+import { fetchPlayoffEvents } from "../lib/espn-scoreboard";
 import { syncBoxScores } from "./sync-box-scores";
 import { syncPlayerSeasons } from "./sync-player-seasons";
 
@@ -273,9 +274,7 @@ async function syncCurrentPlayoffs(): Promise<{
   console.log("\n🏆 Sync playoffs en cours…");
 
   const season = CURRENT_SEASON;
-  const startYear = parseInt(season.split("-")[0]);
   const endYear = 2000 + parseInt(season.split("-")[1]);
-  const dateRange = `${endYear}0419-${endYear}0630`;
 
   type EspnCompetitor = {
     id: string;
@@ -285,6 +284,7 @@ async function syncCurrentPlayoffs(): Promise<{
   type EspnEvent = {
     id: string;
     date: string;
+    season?: { type?: number };
     competitions: Array<{
       notes?: Array<{ headline?: string; text?: string }>;
       series?: {
@@ -298,27 +298,22 @@ async function syncCurrentPlayoffs(): Promise<{
     }>;
   };
 
-  const [gamesRes, standingsRes] = await Promise.all([
-    fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard` +
-        `?seasontype=3&season=${startYear}&dates=${dateRange}&limit=200`,
-    ),
+  const [games, standingsRes] = await Promise.all([
+    fetchPlayoffEvents<EspnEvent>(`${endYear}0401`, `${endYear}0731`),
     fetch(
       `https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?season=${endYear}`,
     ),
   ]);
 
-  if (!gamesRes.ok) {
-    console.warn(`  ⚠️  ESPN scoreboard ${gamesRes.status} — playoffs skippés`);
+  if (!games.ok) {
+    console.warn(`  ⚠️  ESPN scoreboard ${games.status} — playoffs skippés`);
     return { upserted: 0, skipped: 1 };
   }
 
-  const gamesData = await gamesRes.json();
   const standingsData = standingsRes.ok
     ? await standingsRes.json()
     : { children: [] };
-  const events: EspnEvent[] =
-    (gamesData as { events?: EspnEvent[] }).events ?? [];
+  const { events } = games;
 
   if (events.length === 0) {
     console.log("  ℹ️  Aucun match playoff trouvé (hors saison)");
