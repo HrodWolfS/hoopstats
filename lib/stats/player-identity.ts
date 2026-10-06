@@ -38,15 +38,21 @@ function fullName(candidate: IdentityCandidate): string {
  *     « Jaren Jackson » le père, et les deux ont une fiche ;
  *  3. la table d'alias, pour les surnoms et les ordres de nom ;
  *  4. la forme relâchée, uniquement si elle ne désigne qu'un seul joueur.
+ *
+ * Quand la ligne porte un identifiant ESPN, une fiche liée à un autre
+ * identifiant est une autre personne : un rookie homonyme d'un joueur déjà
+ * en base ne doit pas hériter de sa fiche.
  */
 export function resolvePlayerIdentity(
   athleteId: string | null,
   playerName: string,
-  candidates: readonly IdentityCandidate[],
+  allCandidates: readonly IdentityCandidate[],
 ): IdentityCandidate | null {
+  let candidates = allCandidates;
   if (athleteId) {
     const byEspnId = candidates.find((candidate) => candidate.espnId === athleteId);
     if (byEspnId) return byEspnId;
+    candidates = candidates.filter((candidate) => candidate.espnId === null);
   }
 
   const exact = matchExact(playerName, candidates);
@@ -114,6 +120,14 @@ export function validatePlayerIdentityResolver(): string[] {
   }
   if (resolvePlayerIdentity(null, "Jaren Jackson Sr.", candidates) !== null) {
     errors.push("suffixe inconnu rattaché à tort");
+  }
+
+  // Un homonyme déjà lié à un autre identifiant ESPN n'est pas rattaché.
+  if (resolvePlayerIdentity("99", "Nikola Jokić", candidates) !== null) {
+    errors.push("homonyme rattaché malgré un identifiant ESPN différent");
+  }
+  if (resolvePlayerIdentity("99", "Gary Trent Jr.", candidates)?.id !== "2") {
+    errors.push("fiche sans identifiant ESPN non rattachée par le nom");
   }
 
   // Surnom d'usage traité par la table d'alias.

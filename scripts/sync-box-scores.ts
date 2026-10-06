@@ -5,6 +5,8 @@
  * fetch le summary ESPN et persiste :
  *   - GameBoxScore (totaux équipe + linescores)
  *   - PlayerBoxScore (1 ligne par joueur par match)
+ *   - Player, pour un joueur inconnu croisé en match officiel (rookie,
+ *     signature) : sa fiche est créée depuis son profil ESPN
  *
  * Run manuel :
  *   pnpm tsx scripts/sync-box-scores.ts            → tous les matchs sans box score
@@ -13,7 +15,13 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { resolvePlayerIdentity } from "../lib/stats/player-identity";
+import { fetchEspnAthlete } from "../lib/espn-athlete";
+import { COMPETITIVE_PHASES } from "../lib/season-phase";
+import { playerSlug } from "../lib/slugs";
+import {
+  resolvePlayerIdentity,
+  type IdentityCandidate,
+} from "../lib/stats/player-identity";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -278,6 +286,64 @@ function parsePlayers(
   return rows;
 }
 
+// ── Fiches des nouveaux joueurs ───────────────────────────────────────────────
+
+/**
+ * Crée la fiche d'un joueur ESPN inconnu et l'ajoute aux candidats.
+ *
+ * Réservé aux matchs officiels : en présaison, les joueurs de camp coupés
+ * avant la reprise rempliraient la base de fiches sans saison NBA.
+ */
+export async function createPlayerFromEspn(
+  espnId: string,
+  candidates: IdentityCandidate[],
+): Promise<IdentityCandidate | null> {
+  const profile = await fetchEspnAthlete(espnId);
+  if (!profile) {
+    console.warn(`  ⚠️  Profil ESPN introuvable pour l'athlète ${espnId}`);
+    return null;
+  }
+
+  const select = { id: true, espnId: true, firstName: true, lastName: true };
+  const existing = await prisma.player.findUnique({ where: { espnId }, select });
+  if (existing) {
+    candidates.push(existing);
+    return existing;
+  }
+
+  // Homonyme déjà en base : on distingue par l'année de draft, sinon par l'id ESPN.
+  const base = playerSlug(profile.firstName, profile.lastName);
+  let slug = base;
+  for (const suffix of [profile.draftYear, espnId]) {
+    if (!(await prisma.player.findUnique({ where: { slug }, select: { id: true } }))) break;
+    slug = `${base}-${suffix ?? espnId}`;
+  }
+
+  const created = await prisma.player.create({
+    data: {
+      espnId,
+      slug,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      height: profile.height,
+      weight: profile.weight,
+      position: profile.position,
+      college: profile.college,
+      draftYear: profile.draftYear,
+      draftPick: profile.draftPick,
+    },
+    select,
+  });
+  candidates.push(created);
+  console.log(
+    `  🆕 Fiche créée : ${profile.firstName} ${profile.lastName}` +
+      (profile.draftYear
+        ? ` (draft ${profile.draftYear}, choix ${profile.draftPick})`
+        : " (non drafté)"),
+  );
+  return created;
+}
+
 // ── Sync principal ────────────────────────────────────────────────────────────
 
 export async function syncBoxScores(
@@ -307,6 +373,7 @@ export async function syncBoxScores(
     select: {
       id: true,
       espnId: true,
+      phase: true,
       homeTeam: { select: { abbr: true } },
       awayTeam: { select: { abbr: true } },
     },
@@ -320,9 +387,24 @@ export async function syncBoxScores(
 
   console.log(`📊 ${games.length} matchs à synchroniser`);
 
-  const identityCandidates = await prisma.player.findMany({
+  const identityCandidates: IdentityCandidate[] = await prisma.player.findMany({
     select: { id: true, espnId: true, firstName: true, lastName: true },
   });
+  // Une création par athlète, même si deux matchs parallèles le croisent.
+  const pendingCreations = new Map<string, Promise<IdentityCandidate | null>>();
+  let createdPlayers = 0;
+
+  function ensurePlayer(espnId: string): Promise<IdentityCandidate | null> {
+    let pending = pendingCreations.get(espnId);
+    if (!pending) {
+      pending = createPlayerFromEspn(espnId, identityCandidates).then((player) => {
+        if (player) createdPlayers++;
+        return player;
+      });
+      pendingCreations.set(espnId, pending);
+    }
+    return pending;
+  }
 
   let synced = 0;
   let errors = 0;
@@ -361,6 +443,13 @@ export async function syncBoxScores(
         game.homeTeam.abbr,
         identityCandidates,
       );
+
+      if (game.phase && (COMPETITIVE_PHASES as string[]).includes(game.phase)) {
+        for (const player of players) {
+          if (player.playerId || !player.espnAthleteId) continue;
+          player.playerId = (await ensurePlayer(player.espnAthleteId))?.id ?? null;
+        }
+      }
 
       await Promise.all(
         players
@@ -441,7 +530,9 @@ export async function syncBoxScores(
     ),
   );
 
-  console.log(`\n✅ Sync terminée : ${synced} ok, ${errors} erreurs`);
+  console.log(
+    `\n✅ Sync terminée : ${synced} ok, ${errors} erreurs, ${createdPlayers} fiche(s) créée(s)`,
+  );
   return { synced, skipped: 0, errors };
 }
 

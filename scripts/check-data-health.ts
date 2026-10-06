@@ -17,6 +17,7 @@ import {
 } from "../lib/stats/metrics";
 import { validateStatisticalContext } from "../lib/stats/context";
 import { validatePlayerIdentityResolver } from "../lib/stats/player-identity";
+import { validateEspnAthleteParsing } from "../lib/espn-athlete";
 import { validatePlayerAliases } from "../lib/stats/player-aliases";
 import { validateAnalyticsPayload } from "../lib/analytics";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
@@ -182,7 +183,10 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const expectedGames = expectedRegularSeasonGames(now);
   const metricRegistryErrors = validatePlayerMetricRegistry();
   const statisticalContextErrors = validateStatisticalContext();
-  const identityResolverErrors = validatePlayerIdentityResolver();
+  const identityResolverErrors = [
+    ...validatePlayerIdentityResolver(),
+    ...validateEspnAthleteParsing(),
+  ];
   const aliasErrors = validatePlayerAliases();
   const analyticsErrors = validateAnalyticsPayload();
   const similarityErrors = validatePlayerSimilarity();
@@ -487,7 +491,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       "Résolveur d’identités",
       identityResolverErrors.length === 0,
       identityResolverErrors.length === 0
-        ? "identifiants, accents, suffixes et alias validés"
+        ? "identifiants, homonymes, accents, suffixes, alias et profils ESPN validés"
         : identityResolverErrors.join("; "),
     ),
     check(
