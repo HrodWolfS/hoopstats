@@ -38,7 +38,8 @@ export function CareerView({ seasons, exactShooting, primaryColor }: CareerViewP
       <div className="rounded-2xl border border-white/[0.06] bg-[#111114] p-6">
         <div className="flex items-baseline justify-between mb-1">
           <div className="text-[11px] text-white/40 uppercase tracking-[0.2em] font-medium">
-            POINTS PAR MATCH — {chrono.length} SAISONS
+            POINTS PAR MATCH — {chrono.length}{" "}
+            {chrono.length > 1 ? "SAISONS" : "SAISON"}
           </div>
           <div className="text-xs text-white/40 font-mono">
             Moy. {careerPpg} pts

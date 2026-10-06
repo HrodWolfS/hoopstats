@@ -1,6 +1,7 @@
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { KPI } from "@/components/ui/kpi";
 import { stat, pct } from "@/lib/format";
+import { accentOnDark } from "@/lib/color";
 
 export type PlayerHeaderData = {
   firstName: string;
@@ -47,7 +48,9 @@ export function PlayerHeader({
   return (
     <section className="grid grid-cols-12 gap-8 items-start">
       {/* Avatar */}
-      <div className="col-span-12 md:col-span-3 flex justify-center md:justify-start">
+      {/* Côte à côte dès lg seulement : entre 768 et 1024 px, la photo de
+          224 px débordait sur le nom. */}
+      <div className="col-span-12 lg:col-span-3 flex justify-center lg:justify-start">
         <PlayerAvatar
           firstName={firstName}
           lastName={lastName}
@@ -60,7 +63,7 @@ export function PlayerHeader({
       </div>
 
       {/* Infos */}
-      <div className="col-span-12 md:col-span-9 space-y-5">
+      <div className="col-span-12 lg:col-span-9 flex flex-col gap-5">
         <div>
           <div className="text-[11px] text-white/40 uppercase tracking-[0.2em] font-medium mb-3">
             {position ?? "—"}
@@ -79,8 +82,9 @@ export function PlayerHeader({
           )}
         </div>
 
+        {/* Sur mobile et tablette, les chiffres passent avant la biographie. */}
         {summaryFr && (
-          <div className="max-w-2xl space-y-1.5">
+          <div className="max-w-2xl space-y-1.5 order-3 lg:order-none">
             <p className="text-sm leading-relaxed text-white/50">{summaryFr}</p>
             {/* CC BY-SA impose de créditer la source du texte réutilisé. */}
             <p className="text-[11px] text-white/25">
@@ -102,21 +106,23 @@ export function PlayerHeader({
           </div>
         )}
         {photoAttribution && (
-          <p className="text-[11px] text-white/25">Photo : {photoAttribution}</p>
+          <p className="text-[11px] text-white/25 order-4 lg:order-none">
+            Photo : {photoAttribution}
+          </p>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 order-2 lg:order-none">
           <KPI
             label="Points"
             value={stat(ppg)}
             unit="par match"
-            accent={primaryColor}
+            accent={accentOnDark(primaryColor)}
           />
           <KPI
             label="Rebonds"
             value={stat(rpg)}
             unit="par match"
-            accent={secondaryColor}
+            accent={accentOnDark(secondaryColor)}
           />
           <KPI
             label="Passes"

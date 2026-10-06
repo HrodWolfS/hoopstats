@@ -1,6 +1,9 @@
 /**
  * Peuple logoUrl pour les 30 équipes NBA
- * Source : cdn.nba.com/logos/nba/{teamId}/global/L/logo.svg
+ * Source : cdn.nba.com/logos/nba/{teamId}/global/D/logo.svg
+ *
+ * Variante « D » (fond sombre) : le site est entièrement sombre, et la
+ * variante claire rendait illisibles les logos noirs (Spurs, Blazers…).
  *
  * Run: npm run seed:logos
  */
@@ -42,7 +45,7 @@ const NBA_IDS: Record<string, number> = {
 };
 
 function logoUrl(teamId: number): string {
-  return `https://cdn.nba.com/logos/nba/${teamId}/global/L/logo.svg`;
+  return `https://cdn.nba.com/logos/nba/${teamId}/global/D/logo.svg`;
 }
 
 async function main() {

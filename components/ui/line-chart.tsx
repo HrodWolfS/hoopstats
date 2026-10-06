@@ -28,7 +28,9 @@ export function LineChart({
   const min = Math.floor(Math.min(...vals));
   const max = Math.ceil(Math.max(...vals));
   const range = max - min || 1;
-  const x = (i: number) => pad.l + (i / (data.length - 1)) * W;
+  // Un seul point (rookie, première saison) : centré, sans division par zéro.
+  const x = (i: number) =>
+    pad.l + (data.length === 1 ? W / 2 : (i / (data.length - 1)) * W);
   const y = (v: number) => pad.t + H - ((v - min) / range) * H;
   const pts = data.map((d, i) => `${x(i)},${y(accessor(d))}`).join(" ");
   const area = `${pad.l},${pad.t + H} ${pts} ${pad.l + W},${pad.t + H}`;
@@ -65,7 +67,7 @@ export function LineChart({
               textAnchor="end"
               fontFamily="ui-monospace, monospace"
             >
-              {v.toFixed(0)}
+              {v.toFixed(range < yticks ? 1 : 0)}
             </text>
           </g>
         );

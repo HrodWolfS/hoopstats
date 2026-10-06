@@ -9,6 +9,8 @@
  *  2. Prénoms abrégés — « Nic Claxton » pour Nicolas Claxton.
  *  3. Ordre du nom — « Yang Hansen » pour Hansen Yang, dont le nom de famille
  *     est Yang.
+ *  4. Noms composés — ESPN publie le nom complet (« Nigel Hayes-Davis »,
+ *     « David Jones Garcia »), la fiche le nom d'usage.
  *
  * Sans cette table, ces joueurs n'ont aucune ligne de box score rattachée :
  * leurs moyennes de saison seraient calculées sur zéro match.
@@ -28,6 +30,8 @@ export const PLAYER_NAME_ALIASES: Readonly<Record<string, string>> = {
   "Alex Sarr": "Alexandre Sarr",
   "Mitch Mascari": "Mitchell Mascari",
   "Eli Ndiaye": "Eli John Ndiaye",
+  "Nigel Hayes-Davis": "Nigel Hayes",
+  "David Jones Garcia": "David Jones",
 };
 
 /**
@@ -38,8 +42,6 @@ export const PLAYER_NAME_ALIASES: Readonly<Record<string, string>> = {
  * « alias manquant ».
  */
 export const PLAYERS_WITHOUT_RECORD = [
-  "Nigel Hayes-Davis",
-  "David Jones Garcia",
   "Alex O'Connell",
   "Fanbo Zeng",
 ] as const;

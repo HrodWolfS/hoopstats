@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
 import { type Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { accentOnDark } from "@/lib/color";
 import { currentSeason } from "@/lib/nba";
 import { stat, pct } from "@/lib/format";
 import { Crumbs } from "@/components/ui/crumbs";
@@ -229,6 +230,8 @@ export default async function PlayerPage({
     null;
   const primaryColor = currentTeam?.primaryColor ?? "#7C3AED";
   const secondaryColor = currentTeam?.secondaryColor ?? "#06B6D4";
+  // Version lisible sur fond sombre, pour les textes et les tracés.
+  const accentColor = accentOnDark(primaryColor);
 
   const gameLogs: PlayerGameLog[] = gameRows.map((row) => {
     const home = row.teamAbbr === row.game.homeTeam.abbr;
@@ -565,11 +568,11 @@ export default async function PlayerPage({
       {/* Radar chart — percentiles vs même position */}
       {radarStats.length > 0 && (
         <section className="grid grid-cols-12 gap-6 items-start">
-          <div className="col-span-12 md:col-span-5">
+          <div className="col-span-12 lg:col-span-5">
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
               <PlayerRadarChart
                 stats={radarStats}
-                color={primaryColor}
+                color={accentColor}
                 positionLabel={positionLabel(player.position)}
                 season={seasonRow?.season ?? season}
               />
@@ -577,7 +580,7 @@ export default async function PlayerPage({
           </div>
 
           {/* Légende détaillée */}
-          <div className="col-span-12 md:col-span-7 self-stretch">
+          <div className="col-span-12 lg:col-span-7 self-stretch">
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 h-full">
               {/* Header */}
               <div className="flex items-baseline justify-between mb-5">
@@ -590,8 +593,8 @@ export default async function PlayerPage({
               </div>
 
               {/* Colonne headers */}
-              <div className="flex items-center gap-4 mb-3 pb-2 border-b border-white/[0.04]">
-                <span className="w-8 shrink-0" />
+              <div className="flex items-center gap-3 sm:gap-4 mb-3 pb-2 border-b border-white/[0.04]">
+                <span className="hidden sm:block w-8 shrink-0" />
                 <span className="text-[9px] text-white/20 font-mono uppercase tracking-wider w-28 shrink-0">
                   Statistique
                 </span>
@@ -612,8 +615,12 @@ export default async function PlayerPage({
                   const isGood = s.rank <= Math.ceil(s.total * 0.25);
 
                   return (
-                    <div key={s.key} className="flex items-center gap-4">
-                      <span className="text-[10px] text-white/25 font-mono w-8 shrink-0">
+                    <div
+                      key={s.key}
+                      className="flex items-center gap-3 sm:gap-4"
+                    >
+                      {/* Abréviation masquée sur mobile : le libellé suffit. */}
+                      <span className="hidden sm:block text-[10px] text-white/25 font-mono w-8 shrink-0">
                         {s.key}
                       </span>
                       <span className="text-sm text-white/55 w-28 shrink-0">
@@ -627,7 +634,7 @@ export default async function PlayerPage({
                           className="h-full rounded-full"
                           style={{
                             width: `${s.percentile}%`,
-                            backgroundColor: primaryColor,
+                            backgroundColor: accentColor,
                             opacity: isElite ? 0.8 : isGood ? 0.55 : 0.35,
                           }}
                         />
@@ -637,7 +644,7 @@ export default async function PlayerPage({
                         className="text-[11px] font-mono tabular-nums text-right shrink-0 w-16"
                         style={{
                           color: isElite
-                            ? primaryColor
+                            ? accentColor
                             : isGood
                               ? "rgba(255,255,255,0.6)"
                               : "rgba(255,255,255,0.3)",
@@ -664,7 +671,7 @@ export default async function PlayerPage({
       <SimilarPlayers players={similarPlayers} locale={locale} />
 
       <PlayerTabs
-        primaryColor={primaryColor}
+        primaryColor={accentColor}
         career={career}
         careerShooting={careerShooting}
         advanced={advanced}

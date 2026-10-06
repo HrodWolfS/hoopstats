@@ -14,6 +14,7 @@ import {
 import { validateStatisticalContext } from "../lib/stats/context";
 import { validatePlayerIdentityResolver } from "../lib/stats/player-identity";
 import { validateEspnAthleteParsing } from "../lib/espn-athlete";
+import { validateAccentOnDark } from "../lib/color";
 import { validatePlayerAliases } from "../lib/stats/player-aliases";
 import { validateAnalyticsPayload } from "../lib/analytics";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
@@ -196,6 +197,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const aliasErrors = validatePlayerAliases();
   const analyticsErrors = validateAnalyticsPayload();
   const similarityErrors = validatePlayerSimilarity();
+  const accentErrors = validateAccentOnDark();
   const careerErrors = validateCareerAggregation();
   const seasonAggregationErrors = validateSeasonAggregation();
   const consolidationErrors = validateSeasonConsolidation();
@@ -617,6 +619,13 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       similarityErrors.length === 0
         ? "distance normalisée et classement validés"
         : similarityErrors.join("; "),
+    ),
+    check(
+      "Couleurs d'équipe sur fond sombre",
+      accentErrors.length === 0,
+      accentErrors.length === 0
+        ? "couleurs sombres éclaircies, couleurs lisibles inchangées"
+        : accentErrors.join("; "),
     ),
     check(
       "Agrégation carrière",
