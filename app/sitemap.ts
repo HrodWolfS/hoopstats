@@ -56,6 +56,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "classements",
     "saisons",
     "playoffs",
+    "draft",
     "rookies",
     "trophees",
     "meilleurs-5",

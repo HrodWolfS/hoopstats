@@ -4,7 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ALL_NAV_ITEMS, isItemActive } from "./sidebar-client";
-import { ALL_SEASONS, ALL_HISTORY_SEASONS, CURRENT_SEASON } from "@/lib/nba";
+import {
+  ALL_SEASONS,
+  ALL_HISTORY_SEASONS,
+  CURRENT_SEASON,
+  UPCOMING_SEASON,
+} from "@/lib/nba";
 
 // ─── Season Selector ─────────────────────────────────────────────────────────
 
@@ -16,16 +21,20 @@ function SeasonSelector() {
 
   const isHistoryPage =
     pathname.includes("/equipes/") ||
+    pathname.includes("/draft") ||
     pathname.includes("/rookies") ||
     pathname.includes("/playoffs") ||
     pathname.includes("/saisons");
   const seasons = isHistoryPage ? ALL_HISTORY_SEASONS : ALL_SEASONS;
 
-  const season = searchParams.get("saison") ?? CURRENT_SEASON;
+  const defaultSeason = pathname.includes("/draft")
+    ? UPCOMING_SEASON
+    : CURRENT_SEASON;
+  const season = searchParams.get("saison") ?? defaultSeason;
 
   function navigate(s: string) {
     const params = new URLSearchParams(searchParams.toString());
-    if (s === CURRENT_SEASON) {
+    if (s === defaultSeason) {
       params.delete("saison");
     } else {
       params.set("saison", s);

@@ -2,7 +2,7 @@
  * Seed des trophées NBA — individuels (MVP, DPOY, MIP, ROY, SMOY, FMVP, NBA_CUP_MVP)
  * et collectifs (NBA_CHAMPION, EAST_CHAMPION, WEST_CHAMPION, NBA_CUP_CHAMPION).
  *
- * Couvre les saisons 2015-16 → 2024-25.
+ * Couvre les saisons 2015-16 → 2025-26.
  * Résout les joueurs par slug et les équipes par abréviation.
  * Idempotent : supprime puis recrée tous les awards.
  *
@@ -318,6 +318,13 @@ const INDIVIDUAL: IndividualAward[] = [
     player: "Shai Gilgeous-Alexander",
     teamAbbr: "OKC",
   },
+  {
+    type: "FMVP",
+    season: "2025-26",
+    player: "Jalen Brunson",
+    teamAbbr: "NYK",
+    notes: "32,6 points de moyenne en Finales · Knicks champions 4-1",
+  },
 
   // NBA Cup MVP (depuis 2023-24)
   {
@@ -468,6 +475,12 @@ const TEAM_TROPHIES: TeamTrophy[] = [
     season: "2024-25",
     teamAbbr: "OKC",
     notes: "Premier titre depuis le déménagement de Seattle",
+  },
+  {
+    type: "NBA_CHAMPION",
+    season: "2025-26",
+    teamAbbr: "NYK",
+    notes: "Premier titre depuis 1973 · victoire 4-1 face aux Spurs",
   },
 
   // Champions Conférence Est

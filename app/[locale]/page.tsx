@@ -45,6 +45,25 @@ type StandingRow = {
   conferenceRank: number | null;
 };
 
+type FinalsSpotlightRow = {
+  player: {
+    slug: string;
+    firstName: string;
+    lastName: string;
+    photoUrl: string | null;
+  };
+  team: {
+    slug: string;
+    abbr: string;
+    city: string;
+    name: string;
+    primaryColor: string;
+    secondaryColor: string;
+    logoUrl: string | null;
+  };
+  notes: string | null;
+};
+
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 async function getLeaders(
@@ -230,6 +249,20 @@ async function getCounts() {
     }),
   ]);
   return { playersCount, teamsCount, gamesCount };
+}
+
+async function getFinalsSpotlight(): Promise<FinalsSpotlightRow | null> {
+  const award = await prisma.award.findFirst({
+    where: { type: "FMVP", season: CURRENT_SEASON, playerId: { not: null }, teamId: { not: null } },
+    select: {
+      notes: true,
+      player: { select: { slug: true, firstName: true, lastName: true, photoUrl: true } },
+      team: { select: { slug: true, abbr: true, city: true, name: true, primaryColor: true, secondaryColor: true, logoUrl: true } },
+    },
+  });
+  return award?.player && award.team
+    ? { player: award.player, team: award.team, notes: award.notes }
+    : null;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -427,6 +460,47 @@ function SpotlightCard({
   );
 }
 
+function FinalsSpotlight({ spotlight, locale }: { spotlight: FinalsSpotlightRow; locale: string }) {
+  const { player, team } = spotlight;
+  return (
+    <section
+      className="relative overflow-hidden rounded-3xl border border-white/[0.08]"
+      style={{ background: `linear-gradient(125deg, ${team.primaryColor}32 0%, #111114 55%, #111114 100%)` }}
+    >
+      <div aria-hidden className="absolute -right-24 -top-32 h-96 w-96 rounded-full opacity-30 blur-3xl" style={{ background: team.primaryColor }} />
+      <div className="relative grid gap-6 p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
+        <div>
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-orange-300">
+            Saison terminée · Champions NBA 2026
+          </div>
+          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-5xl">
+            Les Knicks au sommet,
+            <span className="block text-white/65">Brunson MVP des Finales</span>
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">
+            New York décroche son premier titre depuis 1973. Jalen Brunson remporte le trophée Bill Russell avec 32,6 points de moyenne en Finales.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href={`/${locale}/joueurs/${player.slug}`} className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-black transition hover:bg-orange-400">
+              Voir Jalen Brunson
+            </Link>
+            <Link href={`/${locale}/trophees`} className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-white/70 transition hover:border-white/20 hover:text-white">
+              Palmarès 2025-26
+            </Link>
+            <Link href={`/${locale}/draft`} className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-white/70 transition hover:border-white/20 hover:text-white">
+              Draft 2026 →
+            </Link>
+          </div>
+        </div>
+        <div className="flex items-end justify-center gap-2 sm:justify-end">
+          {team.logoUrl && <Image src={team.logoUrl} alt={`Logo ${team.city} ${team.name}`} width={104} height={104} className="h-20 w-20 object-contain opacity-90 sm:h-24 sm:w-24" loading="eager" unoptimized />}
+          <PlayerAvatar firstName={player.firstName} lastName={player.lastName} primaryColor={team.primaryColor} secondaryColor={team.secondaryColor} photoUrl={player.photoUrl} size="xl" showNum={false} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage({
@@ -445,6 +519,7 @@ export default async function HomePage({
     westStandings,
     recentGames,
     counts,
+    finalsSpotlight,
   ] = await Promise.all([
     getLeaders("pointsPerGame"),
     getLeaders("reboundsPerGame"),
@@ -454,6 +529,7 @@ export default async function HomePage({
     getStandings("West"),
     getRecentGames(),
     getCounts(),
+    getFinalsSpotlight(),
   ]);
 
   const topScorer = ptsLeaders[0];
@@ -465,7 +541,7 @@ export default async function HomePage({
         <section className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300 text-[11px] font-medium uppercase tracking-wider">
             <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
-            Saison {CURRENT_SEASON} · En cours
+            Saison {CURRENT_SEASON} · Terminée
           </div>
           <div className="flex items-center gap-x-6 text-sm text-white/40">
             <span>
@@ -492,10 +568,14 @@ export default async function HomePage({
         </section>
       </FadeIn>
 
-      {/* ── Spotlight Top Scorer (vraie vitrine) ──────────────────────────── */}
-      {topScorer && (
+      {/* ── À la une : le fait majeur de la saison, puis leader en fallback ── */}
+      {(finalsSpotlight || topScorer) && (
         <FadeIn delay={0.05}>
-          <SpotlightCard leader={topScorer} locale={locale} />
+          {finalsSpotlight ? (
+            <FinalsSpotlight spotlight={finalsSpotlight} locale={locale} />
+          ) : topScorer ? (
+            <SpotlightCard leader={topScorer} locale={locale} />
+          ) : null}
         </FadeIn>
       )}
 

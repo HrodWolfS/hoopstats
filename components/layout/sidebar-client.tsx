@@ -263,6 +263,12 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     href: "/fr/comparer",
   },
   {
+    id: "draft",
+    label: "Draft",
+    icon: <IconRookie />,
+    href: "/fr/draft",
+  },
+  {
     id: "rookies",
     label: "Rookies",
     icon: <IconRookie />,

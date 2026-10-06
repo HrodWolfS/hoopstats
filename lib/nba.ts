@@ -16,8 +16,11 @@ export function divFr(div: string): string {
   return map[div] ?? div;
 }
 
-/** Saison courante pour le fetch des données. */
+/** Dernière saison disposant de statistiques complètes. */
 export const CURRENT_SEASON = "2025-26";
+
+/** Nouvelle saison ouverte pendant l'intersaison 2026. */
+export const UPCOMING_SEASON = "2026-27";
 
 /** Saison précédente (pour diff rookies/absents). */
 export const PREV_SEASON = "2024-25";
@@ -27,6 +30,7 @@ export const CURRENT_DRAFT_YEAR = 2025;
 
 /** Saisons récentes (stats joueurs disponibles) — utilisé dans les selectors playoffs/global. */
 export const ALL_SEASONS = [
+  "2026-27",
   "2025-26",
   "2024-25",
   "2023-24",
@@ -43,7 +47,7 @@ export const ALL_SEASONS = [
 /** Toutes les saisons historiques disponibles (TeamSeason backfill 1980-81+). */
 export const ALL_HISTORY_SEASONS: string[] = (() => {
   const seasons: string[] = [];
-  for (let end = 2026; end >= 1981; end--) {
+  for (let end = 2027; end >= 1981; end--) {
     const s = `${end - 1}-${String(end).slice(-2)}`;
     seasons.push(s);
   }

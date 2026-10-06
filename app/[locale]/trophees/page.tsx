@@ -238,6 +238,7 @@ function ChampionCard({
               width={120}
               height={120}
               className="object-contain"
+              loading="eager"
               unoptimized
             />
           ) : (
