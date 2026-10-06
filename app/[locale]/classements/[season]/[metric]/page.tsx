@@ -6,6 +6,7 @@ import { ALL_SEASONS } from "@/lib/nba";
 import { pct, stat } from "@/lib/format";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import {
+  competitionRanks,
   getLeaderboard,
   leaderboardValue,
   LEADERBOARDS,
@@ -73,10 +74,14 @@ export default async function LeaderboardPage({
   const leaders = ranked
     .filter((entry) => entry.gamesPlayed >= minimumGames)
     .filter((entry): entry is typeof entry & { value: number } => entry.value != null)
-    .sort((left, right) =>
-      definition.higherIsBetter ? right.value - left.value : left.value - right.value,
+    .sort(
+      (left, right) =>
+        (definition.higherIsBetter ? right.value - left.value : left.value - right.value) ||
+        // Égalité : ordre alphabétique, stable d'un rendu à l'autre.
+        left.row.player.lastName.localeCompare(right.row.player.lastName, "fr"),
     )
     .slice(0, 50);
+  const ranks = competitionRanks(leaders.map((entry) => entry.value));
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -84,7 +89,7 @@ export default async function LeaderboardPage({
     numberOfItems: leaders.length,
     itemListElement: leaders.map((entry, index) => ({
       "@type": "ListItem",
-      position: index + 1,
+      position: ranks[index],
       url: `${BASE_URL}/${locale}/joueurs/${entry.row.player.slug}`,
       name: `${entry.row.player.firstName} ${entry.row.player.lastName}`,
     })),
@@ -109,14 +114,16 @@ export default async function LeaderboardPage({
           <Link key={item.slug} href={`/${locale}/classements/${season}/${item.slug}`} className={`rounded-lg border px-3 py-2 text-xs ${item.slug === metric ? "border-orange-500/25 bg-orange-500/[0.08] text-orange-300" : "border-white/[0.06] text-white/40"}`}>{item.label}</Link>
         ))}
       </div>
-      <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111114]">
+      <div className="overflow-x-auto rounded-2xl border border-white/[0.06] bg-[#111114]">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-white/[0.06] text-[10px] uppercase tracking-wider text-white/30"><th className="px-5 py-3 text-left">#</th><th className="px-3 py-3 text-left">Joueur</th><th className="px-3 py-3 text-left">Équipe</th><th className="px-3 py-3 text-right">MJ</th><th className="px-5 py-3 text-right text-orange-300">{definition.shortLabel}</th></tr></thead>
-          <tbody>{leaders.map(({ row, value, gamesPlayed }, index) => <tr key={row.id} className="border-b border-white/[0.04]"><td className="px-5 py-3 font-mono text-white/25">{index + 1}</td><td className="px-3 py-3"><Link href={`/${locale}/joueurs/${row.player.slug}`} className="font-medium text-white/80 hover:text-orange-300">{row.player.firstName} {row.player.lastName}</Link></td><td className="px-3 py-3"><Link href={`/${locale}/equipes/${row.team.slug}`} className="text-white/40 hover:text-white" title={row.isMultiTeam ? `Saison en ${row.stints.length} équipes : ${row.stints.map((stint) => stint.team.abbr).join(", ")}` : undefined}>{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</Link></td><td className="px-3 py-3 text-right font-mono text-white/35">{gamesPlayed}</td><td className="px-5 py-3 text-right font-mono font-semibold">{definition.mode === "percentage" ? `${pct(value)} %` : stat(value)}</td></tr>)}</tbody>
+          <thead><tr className="border-b border-white/[0.06] text-[10px] uppercase tracking-wider text-white/30"><th className="px-3 py-3 sm:px-5 text-left">#</th><th className="px-3 py-3 text-left">Joueur</th><th className="hidden px-3 py-3 text-left sm:table-cell">Équipe</th><th className="px-3 py-3 text-right">MJ</th><th className="px-3 py-3 sm:px-5 text-right text-orange-300">{definition.shortLabel}</th></tr></thead>
+          <tbody>{leaders.map(({ row, value, gamesPlayed }, index) => <tr key={row.id} className="border-b border-white/[0.04]"><td className="px-3 py-3 sm:px-5 font-mono text-white/25">{ranks[index]}</td><td className="px-3 py-3"><Link href={`/${locale}/joueurs/${row.player.slug}`} className="font-medium text-white/80 hover:text-orange-300">{row.player.firstName} {row.player.lastName}</Link><span className="mt-0.5 block font-mono text-[11px] text-white/35 sm:hidden">{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</span></td><td className="hidden px-3 py-3 sm:table-cell"><Link href={`/${locale}/equipes/${row.team.slug}`} className="text-white/40 hover:text-white" title={row.isMultiTeam ? `Saison en ${row.stints.length} équipes : ${row.stints.map((stint) => stint.team.abbr).join(", ")}` : undefined}>{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</Link></td><td className="px-3 py-3 text-right font-mono text-white/35">{gamesPlayed}</td><td className="px-3 py-3 sm:px-5 text-right font-mono font-semibold">{definition.mode === "percentage" ? `${pct(value)} %` : stat(value)}</td></tr>)}</tbody>
         </table>
         {leaders.length === 0 && (
           <p className="px-5 py-12 text-center text-sm text-white/35">
-            Aucun match de saison régulière joué en {season} pour l&apos;instant : le classement se remplit après la première nuit de matchs.
+            {teamGames > 0
+              ? `${leaderboard.label} n'est pas encore disponible pour ${season} : la source ne publie pas cette statistique pour l'instant.`
+              : `Aucun match de saison régulière joué en ${season} pour l'instant : le classement se remplit après la première nuit de matchs.`}
           </p>
         )}
       </div>

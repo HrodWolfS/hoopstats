@@ -325,7 +325,7 @@ export default async function SaisonsPage({
             ].map(({ label, rows }) => (
               <div
                 key={label}
-                className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden"
+                className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-x-auto"
               >
                 <div className="px-4 pt-4 pb-2">
                   <p className="text-[11px] uppercase tracking-wider text-white/40 font-medium">
@@ -340,7 +340,7 @@ export default async function SaisonsPage({
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-white/[0.06]">
-                        <th className="text-[11px] uppercase tracking-wider text-white/40 font-medium text-left px-4 py-2 w-8">
+                        <th className="text-[11px] uppercase tracking-wider text-white/40 font-medium text-left px-3 sm:px-4 py-2 w-8">
                           Rg
                         </th>
                         <th className="text-[11px] uppercase tracking-wider text-white/40 font-medium text-left px-2 py-2">
@@ -358,7 +358,7 @@ export default async function SaisonsPage({
                         <th className="text-[11px] uppercase tracking-wider text-white/40 font-medium text-center px-2 py-2 w-12 hidden sm:table-cell">
                           Net
                         </th>
-                        <th className="text-[11px] uppercase tracking-wider text-white/40 font-medium text-left px-2 py-2" />
+                        <th className="text-[11px] uppercase tracking-wider text-white/40 font-medium text-left px-2 py-2 hidden sm:table-cell" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.04]">
@@ -386,7 +386,7 @@ export default async function SaisonsPage({
                             key={row.teamSlug}
                             className={`transition-colors hover:bg-white/[0.02] ${isPlayoffSpot ? "" : "opacity-60"}`}
                           >
-                            <td className="px-4 py-2.5 text-white/40 text-xs tabular-nums">
+                            <td className="px-3 sm:px-4 py-2.5 text-white/40 text-xs tabular-nums">
                               {row.rank}
                             </td>
                             <td className="px-2 py-2.5">
@@ -394,8 +394,16 @@ export default async function SaisonsPage({
                                 href={`/${locale}/equipes/${row.teamSlug}`}
                                 className="hover:text-white/90 transition text-white/80"
                               >
-                                {row.teamCity} {row.teamName}
+                                <span className="hidden sm:inline">{row.teamCity} </span>
+                                {row.teamName}
                               </Link>
+                              {/* Sur mobile, le badge passe sous le nom : en
+                                  colonne, il poussait le tableau hors écran. */}
+                              {badge && (
+                                <span className="mt-1 flex sm:hidden">
+                                  <span className={badge.className}>{badge.label}</span>
+                                </span>
+                              )}
                             </td>
                             <td className="px-2 py-2.5 text-center tabular-nums text-white/70">
                               {row.wins}
@@ -417,7 +425,7 @@ export default async function SaisonsPage({
                             >
                               {netStr}
                             </td>
-                            <td className="px-2 py-2.5 text-right">
+                            <td className="px-2 py-2.5 text-right hidden sm:table-cell">
                               {badge && (
                                 <span className={badge.className}>
                                   {badge.label}

@@ -68,6 +68,16 @@ export function isStaleStatus(
   return now.getTime() - gameDate.getTime() > graceHours * 60 * 60 * 1000;
 }
 
+/** Quarts-temps réglementaires d'un match NBA ; au-delà, des prolongations. */
+export const REGULATION_PERIODS = 4;
+
+/** En-tête d'une période du tableau des scores : Q1…Q4, puis OT1, OT2… */
+export function periodLabel(period: number): string {
+  return period <= REGULATION_PERIODS
+    ? `Q${period}`
+    : `OT${period - REGULATION_PERIODS}`;
+}
+
 /** Auto-contrôles exécutés par `pnpm health:data`. */
 export function validateGameStatus(): string[] {
   const errors: string[] = [];

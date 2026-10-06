@@ -36,3 +36,17 @@ export function leaderboardValue(
 export function scaledMinimumGames(teamGames: number, cap: number): number {
   return Math.min(cap, Math.max(1, Math.ceil(teamGames * 0.7)));
 }
+
+/**
+ * Rangs « sportifs » d'une liste déjà triée : deux valeurs égales partagent
+ * le même rang et le suivant saute d'autant (1, 2, 2, 4). Numéroter par la
+ * seule position classerait arbitrairement l'un devant l'autre selon l'ordre
+ * de lecture en base.
+ */
+export function competitionRanks(sortedValues: readonly number[]): number[] {
+  const ranks: number[] = [];
+  sortedValues.forEach((value, index) => {
+    ranks.push(index > 0 && value === sortedValues[index - 1] ? ranks[index - 1] : index + 1);
+  });
+  return ranks;
+}

@@ -24,7 +24,8 @@
     "fix:playoff-history": "tsx scripts/apply-playoff-corrections.ts",
     "import:photos": "tsx scripts/import-photos.ts",
     "generate:summaries": "tsx scripts/generate-summaries.ts",
-    "seed:logos": "tsx scripts/seed-team-logos.ts"
+    "seed:logos": "tsx scripts/seed-team-logos.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
@@ -45,6 +46,7 @@
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.3"
   }
 }

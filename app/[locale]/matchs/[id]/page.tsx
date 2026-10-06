@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
+import { periodLabel } from "@/lib/game-status";
 
 export const revalidate = 300;
 
@@ -1073,7 +1074,7 @@ export default async function MatchPage({
                         key={q.q}
                         className="text-center px-3 py-1 font-medium"
                       >
-                        {q.q <= 4 ? `Q${q.q}` : `OT${q.q - 4}`}
+                        {periodLabel(q.q)}
                       </th>
                     ))}
                     <th className="text-center px-3 py-1 font-medium text-white/50">

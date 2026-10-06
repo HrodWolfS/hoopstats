@@ -220,15 +220,15 @@ export default async function SourcesPage() {
         <h2 className="text-lg font-display font-semibold text-white">
           Couverture des données
         </h2>
-        <div className="rounded-xl border border-white/[0.06] bg-[#111114] overflow-hidden">
+        <div className="rounded-xl border border-white/[0.06] bg-[#111114] overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-wider text-white/30">
-                <th className="text-left px-5 py-3 font-medium">Type</th>
+                <th className="text-left px-3 sm:px-5 py-3 font-medium">Type</th>
                 <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">
                   Indicateurs
                 </th>
-                <th className="text-left px-4 py-3 font-medium">Période</th>
+                <th className="text-left px-3 sm:px-4 py-3 font-medium">Période</th>
               </tr>
             </thead>
             <tbody>
@@ -237,7 +237,7 @@ export default async function SourcesPage() {
                   key={row.type}
                   className={`${i < COVERAGE.length - 1 ? "border-b border-white/[0.04]" : ""}`}
                 >
-                  <td className="px-5 py-4 align-top">
+                  <td className="px-3 sm:px-5 py-4 align-top">
                     <div className="text-white/80 text-xs font-medium">
                       {row.type}
                     </div>
@@ -250,7 +250,7 @@ export default async function SourcesPage() {
                       {row.detail}
                     </span>
                   </td>
-                  <td className="px-4 py-4 align-top">
+                  <td className="px-3 sm:px-4 py-4 align-top">
                     <span className="text-xs text-white/60 font-mono whitespace-nowrap">
                       {row.from} → {row.to}
                     </span>
