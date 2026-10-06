@@ -6,11 +6,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import {
-  SEASON_OPENERS,
-  currentSeason,
-  espnSeasonYear,
-} from "../lib/nba";
+import { SEASON_OPENERS, currentSeason, espnSeasonYear } from "../lib/nba";
 import {
   NULLABLE_METRIC_COLUMNS,
   validatePlayerMetricRegistry,
@@ -22,8 +18,16 @@ import { validatePlayerAliases } from "../lib/stats/player-aliases";
 import { validateAnalyticsPayload } from "../lib/analytics";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
 import { validateCareerAggregation } from "../lib/stats/career";
-import { validateSeasonAggregation } from "../lib/stats/season-aggregation";
-import { validateLeaderboardConsolidation } from "../lib/stats/leaders";
+import {
+  deriveSeasonFromBoxScores,
+  validateSeasonAggregation,
+  type BoxScoreLine,
+} from "../lib/stats/season-aggregation";
+import {
+  consolidatePlayerSeasons,
+  multiTeamPlayerIds,
+  validateSeasonConsolidation,
+} from "../lib/stats/season-consolidation";
 import { isStaleStatus, validateGameStatus } from "../lib/game-status";
 import {
   seriesWinsRequired,
@@ -160,7 +164,9 @@ function summarizeMismatches(games: readonly MismatchedGame[]): string {
 
   return [...perTeam.entries()]
     .sort((a, b) => b[1].games - a[1].games)
-    .map(([abbr, { games: n, points }]) => `${abbr} ${n} match(s)/${points} pts`)
+    .map(
+      ([abbr, { games: n, points }]) => `${abbr} ${n} match(s)/${points} pts`,
+    )
     .join(", ");
 }
 
@@ -192,7 +198,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const similarityErrors = validatePlayerSimilarity();
   const careerErrors = validateCareerAggregation();
   const seasonAggregationErrors = validateSeasonAggregation();
-  const leaderboardErrors = validateLeaderboardConsolidation();
+  const consolidationErrors = validateSeasonConsolidation();
   const gameStatusErrors = validateGameStatus();
   const seriesWinnerErrors = validatePlayoffSeriesWinner();
   const correctionErrors = validatePlayoffCorrections();
@@ -202,13 +208,22 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   // synchronisation n'a pas lu la saison ESPN ou le rattrapage n'a pas tourné.
   // Une équipe joue 82 matchs de saison régulière : au-delà, des matchs d'une
   // autre phase se sont glissés dans l'agrégat.
-  const [unclassifiedGames, overflowingSeasonRows, regularFinalGames, seasonCalendar] = await Promise.all([
+  const [
+    unclassifiedGames,
+    overflowingSeasonRows,
+    regularFinalGames,
+    seasonCalendar,
+  ] = await Promise.all([
     prisma.game.count({ where: { phase: null } }),
     prisma.playerSeason.count({
       where: { season: CURRENT_SEASON, gamesPlayed: { gt: 82 } },
     }),
     prisma.game.count({
-      where: { season: CURRENT_SEASON, status: "final", phase: REGULAR_SEASON_PHASE },
+      where: {
+        season: CURRENT_SEASON,
+        status: "final",
+        phase: REGULAR_SEASON_PHASE,
+      },
     }),
     checkSeasonCalendar(),
   ]);
@@ -263,7 +278,77 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   }
   const staleSeasonRows = [...storedPerPlayer.entries()]
     .map(([playerId, gamesPlayed]) => ({ playerId, gamesPlayed }))
-    .filter((row) => (playedPerPlayer.get(row.playerId) ?? 0) > row.gamesPlayed);
+    .filter(
+      (row) => (playedPerPlayer.get(row.playerId) ?? 0) > row.gamesPlayed,
+    );
+
+  // Lignes TOT réelles : la moyenne pondérée des passages doit retomber sur
+  // le total recalculé depuis les box scores, toutes équipes confondues. Un
+  // écart trahit un passage manquant ou compté deux fois.
+  const tradedStints = await prisma.playerSeason.findMany({
+    where: {
+      season: CURRENT_SEASON,
+      playerId: { in: multiTeamPlayerIds(storedSeasons) },
+    },
+    select: {
+      playerId: true,
+      gamesPlayed: true,
+      pointsPerGame: true,
+      reboundsPerGame: true,
+      assistsPerGame: true,
+      fgPct: true,
+      trueShooting: true,
+    },
+  });
+  const tradedLines = await prisma.playerBoxScore.findMany({
+    where: {
+      playerId: { in: multiTeamPlayerIds(tradedStints) },
+      didNotPlay: false,
+      game: {
+        season: CURRENT_SEASON,
+        status: "final",
+        phase: REGULAR_SEASON_PHASE,
+      },
+    },
+    select: {
+      playerId: true,
+      minutes: true,
+      pts: true,
+      reb: true,
+      ast: true,
+      stl: true,
+      blk: true,
+      fgm: true,
+      fga: true,
+      threePm: true,
+      threePa: true,
+      ftm: true,
+      fta: true,
+    },
+  });
+  const linesByPlayer = new Map<string, BoxScoreLine[]>();
+  for (const { playerId, ...line } of tradedLines) {
+    if (!playerId) continue;
+    linesByPlayer.set(playerId, [...(linesByPlayer.get(playerId) ?? []), line]);
+  }
+  const tradedTotals = new Map(
+    [...linesByPlayer].flatMap(([playerId, lines]) => {
+      const derived = deriveSeasonFromBoxScores(lines);
+      return derived ? [[playerId, derived] as const] : [];
+    }),
+  );
+  const totRows = consolidatePlayerSeasons(tradedStints, tradedTotals);
+  const inconsistentTotRows = totRows.filter((row) => {
+    const exact = tradedTotals.get(row.playerId);
+    if (!exact) return true;
+    return (
+      exact.gamesPlayed !== row.gamesPlayed ||
+      Math.abs(exact.pointsPerGame - row.pointsPerGame) > 0.05 ||
+      Math.abs(exact.reboundsPerGame - row.reboundsPerGame) > 0.05 ||
+      Math.abs(exact.assistsPerGame - row.assistsPerGame) > 0.05 ||
+      (exact.trueShooting !== null && row.trueShooting === null)
+    );
+  });
 
   // Réimporter l'archive ESPN réécrit les séries historiques : on vérifie que
   // les corrections tiennent toujours en base, faute de quoi la finale 1990
@@ -271,7 +356,9 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const unappliedCorrections = (
     await prisma.playoffSeries.findMany({
       where: {
-        season: { in: [...new Set(PLAYOFF_SERIES_CORRECTIONS.map((c) => c.season))] },
+        season: {
+          in: [...new Set(PLAYOFF_SERIES_CORRECTIONS.map((c) => c.season))],
+        },
       },
       select: {
         season: true,
@@ -295,8 +382,10 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
     return (
       !series.completed ||
       series.round !== correction.round ||
-      series.team1Wins !== (team1Won ? correction.winnerWins : correction.loserWins) ||
-      series.team2Wins !== (team1Won ? correction.loserWins : correction.winnerWins)
+      series.team1Wins !==
+        (team1Won ? correction.winnerWins : correction.loserWins) ||
+      series.team2Wins !==
+        (team1Won ? correction.loserWins : correction.winnerWins)
     );
   });
 
@@ -317,7 +406,10 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   // reporté trahit un statut figé : il resterait affiché comme « en cours ».
   const staleStatusGames = (
     await prisma.game.findMany({
-      where: { gameDate: { lt: now }, status: { notIn: ["final", "postponed"] } },
+      where: {
+        gameDate: { lt: now },
+        status: { notIn: ["final", "postponed"] },
+      },
       select: { gameDate: true, status: true },
     })
   ).filter((game) => isStaleStatus(game.status, game.gameDate, now));
@@ -467,12 +559,23 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
           finalGameCount) *
         100;
   const identityResolutionRate =
-    eligiblePlayerRows === 0 ? 100 : (resolvedPlayerRows / eligiblePlayerRows) * 100;
+    eligiblePlayerRows === 0
+      ? 100
+      : (resolvedPlayerRows / eligiblePlayerRows) * 100;
 
   return [
     seasonCalendar
-      ? check("Calendrier des saisons", seasonCalendar.ok, seasonCalendar.message)
-      : check("Calendrier des saisons", false, "ESPN injoignable, calendrier non vérifié", "warn"),
+      ? check(
+          "Calendrier des saisons",
+          seasonCalendar.ok,
+          seasonCalendar.message,
+        )
+      : check(
+          "Calendrier des saisons",
+          false,
+          "ESPN injoignable, calendrier non vérifié",
+          "warn",
+        ),
     check(
       "Registre statistique",
       metricRegistryErrors.length === 0,
@@ -523,11 +626,11 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
         : careerErrors.join("; "),
     ),
     check(
-      "Classements sans doublon",
-      leaderboardErrors.length === 0,
-      leaderboardErrors.length === 0
-        ? "une saison transférée ne produit qu'une entrée, pondérée par les matchs"
-        : leaderboardErrors.join("; "),
+      "Ligne TOT par joueur et par saison",
+      consolidationErrors.length === 0,
+      consolidationErrors.length === 0
+        ? "une ligne par joueur : 1, 2 ou 3 équipes, sans match, pourcentages exacts des box scores"
+        : consolidationErrors.join("; "),
     ),
     check(
       "Agrégation saison depuis les box scores",
@@ -607,13 +710,20 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
         : gameStatusErrors.join("; "),
     ),
     check(
+      "Lignes TOT en base",
+      inconsistentTotRows.length === 0,
+      inconsistentTotRows.length === 0
+        ? `${totRows.length} joueur(s) transféré(s) en ${CURRENT_SEASON} : matchs, moyennes et TS% concordent avec les box scores`
+        : `${inconsistentTotRows.length}/${totRows.length} ligne(s) TOT divergent des box scores (passage manquant ou compté deux fois)`,
+    ),
+    check(
       "Fraîcheur des agrégats joueurs",
       staleSeasonRows.length === 0,
       staleSeasonRows.length === 0
         ? "les moyennes de saison couvrent tous les matchs synchronisés"
         : `${staleSeasonRows.length}/${storedPerPlayer.size} joueur(s) dont les moyennes ignorent des matchs déjà synchronisés` +
-          ` (retard médian ${medianLag(staleSeasonRows, playedPerPlayer)} match(s)) :` +
-          " PlayerSeason n'est pas alimenté par la synchronisation quotidienne",
+            ` (retard médian ${medianLag(staleSeasonRows, playedPerPlayer)} match(s)) :` +
+            " PlayerSeason n'est pas alimenté par la synchronisation quotidienne",
     ),
     check(
       "Métriques exposées alimentées",
@@ -688,8 +798,8 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       scoreMismatches.length === 0
         ? "les points joueurs reconstituent le score final sur tous les matchs"
         : `${scoreMismatches.length} match(s) dont les points joueurs diffèrent du score final` +
-          ` (lignes manquantes chez ESPN, signalées par un bandeau sur la page match) : ` +
-          summarizeMismatches(scoreMismatches),
+            ` (lignes manquantes chez ESPN, signalées par un bandeau sur la page match) : ` +
+            summarizeMismatches(scoreMismatches),
       "warn",
     ),
     check(
@@ -725,7 +835,9 @@ async function main() {
 
   const warnings = checks.filter((result) => result.status === "warn").length;
   const failures = checks.filter((result) => result.status === "fail").length;
-  console.log(`\nRésultat : ${failures} échec(s), ${warnings} avertissement(s)`);
+  console.log(
+    `\nRésultat : ${failures} échec(s), ${warnings} avertissement(s)`,
+  );
 
   if (strict && failures > 0) process.exitCode = 1;
 }

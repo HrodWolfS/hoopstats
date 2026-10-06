@@ -16,8 +16,11 @@ import {
   buildPlayerExplorerWhere,
   computeMetricValue,
   parsePlayerExplorerParams,
+  passesExplorerThresholds,
   PLAYER_EXPLORER_METRICS,
 } from "@/lib/stats/player-query";
+import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
+import { consolidateSeasonRows } from "@/lib/stats/season-totals";
 import { AnalyticsEvent } from "@/components/analytics/analytics-event";
 import { ShareButton } from "@/components/analytics/share-button";
 
@@ -59,7 +62,7 @@ export default async function PlayersPage({
   const { locale } = await params;
   const explorerParams = parsePlayerExplorerParams(await searchParams);
   const where = buildPlayerExplorerWhere(explorerParams);
-  const [allRows, teams] = await Promise.all([
+  const [stintRows, teams] = await Promise.all([
     prisma.playerSeason.findMany({
       where,
       include: {
@@ -87,6 +90,11 @@ export default async function PlayersPage({
       select: { abbr: true, city: true, name: true },
     }),
   ]);
+  // Une ligne par joueur : les seuils s'appliquent à la saison entière d'un
+  // joueur transféré, pas à chacun de ses passages.
+  const allRows = (
+    await consolidateSeasonRows(explorerParams.season, stintRows)
+  ).filter((row) => passesExplorerThresholds(row, explorerParams));
   const total = allRows.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(explorerParams.page, totalPages);
@@ -115,18 +123,18 @@ export default async function PlayersPage({
 
   const previousSeason = ALL_SEASONS[ALL_SEASONS.indexOf(resolvedParams.season) + 1];
   const previousRows = previousSeason && rankedRows.length > 0
-    ? await prisma.playerSeason.findMany({
-        where: {
-          season: previousSeason,
-          OR: rankedRows.map(({ row }) => ({
-            playerId: row.playerId,
-            teamId: row.teamId,
-          })),
-        },
-      })
+    ? await consolidateSeasonRows(
+        previousSeason,
+        await prisma.playerSeason.findMany({
+          where: {
+            season: previousSeason,
+            playerId: { in: rankedRows.map(({ row }) => row.playerId) },
+          },
+        }),
+      )
     : [];
-  const previousByStint = new Map(
-    previousRows.map((row) => [`${row.playerId}:${row.teamId}`, row]),
+  const previousByPlayer = new Map(
+    previousRows.map((row) => [row.playerId, row]),
   );
 
   const tableRows: PlayerExplorerRow[] = rankedRows.map(({ row, metricValue }) => ({
@@ -136,8 +144,9 @@ export default async function PlayersPage({
     lastName: row.player.lastName,
     position: row.player.position,
     photoUrl: row.player.photoUrl,
-    teamAbbr: row.team.abbr,
-    teamSlug: row.team.slug,
+    teamAbbr: row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr,
+    teamSlug: row.isMultiTeam ? null : row.team.slug,
+    teams: row.stints.map((stint) => stint.team.abbr),
     primaryColor: row.team.primaryColor,
     secondaryColor: row.team.secondaryColor,
     gamesPlayed: row.gamesPlayed,
@@ -148,7 +157,7 @@ export default async function PlayersPage({
       activeMetric.higherIsBetter,
     ),
     previousValue: (() => {
-      const previous = previousByStint.get(`${row.playerId}:${row.teamId}`);
+      const previous = previousByPlayer.get(row.playerId);
       return previous
         ? computeMetricValue(
             previous[resolvedParams.metric],

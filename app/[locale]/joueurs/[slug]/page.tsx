@@ -6,6 +6,11 @@ import { currentSeason } from "@/lib/nba";
 import { stat, pct } from "@/lib/format";
 import { Crumbs } from "@/components/ui/crumbs";
 import { PlayerHeader } from "@/components/player/player-header";
+import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
+import {
+  consolidatePlayerCareer,
+  consolidateSeasonRows,
+} from "@/lib/stats/season-totals";
 import { PlayerTabs } from "@/components/player/player-tabs";
 import {
   PlayerRadarChart,
@@ -182,14 +187,14 @@ export default async function PlayerPage({
   });
   if (!player) notFound();
 
+  // Une ligne par saison : un joueur transféré n'est pas réduit à l'un de
+  // ses passages (bandeau, radar, joueurs similaires, stats avancées).
+  const { seasons: consolidatedSeasons, exactBySeason } =
+    await consolidatePlayerCareer(player.seasons);
   const seasonRow =
-    player.seasons.find((s) => s.season === season) ??
-    player.seasons[player.seasons.length - 1] ??
+    consolidatedSeasons.find((s) => s.season === season) ??
+    consolidatedSeasons[consolidatedSeasons.length - 1] ??
     null;
-
-  const currentTeam = seasonRow?.team ?? null;
-  const primaryColor = currentTeam?.primaryColor ?? "#7C3AED";
-  const secondaryColor = currentTeam?.secondaryColor ?? "#06B6D4";
 
   const gameRows = seasonRow
     ? await prisma.playerBoxScore.findMany({
@@ -214,6 +219,16 @@ export default async function PlayerPage({
         orderBy: { game: { gameDate: "desc" } },
       })
     : [];
+
+  // Saison transférée : l'équipe du dernier match joué, pas celle du plus
+  // grand nombre de matchs.
+  const lastTeamAbbr = gameRows[0]?.teamAbbr;
+  const currentTeam =
+    seasonRow?.stints.find((stint) => stint.team.abbr === lastTeamAbbr)?.team ??
+    seasonRow?.team ??
+    null;
+  const primaryColor = currentTeam?.primaryColor ?? "#7C3AED";
+  const secondaryColor = currentTeam?.secondaryColor ?? "#06B6D4";
 
   const gameLogs: PlayerGameLog[] = gameRows.map((row) => {
     const home = row.teamAbbr === row.game.homeTeam.abbr;
@@ -243,15 +258,18 @@ export default async function PlayerPage({
 
   const posGroup = positionGroup(player.position);
 
-  const peers = seasonRow
+  // Pairs regroupés eux aussi : le seuil de 15 matchs vaut pour la saison
+  // entière, et un joueur transféré ne figure qu'une fois.
+  const peerStints = seasonRow
     ? await prisma.playerSeason.findMany({
         where: {
           season: seasonRow.season,
-          gamesPlayed: { gte: 15 },
           ...(posGroup ? { player: { position: { in: posGroup } } } : {}),
         },
         select: {
           id: true,
+          playerId: true,
+          gamesPlayed: true,
           pointsPerGame: true,
           reboundsPerGame: true,
           assistsPerGame: true,
@@ -276,6 +294,11 @@ export default async function PlayerPage({
           },
         },
       })
+    : [];
+  const peers = seasonRow
+    ? (await consolidateSeasonRows(seasonRow.season, peerStints)).filter(
+        (peer) => peer.gamesPlayed >= 15,
+      )
     : [];
 
   const radarStats: RadarStat[] = seasonRow
@@ -399,7 +422,7 @@ export default async function PlayerPage({
       firstName: peer.player.firstName,
       lastName: peer.player.lastName,
       photoUrl: peer.player.photoUrl,
-      teamAbbr: peer.team.abbr,
+      teamAbbr: peer.isMultiTeam ? MULTI_TEAM_ABBR : peer.team.abbr,
       primaryColor: peer.team.primaryColor,
       secondaryColor: peer.team.secondaryColor,
       similarity: similarityById.get(peer.id)!,
@@ -416,6 +439,14 @@ export default async function PlayerPage({
 
   // ── Adapter les types pour les composants ─────────────────────────────────
 
+  // Lignes brutes : la vue carrière fusionne elle-même les transferts, avec
+  // les pourcentages exacts des box scores.
+  const careerShooting = Object.fromEntries(
+    [...exactBySeason].map(([careerSeason, exact]) => [
+      careerSeason,
+      { fgPct: exact.fgPct, threePtPct: exact.threePtPct, ftPct: exact.ftPct },
+    ]),
+  );
   const career: CareerSeason[] = player.seasons.map((ps) => ({
     season: ps.season,
     teamAbbr: ps.team.abbr,
@@ -431,9 +462,9 @@ export default async function PlayerPage({
     ftPct: ps.ftPct,
   }));
 
-  const advanced: AdvancedSeason[] = player.seasons.map((ps) => ({
+  const advanced: AdvancedSeason[] = consolidatedSeasons.map((ps) => ({
     season: ps.season,
-    teamAbbr: ps.team.abbr,
+    teamAbbr: ps.isMultiTeam ? MULTI_TEAM_ABBR : ps.team.abbr,
     gamesPlayed: ps.gamesPlayed,
     trueShooting: ps.trueShooting,
     usageRate: ps.usageRate,
@@ -635,6 +666,7 @@ export default async function PlayerPage({
       <PlayerTabs
         primaryColor={primaryColor}
         career={career}
+        careerShooting={careerShooting}
         advanced={advanced}
         gameLogs={gameLogs}
         locale={locale}

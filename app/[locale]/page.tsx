@@ -3,6 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { scaledMinimumGames } from "@/lib/stats/leaders";
+import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
+import { consolidateSeasonRows } from "@/lib/stats/season-totals";
 import {
   SEASON_OPENERS,
   currentSeason,
@@ -73,49 +75,6 @@ type FinalsSpotlightRow = {
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
-async function getLeaders(
-  season: string,
-  orderBy: "pointsPerGame" | "reboundsPerGame" | "assistsPerGame",
-  minGames: number,
-  limit = 5,
-): Promise<LeaderRow[]> {
-  const rows = await prisma.playerSeason.findMany({
-    where: { season, gamesPlayed: { gte: minGames } },
-    orderBy: { [orderBy]: "desc" },
-    take: limit,
-    include: {
-      player: {
-        select: {
-          firstName: true,
-          lastName: true,
-          slug: true,
-          position: true,
-          photoUrl: true,
-        },
-      },
-      team: {
-        select: {
-          abbr: true,
-          slug: true,
-          primaryColor: true,
-          secondaryColor: true,
-        },
-      },
-    },
-  });
-  return rows.map((r) => ({
-    slug: r.player.slug,
-    firstName: r.player.firstName,
-    lastName: r.player.lastName,
-    position: r.player.position,
-    photoUrl: r.player.photoUrl,
-    teamAbbr: r.team.abbr,
-    primaryColor: r.team.primaryColor,
-    secondaryColor: r.team.secondaryColor,
-    value: r[orderBy] as number,
-  }));
-}
-
 /**
  * Sans seuil de volume, le TS% sacre des pivots à 3 tirs par match (Sims,
  * Kalkbrenner) ou un vétéran qui tire à peine. 20 minutes et 10 points par
@@ -128,21 +87,25 @@ const TS_MIN_POINTS = 10;
 const LEADER_MIN_GAMES = 10;
 const TS_MIN_GAMES = 20;
 
-async function getTsLeaders(
+type SeasonLeaders = {
+  points: LeaderRow[];
+  rebounds: LeaderRow[];
+  assists: LeaderRow[];
+  trueShooting: LeaderRow[];
+};
+
+/**
+ * Leaders de la saison, une ligne par joueur : les passages d'un joueur
+ * transféré sont regroupés avant d'appliquer les seuils et de trier.
+ */
+async function getSeasonLeaders(
   season: string,
   minGames: number,
+  tsMinGames: number,
   limit = 5,
-): Promise<LeaderRow[]> {
-  const rows = await prisma.playerSeason.findMany({
-    where: {
-      season,
-      gamesPlayed: { gte: minGames },
-      minutesPerGame: { gte: TS_MIN_MINUTES },
-      pointsPerGame: { gte: TS_MIN_POINTS },
-      trueShooting: { not: null },
-    },
-    orderBy: { trueShooting: "desc" },
-    take: limit,
+): Promise<SeasonLeaders> {
+  const stints = await prisma.playerSeason.findMany({
+    where: { season },
     include: {
       player: {
         select: {
@@ -163,17 +126,44 @@ async function getTsLeaders(
       },
     },
   });
-  return rows.map((r) => ({
-    slug: r.player.slug,
-    firstName: r.player.firstName,
-    lastName: r.player.lastName,
-    position: r.player.position,
-    photoUrl: r.player.photoUrl,
-    teamAbbr: r.team.abbr,
-    primaryColor: r.team.primaryColor,
-    secondaryColor: r.team.secondaryColor,
-    value: r.trueShooting as number,
-  }));
+  const rows = await consolidateSeasonRows(season, stints);
+
+  function top(
+    eligible: (row: (typeof rows)[number]) => boolean,
+    value: (row: (typeof rows)[number]) => number | null,
+  ): LeaderRow[] {
+    return rows
+      .filter(eligible)
+      .map((row) => ({ row, value: value(row) }))
+      .filter((entry): entry is typeof entry & { value: number } => entry.value != null)
+      .sort((left, right) => right.value - left.value)
+      .slice(0, limit)
+      .map(({ row, value }) => ({
+        slug: row.player.slug,
+        firstName: row.player.firstName,
+        lastName: row.player.lastName,
+        position: row.player.position,
+        photoUrl: row.player.photoUrl,
+        teamAbbr: row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr,
+        primaryColor: row.team.primaryColor,
+        secondaryColor: row.team.secondaryColor,
+        value,
+      }));
+  }
+
+  const qualified = (row: (typeof rows)[number]) => row.gamesPlayed >= minGames;
+  return {
+    points: top(qualified, (row) => row.pointsPerGame),
+    rebounds: top(qualified, (row) => row.reboundsPerGame),
+    assists: top(qualified, (row) => row.assistsPerGame),
+    trueShooting: top(
+      (row) =>
+        row.gamesPlayed >= tsMinGames &&
+        row.minutesPerGame >= TS_MIN_MINUTES &&
+        row.pointsPerGame >= TS_MIN_POINTS,
+      (row) => row.trueShooting,
+    ),
+  };
 }
 
 type RecentGameRow = {
@@ -685,25 +675,25 @@ export default async function HomePage({
   const tsMinGames = scaledMinimumGames(teamGames, TS_MIN_GAMES);
 
   const [
-    ptsLeaders,
-    rebLeaders,
-    astLeaders,
-    tsLeaders,
+    leaders,
     eastStandings,
     westStandings,
     recentGames,
     finalsSpotlight,
   ] = await Promise.all([
-    getLeaders(season, "pointsPerGame", leaderMinGames),
-    getLeaders(season, "reboundsPerGame", leaderMinGames),
-    getLeaders(season, "assistsPerGame", leaderMinGames),
-    getTsLeaders(season, tsMinGames),
+    getSeasonLeaders(season, leaderMinGames, tsMinGames),
     getStandings(season, "East"),
     getStandings(season, "West"),
     getRecentGames(season),
     getFinalsSpotlight(season),
   ]);
 
+  const {
+    points: ptsLeaders,
+    rebounds: rebLeaders,
+    assists: astLeaders,
+    trueShooting: tsLeaders,
+  } = leaders;
   const topScorer = ptsLeaders[0];
   const hasLeaders = ptsLeaders.length > 0;
   const hasStandings = eastStandings.length > 0 || westStandings.length > 0;

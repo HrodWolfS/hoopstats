@@ -11,9 +11,14 @@
  * 2. Un pourcentage ne s'agrège pas sans les volumes de tentatives. Ni la
  *    moyenne simple ni la pondération par matchs ne donnent le bon résultat :
  *    un joueur peut tirer beaucoup plus par match sur une période que sur une
- *    autre. Tant que `PlayerSeason` ne stocke pas les tentatives, ces valeurs
- *    sont exposées à `null` plutôt qu'approximées silencieusement.
+ *    autre. `PlayerSeason` ne stocke pas les tentatives : les pourcentages
+ *    d'une saison transférée viennent des box scores (`exactShooting`), ou
+ *    restent à `null` plutôt qu'approximés silencieusement.
  */
+
+import { MULTI_TEAM_ABBR } from "./season-consolidation";
+
+export { MULTI_TEAM_ABBR };
 
 /** Ligne `PlayerSeason` telle que stockée : une par équipe et par saison. */
 export type SeasonStint = {
@@ -41,9 +46,6 @@ export type ConsolidatedSeason = SeasonStint & {
   /** Vrai lorsque la saison agrège plusieurs passages en équipe. */
   isMultiTeam: boolean;
 };
-
-/** Abréviation conventionnelle d'une saison à plusieurs équipes. */
-export const MULTI_TEAM_ABBR = "TOT";
 
 /** Statistiques de comptage : pondérables exactement par les matchs joués. */
 const COUNTING_KEYS = [
@@ -122,14 +124,20 @@ export function totalGamesPlayed(rows: readonly SeasonStint[]): number {
   return rows.reduce((sum, row) => sum + Math.max(0, row.gamesPlayed), 0);
 }
 
+/** Pourcentages de tir exacts d'une saison, toutes équipes confondues. */
+export type SeasonShooting = Pick<SeasonStint, "fgPct" | "threePtPct" | "ftPct">;
+
 /**
  * Fusionne les passages en équipe d'une même saison en une ligne unique.
  *
  * Les saisons sont retournées dans l'ordre chronologique. Une saison jouée
  * dans une seule équipe est conservée telle quelle, pourcentages compris.
+ * Pour une saison transférée, les pourcentages viennent de `exactShooting`
+ * (indexé par saison) lorsqu'il est fourni.
  */
 export function consolidateSeasons(
   rows: readonly SeasonStint[],
+  exactShooting?: Readonly<Record<string, SeasonShooting>>,
 ): ConsolidatedSeason[] {
   const bySeason = new Map<string, SeasonStint[]>();
   for (const row of rows) {
@@ -139,13 +147,16 @@ export function consolidateSeasons(
   }
 
   return [...bySeason.entries()]
-    .map(([season, stints]) => consolidateStints(season, stints))
+    .map(([season, stints]) =>
+      consolidateStints(season, stints, exactShooting?.[season]),
+    )
     .sort((a, b) => a.season.localeCompare(b.season));
 }
 
 function consolidateStints(
   season: string,
   stints: readonly SeasonStint[],
+  exact: SeasonShooting | undefined,
 ): ConsolidatedSeason {
   const teams = [...stints]
     .sort((a, b) => b.gamesPlayed - a.gamesPlayed)
@@ -166,10 +177,10 @@ function consolidateStints(
     isMultiTeam: true,
     gamesPlayed: totalGamesPlayed(stints),
     ...counting,
-    // Volumes de tentatives absents du modèle : aucune agrégation exacte.
-    fgPct: null,
-    threePtPct: null,
-    ftPct: null,
+    // Sans les tentatives des box scores, aucune agrégation exacte possible.
+    fgPct: exact?.fgPct ?? null,
+    threePtPct: exact?.threePtPct ?? null,
+    ftPct: exact?.ftPct ?? null,
   };
 }
 
@@ -286,6 +297,15 @@ export function validateCareerAggregation(): string[] {
     if (season.fgPct !== null || season.threePtPct !== null || season.ftPct !== null) {
       errors.push("trois équipes : pourcentage agrégé sans volumes de tirs");
     }
+  }
+
+  // Avec les tirs des box scores, la saison transférée garde ses pourcentages.
+  const [withShooting] = consolidateSeasons(
+    [stint("2025-26", "BKN", 40, 20), stint("2025-26", "LAC", 30, 10)],
+    { "2025-26": { fgPct: 0.47, threePtPct: 0.38, ftPct: 0.81 } },
+  );
+  if (withShooting.fgPct !== 0.47 || withShooting.ftPct !== 0.81) {
+    errors.push("transfert : pourcentages exacts des box scores ignorés");
   }
 
   // Saison partielle : aucune règle de seuil ne doit fausser la moyenne.

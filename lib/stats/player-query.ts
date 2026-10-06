@@ -106,12 +106,17 @@ export function parsePlayerExplorerParams(
   };
 }
 
+/**
+ * Filtre base de l'explorateur : saison, équipe, joueur.
+ *
+ * Les seuils (matchs, minutes) et la disponibilité de la métrique ne sont pas
+ * filtrés en base : ils s'appliquent à la ligne consolidée d'un joueur
+ * transféré, via `passesExplorerThresholds`. Filtrés par passage, ils
+ * écarteraient un joueur à 40 + 30 matchs d'un seuil de 50.
+ */
 export function buildPlayerExplorerWhere(
   params: PlayerExplorerParams,
 ): Prisma.PlayerSeasonWhereInput {
-  const metricAvailability = NULLABLE_METRICS.has(params.metric)
-    ? { [params.metric]: { not: null } }
-    : {};
   const playerFilter: Prisma.PlayerWhereInput = {
     ...(params.position ? { position: params.position } : {}),
     ...(params.query
@@ -138,12 +143,19 @@ export function buildPlayerExplorerWhere(
 
   return {
     season: params.season,
-    gamesPlayed: { gte: params.minimumGames },
-    minutesPerGame: { gte: params.minimumMinutes },
-    ...metricAvailability,
     ...(params.team ? { team: { abbr: params.team } } : {}),
     ...(hasPlayerFilter ? { player: playerFilter } : {}),
   };
+}
+
+export function passesExplorerThresholds(
+  row: { gamesPlayed: number; minutesPerGame: number } &
+    Partial<Record<PlayerExplorerMetric, number | null>>,
+  params: PlayerExplorerParams,
+): boolean {
+  if (row.gamesPlayed < params.minimumGames) return false;
+  if (row.minutesPerGame < params.minimumMinutes) return false;
+  return !NULLABLE_METRICS.has(params.metric) || row[params.metric] != null;
 }
 
 export function buildExplorerUrl(

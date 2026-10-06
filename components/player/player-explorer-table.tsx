@@ -17,7 +17,10 @@ export type PlayerExplorerRow = {
   position: string | null;
   photoUrl: string | null;
   teamAbbr: string;
-  teamSlug: string;
+  /** `null` pour une ligne TOT : aucune équipe unique vers qui pointer. */
+  teamSlug: string | null;
+  /** Équipes traversées, affichées au survol d'une ligne TOT. */
+  teams: string[];
   primaryColor: string;
   secondaryColor: string;
   gamesPlayed: number;
@@ -125,12 +128,22 @@ export function PlayerExplorerTable({
                     </Link>
                   </td>
                   <td className="px-3 py-2.5">
-                    <Link
-                      href={`/${locale}/equipes/${row.teamSlug}`}
-                      className="font-sans text-xs text-white/45 hover:text-white transition"
-                    >
-                      {row.teamAbbr}
-                    </Link>
+                    {row.teamSlug ? (
+                      <Link
+                        href={`/${locale}/equipes/${row.teamSlug}`}
+                        className="font-sans text-xs text-white/45 hover:text-white transition"
+                      >
+                        {row.teamAbbr}
+                      </Link>
+                    ) : (
+                      <span
+                        className="font-sans text-xs text-white/45"
+                        title={`Saison en ${row.teams.length} équipes : ${row.teams.join(", ")}`}
+                      >
+                        {row.teamAbbr}
+                        <span className="text-white/25"> ({row.teams.length})</span>
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-right text-white/45">
                     {row.gamesPlayed}

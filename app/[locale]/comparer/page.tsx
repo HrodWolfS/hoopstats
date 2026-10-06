@@ -9,7 +9,9 @@ import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { PlayerPicker } from "@/components/compare/player-picker";
 import { stat, pct } from "@/lib/format";
 import { getPlayerMetric } from "@/lib/stats/metrics";
-import { mostRecentCommonSeason, weightedBy } from "@/lib/stats/career";
+import { MULTI_TEAM_ABBR, mostRecentCommonSeason } from "@/lib/stats/career";
+import { consolidatePlayerCareer } from "@/lib/stats/season-totals";
+import type { Consolidated } from "@/lib/stats/season-consolidation";
 import { AnalyticsEvent } from "@/components/analytics/analytics-event";
 import { ShareButton } from "@/components/analytics/share-button";
 
@@ -33,6 +35,7 @@ type PlayerWithSeasons = {
   position: string | null;
   photoUrl: string | null;
   seasons: {
+    playerId: string;
     season: string;
     gamesPlayed: number;
     pointsPerGame: number;
@@ -72,50 +75,18 @@ async function fetchPlayer(slug: string): Promise<PlayerWithSeasons | null> {
 type SeasonRow = PlayerWithSeasons["seasons"][number];
 
 /**
- * Regroupe les lignes d'une même saison en une seule.
+ * Regroupe les lignes d'une même saison en une seule (ligne TOT).
  *
  * Sans cela, `seasons[0]` d'un joueur transféré désigne un passage en équipe
- * choisi arbitrairement, donc une saison partielle. Les statistiques de
- * comptage sont pondérées par les matchs ; les taux ne sont pas agrégés,
- * faute des volumes nécessaires (même politique que la page carrière).
+ * choisi arbitrairement, donc une saison partielle. Même politique que la
+ * fiche joueur : comptage pondéré par les matchs, pourcentages de tir
+ * recalculés sur les box scores, PER et Net Rating indisponibles.
  */
-function seasonRowsBySeason(rows: readonly SeasonRow[]): Map<string, SeasonRow> {
-  const bySeason = new Map<string, SeasonRow[]>();
-  for (const row of rows) {
-    const stints = bySeason.get(row.season);
-    if (stints) stints.push(row);
-    else bySeason.set(row.season, [row]);
-  }
-
-  const merged = new Map<string, SeasonRow>();
-  for (const [season, stints] of bySeason) {
-    if (stints.length === 1) {
-      merged.set(season, stints[0]);
-      continue;
-    }
-
-    const games = (row: SeasonRow) => row.gamesPlayed;
-    const weighted = (value: (row: SeasonRow) => number) =>
-      weightedBy(stints, games, value) ?? 0;
-    const primary = [...stints].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0];
-
-    merged.set(season, {
-      ...primary,
-      gamesPlayed: stints.reduce((sum, row) => sum + row.gamesPlayed, 0),
-      pointsPerGame: weighted((row) => row.pointsPerGame),
-      reboundsPerGame: weighted((row) => row.reboundsPerGame),
-      assistsPerGame: weighted((row) => row.assistsPerGame),
-      stealsPerGame: weighted((row) => row.stealsPerGame),
-      blocksPerGame: weighted((row) => row.blocksPerGame),
-      fgPct: null,
-      threePtPct: null,
-      trueShooting: null,
-      per: null,
-      netRating: null,
-    });
-  }
-
-  return merged;
+async function seasonRowsBySeason(
+  rows: readonly SeasonRow[],
+): Promise<Map<string, Consolidated<SeasonRow>>> {
+  const { seasons } = await consolidatePlayerCareer(rows);
+  return new Map(seasons.map((row) => [row.season, row]));
 }
 
 // ── Stat row helpers ──────────────────────────────────────────────────────────
@@ -294,8 +265,10 @@ export default async function ComparerPage({
   // Comparer la même saison par défaut. À défaut de recouvrement, on garde la
   // dernière saison de chacun mais on l'affiche explicitement : pas de
   // substitution silencieuse (feuille de route § 0.3).
-  const seasons1 = seasonRowsBySeason(p1.seasons);
-  const seasons2 = seasonRowsBySeason(p2.seasons);
+  const [seasons1, seasons2] = await Promise.all([
+    seasonRowsBySeason(p1.seasons),
+    seasonRowsBySeason(p2.seasons),
+  ]);
   const commonSeason = mostRecentCommonSeason(p1.seasons, p2.seasons);
 
   const s1 = commonSeason
@@ -539,9 +512,9 @@ export default async function ComparerPage({
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
-            { player: p1, color: p1Primary },
-            { player: p2, color: p2Primary },
-          ].map(({ player, color }) => (
+            { player: p1, color: p1Primary, seasons: seasons1 },
+            { player: p2, color: p2Primary, seasons: seasons2 },
+          ].map(({ player, color, seasons }) => (
             <div
               key={player.slug}
               className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden"
@@ -582,16 +555,26 @@ export default async function ComparerPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {player.seasons.map((s) => (
+                    {/* Une ligne par saison, la plus récente en tête. */}
+                    {[...seasons.values()].reverse().map((s) => (
                       <tr
-                        key={`${s.season}-${s.team.abbr}`}
+                        key={s.season}
                         className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition"
                       >
                         <td className="px-4 py-2 text-white/60 font-mono">
                           {s.season}
                         </td>
-                        <td className="px-2 py-2 text-white/60">
-                          {s.team.abbr}
+                        <td
+                          className="px-2 py-2 text-white/60"
+                          title={
+                            s.isMultiTeam
+                              ? s.stints
+                                  .map((stint) => stint.team.abbr)
+                                  .join(", ")
+                              : undefined
+                          }
+                        >
+                          {s.isMultiTeam ? MULTI_TEAM_ABBR : s.team.abbr}
                         </td>
                         <td className="px-2 py-2 text-right text-white/80 tabular-nums">
                           {s.gamesPlayed}

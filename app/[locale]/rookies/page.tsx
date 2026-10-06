@@ -1,3 +1,5 @@
+import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
+import { consolidateSeasonRows } from "@/lib/stats/season-totals";
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
@@ -71,8 +73,15 @@ export default async function RookiesPage({
     secondaryColor: "#444444",
   };
 
+  // Un rookie transféré en cours de saison : une seule ligne, saison entière.
+  const rookieSeasons = new Map(
+    (await consolidateSeasonRows(season, players.flatMap((p) => p.seasons))).map(
+      (row) => [row.playerId, row],
+    ),
+  );
+
   const tableRows: SortableRow[] = players.map((p) => {
-    const ps = p.seasons[0] ?? null;
+    const ps = rookieSeasons.get(p.id) ?? null;
     const team = ps?.team ?? FALLBACK_TEAM;
     return {
       id: p.id,
@@ -82,7 +91,7 @@ export default async function RookiesPage({
       position: p.position,
       photoUrl: p.photoUrl,
       college: p.college,
-      teamAbbr: team.abbr,
+      teamAbbr: ps?.isMultiTeam ? MULTI_TEAM_ABBR : team.abbr,
       teamSlug: team.slug,
       primaryColor: team.primaryColor,
       secondaryColor: team.secondaryColor,

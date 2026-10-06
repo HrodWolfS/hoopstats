@@ -5,6 +5,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { currentSeason } from "@/lib/nba";
 import { stat } from "@/lib/format";
+import { scaledMinimumGames } from "@/lib/stats/leaders";
+import { getPlayerMetric } from "@/lib/stats/metrics";
+import { consolidateSeasonRows } from "@/lib/stats/season-totals";
 import { hasSeriesStarted, seriesWinnerTeamId } from "@/lib/playoff-series";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
@@ -178,27 +181,33 @@ export default async function SaisonsPage({
       include: {
         player: { select: { firstName: true, lastName: true, slug: true } },
       },
-      orderBy: { pointsPerGame: "desc" },
     }),
   ]);
 
   // Badges depuis les vraies séries
   const playoffBadges = buildPlayoffBadges(playoffSeries);
 
-  // Leaders
-  const ppgLeader = playerSeasons[0] ?? null;
-  const rpgLeader =
-    playerSeasons.length > 0
-      ? [...playerSeasons].sort(
-          (a, b) => b.reboundsPerGame - a.reboundsPerGame,
-        )[0]
-      : null;
-  const apgLeader =
-    playerSeasons.length > 0
-      ? [...playerSeasons].sort(
-          (a, b) => b.assistsPerGame - a.assistsPerGame,
-        )[0]
-      : null;
+  // Leaders : une ligne par joueur (transferts regroupés), puis le même
+  // seuil de matchs que les classements, pour qu'un joueur à deux matchs ne
+  // passe pas devant un titulaire.
+  const leaderRows = await consolidateSeasonRows(season, playerSeasons);
+  const teamGames = leaderRows.reduce(
+    (most, row) => Math.max(most, row.gamesPlayed),
+    0,
+  );
+  const minimumGames = scaledMinimumGames(
+    teamGames,
+    getPlayerMetric("pointsPerGame").minimumGames,
+  );
+  const qualified = leaderRows.filter((row) => row.gamesPlayed >= minimumGames);
+  const leaderBy = (key: "pointsPerGame" | "reboundsPerGame" | "assistsPerGame") =>
+    qualified.reduce<(typeof qualified)[number] | null>(
+      (best, row) => (best === null || row[key] > best[key] ? row : best),
+      null,
+    );
+  const ppgLeader = leaderBy("pointsPerGame");
+  const rpgLeader = leaderBy("reboundsPerGame");
+  const apgLeader = leaderBy("assistsPerGame");
 
   // Tri par conférence + classement
   function sortConference(rows: typeof teamSeasons): TeamSeasonRow[] {
@@ -231,7 +240,7 @@ export default async function SaisonsPage({
   );
 
   const hasData = teamSeasons.length > 0;
-  const hasLeaders = playerSeasons.length > 0;
+  const hasLeaders = qualified.length > 0;
 
   return (
     <div className="space-y-6">

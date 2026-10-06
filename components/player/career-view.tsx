@@ -3,6 +3,7 @@ import { stat, pct } from "@/lib/format";
 import {
   computeCareerAverages,
   consolidateSeasons,
+  type SeasonShooting,
   type SeasonStint,
 } from "@/lib/stats/career";
 
@@ -14,12 +15,14 @@ export type CareerSeason = SeasonStint;
 
 type CareerViewProps = {
   seasons: CareerSeason[];
+  /** Pourcentages exacts des saisons transférées, tirés des box scores. */
+  exactShooting?: Record<string, SeasonShooting>;
   primaryColor: string;
 };
 
-export function CareerView({ seasons, primaryColor }: CareerViewProps) {
+export function CareerView({ seasons, exactShooting, primaryColor }: CareerViewProps) {
   // Une ligne par saison (transferts fusionnés), en ordre chronologique.
-  const chrono = consolidateSeasons(seasons);
+  const chrono = consolidateSeasons(seasons, exactShooting);
   const career = computeCareerAverages(seasons);
 
   const chartData = chrono.map((d) => ({
@@ -126,9 +129,9 @@ export function CareerView({ seasons, primaryColor }: CareerViewProps) {
           <p className="border-t border-white/[0.06] px-5 py-3 text-xs text-white/40">
             <span className="font-mono text-white/60">TOT</span>{" "}
             regroupe les équipes d&apos;une même saison. Les moyennes sont
-            pondérées par les
-            matchs joués ; les pourcentages ne sont pas affichés faute des
-            volumes de tirs nécessaires à un calcul exact.
+            pondérées par les matchs joués ; les pourcentages sont recalculés
+            sur les tirs des box scores, et restent vides pour les saisons
+            antérieures, faute de volumes de tirs.
           </p>
         )}
       </div>
