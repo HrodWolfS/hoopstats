@@ -134,7 +134,7 @@ export function SeasonView({
   const gb = (row: ConferenceRow) => {
     if (row.conferenceRank === 1) return "—";
     const diff = (leaderW - row.wins + (row.losses - leaderL)) / 2;
-    return diff % 1 === 0 ? String(diff) : diff.toFixed(1);
+    return diff % 1 === 0 ? String(diff) : diff.toFixed(1).replace(".", ",");
   };
 
   return (
@@ -246,7 +246,7 @@ export function SeasonView({
                     {row.losses}
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums text-white/70">
-                    .{winPct(row.wins, row.losses).replace(".", "")}
+                    .{winPct(row.wins, row.losses).replace(",", "")}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-white/40">
                     {gb(row)}

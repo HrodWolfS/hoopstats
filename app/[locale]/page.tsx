@@ -15,9 +15,11 @@ import {
 } from "@/lib/nba";
 import { stat, pct, record } from "@/lib/format";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
+import { NightRecap } from "@/components/home/night-recap";
+import { loadNightData } from "@/lib/stats/night-data";
 import { TeamMono } from "@/components/ui/team-mono";
 import { FadeIn } from "@/components/ui/fade-in";
-import { COMPETITIVE_PHASES, REGULAR_SEASON_PHASE } from "@/lib/season-phase";
+import { REGULAR_SEASON_PHASE } from "@/lib/season-phase";
 import { SourceNote } from "@/components/ui/source-note";
 import { playerStatsOrigin } from "@/lib/data-sources";
 
@@ -157,52 +159,6 @@ async function getSeasonLeaders(
       (row) => row.trueShooting,
     ),
   };
-}
-
-type RecentGameRow = {
-  id: string;
-  gameDate: Date;
-  homeScore: number | null;
-  awayScore: number | null;
-  homeTeam: {
-    abbr: string;
-    logoUrl: string | null;
-    primaryColor: string;
-    slug: string;
-  };
-  awayTeam: {
-    abbr: string;
-    logoUrl: string | null;
-    primaryColor: string;
-    slug: string;
-  };
-};
-
-async function getRecentGames(
-  season: string,
-  limit = 6,
-): Promise<RecentGameRow[]> {
-  return prisma.game.findMany({
-    where: {
-      status: "final",
-      season,
-      phase: { in: COMPETITIVE_PHASES },
-    },
-    orderBy: { gameDate: "desc" },
-    take: limit,
-    select: {
-      id: true,
-      gameDate: true,
-      homeScore: true,
-      awayScore: true,
-      homeTeam: {
-        select: { abbr: true, logoUrl: true, primaryColor: true, slug: true },
-      },
-      awayTeam: {
-        select: { abbr: true, logoUrl: true, primaryColor: true, slug: true },
-      },
-    },
-  });
 }
 
 async function getStandings(
@@ -485,17 +441,7 @@ function SpotlightCard({
   );
 }
 
-/**
- * Récit éditorial des Finales, rédigé à la main pour la saison concernée.
- * Sans récit, l'encart se construit à partir du trophée de MVP des Finales.
- */
-const FINALS_STORIES: Record<string, { headline: string; text: string }> = {
-  "2025-26": {
-    headline: "Les Knicks au sommet",
-    text: "New York décroche son premier titre depuis 1973. Jalen Brunson remporte le trophée Bill Russell avec 32,6 points de moyenne en Finales.",
-  },
-};
-
+/** Encart du champion, construit à partir du trophée de MVP des Finales. */
 function FinalsSpotlight({
   spotlight,
   season,
@@ -506,9 +452,8 @@ function FinalsSpotlight({
   locale: string;
 }) {
   const { player, team } = spotlight;
-  const story = FINALS_STORIES[season];
-  const headline = story?.headline ?? `Les ${team.name} champions`;
-  const text = story?.text ?? spotlight.notes;
+  const headline = `Les ${team.name} champions`;
+  const text = spotlight.notes;
   const playerName = `${player.firstName} ${player.lastName}`;
   return (
     <section
@@ -527,12 +472,12 @@ function FinalsSpotlight({
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-orange-300">
             Saison terminée · Champions NBA {espnSeasonYear(season)}
           </div>
-          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-5xl">
+          <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
             {headline},
             <span className="block text-white/65">
               {player.lastName} MVP des Finales
             </span>
-          </h1>
+          </h2>
           {text && (
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">
               {text}
@@ -614,14 +559,14 @@ function SeasonOpenerCard({
         <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
         Reprise de la saison {season}
       </div>
-      <h1 className="font-display text-3xl font-bold tracking-tight sm:text-5xl">
+      <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
         La NBA est de retour
         {opener && (
           <span className="block text-white/65">
             Premiers matchs le {opener}
           </span>
         )}
-      </h1>
+      </h2>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">
         Classements, leaders et fiches joueurs se remplissent après chaque nuit
         de matchs. Les statistiques {previous} restent consultables avec le
@@ -671,13 +616,13 @@ export default async function HomePage({
     leaders,
     eastStandings,
     westStandings,
-    recentGames,
+    night,
     finalsSpotlight,
   ] = await Promise.all([
     getSeasonLeaders(season, leaderMinGames, tsMinGames),
     getStandings(season, "East"),
     getStandings(season, "West"),
-    getRecentGames(season),
+    loadNightData(),
     getFinalsSpotlight(season),
   ]);
 
@@ -732,8 +677,17 @@ export default async function HomePage({
         </section>
       </FadeIn>
 
-      {/* ── À la une : le fait majeur de la saison, puis leader en fallback ── */}
-      <FadeIn delay={0.05}>
+      {/* ── La nuit NBA en chiffres : tout est calculé depuis la base ─────── */}
+      {night ? (
+        <FadeIn delay={0.05}>
+          <NightRecap data={night} locale={locale} />
+        </FadeIn>
+      ) : (
+        <h1 className="sr-only">hoopstats, les stats NBA en français</h1>
+      )}
+
+      {/* ── La saison : champion, meilleur marqueur ou reprise ─────────────── */}
+      <FadeIn delay={0.1}>
         {finalsSpotlight ? (
           <FinalsSpotlight
             spotlight={finalsSpotlight}
@@ -746,108 +700,6 @@ export default async function HomePage({
           <SeasonOpenerCard season={season} locale={locale} />
         )}
       </FadeIn>
-
-      {/* ── Résultats récents ─────────────────────────────────────────────── */}
-      {recentGames.length > 0 && (
-        <FadeIn delay={0.16}>
-          <section>
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="font-display font-semibold text-xl tracking-tight">
-                Résultats récents{" "}
-                <span className="text-white/25 font-normal text-base">
-                  derniers matchs
-                </span>
-              </h2>
-              <Link
-                href={`/${locale}/matchs`}
-                className="text-[11px] text-white/40 hover:text-orange-300 transition font-mono uppercase tracking-widest"
-              >
-                Tous →
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {recentGames.map((g) => {
-                const homeWon = (g.homeScore ?? 0) > (g.awayScore ?? 0);
-                const awayWon = (g.awayScore ?? 0) > (g.homeScore ?? 0);
-                return (
-                  <Link
-                    key={g.id}
-                    href={`/${locale}/matchs/${g.id}`}
-                    className="relative rounded-2xl border border-white/[0.06] bg-[#111114] px-4 py-3.5 flex items-center gap-3 hover:border-white/[0.12] hover:bg-[#16161a] transition group overflow-hidden"
-                  >
-                    <div
-                      aria-hidden
-                      className="absolute inset-y-0 left-0 w-0.5 transition-all group-hover:w-1"
-                      style={{ background: g.homeTeam.primaryColor }}
-                    />
-
-                    {/* Équipe away */}
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {g.awayTeam.logoUrl && (
-                        <Image
-                          src={g.awayTeam.logoUrl}
-                          alt={g.awayTeam.abbr}
-                          width={28}
-                          height={28}
-                          className="object-contain shrink-0"
-                          unoptimized
-                        />
-                      )}
-                      <span
-                        className={`text-xs font-mono truncate ${awayWon ? "text-white" : "text-white/50"}`}
-                      >
-                        {g.awayTeam.abbr}
-                      </span>
-                    </div>
-
-                    {/* Score */}
-                    <div className="text-center shrink-0">
-                      <div className="font-mono font-semibold tabular-nums text-sm">
-                        <span
-                          className={awayWon ? "text-white" : "text-white/40"}
-                        >
-                          {g.awayScore ?? "–"}
-                        </span>
-                        <span className="text-white/20 mx-1.5">–</span>
-                        <span
-                          className={homeWon ? "text-white" : "text-white/40"}
-                        >
-                          {g.homeScore ?? "–"}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-white/25 font-mono mt-0.5">
-                        {new Date(g.gameDate).toLocaleDateString("fr-FR", {
-                          day: "numeric",
-                          month: "short",
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Équipe home */}
-                    <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                      <span
-                        className={`text-xs font-mono truncate text-right ${homeWon ? "text-white" : "text-white/50"}`}
-                      >
-                        {g.homeTeam.abbr}
-                      </span>
-                      {g.homeTeam.logoUrl && (
-                        <Image
-                          src={g.homeTeam.logoUrl}
-                          alt={g.homeTeam.abbr}
-                          width={28}
-                          height={28}
-                          className="object-contain shrink-0"
-                          unoptimized
-                        />
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        </FadeIn>
-      )}
 
       {/* ── Leaders ──────────────────────────────────────────────────────── */}
       {hasLeaders && (

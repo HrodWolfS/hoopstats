@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { prisma } from "@/lib/prisma";
 import { currentSeason } from "@/lib/nba";
+import { stat } from "@/lib/format";
 
 export const runtime = "nodejs";
 export const revalidate = 21600;
@@ -65,9 +66,9 @@ export default async function Image({
   const primary = team?.primaryColor ?? "#7C3AED";
   const secondary = team?.secondaryColor ?? "#06B6D4";
 
-  const ppg = season ? season.pointsPerGame.toFixed(1) : "—";
-  const rpg = season ? season.reboundsPerGame.toFixed(1) : "—";
-  const apg = season ? season.assistsPerGame.toFixed(1) : "—";
+  const ppg = stat(season?.pointsPerGame);
+  const rpg = stat(season?.reboundsPerGame);
+  const apg = stat(season?.assistsPerGame);
 
   return new ImageResponse(
     <div
@@ -177,6 +178,8 @@ export default async function Image({
           )}
           <div
             style={{
+              display: "flex",
+              flexDirection: "column",
               fontSize: 88,
               fontWeight: 800,
               lineHeight: 0.9,
@@ -184,8 +187,7 @@ export default async function Image({
               letterSpacing: "-0.04em",
             }}
           >
-            {player.firstName}
-            <br />
+            <span>{player.firstName}</span>
             <span style={{ color: "rgba(255,255,255,0.35)" }}>
               {player.lastName}
             </span>

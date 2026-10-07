@@ -4,7 +4,7 @@ import { isSeasonParam } from "@/lib/query-routes";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { currentSeason, seasonsThrough } from "@/lib/nba";
-import { stat } from "@/lib/format";
+import { stat, winPct } from "@/lib/format";
 import { isQualified, minimumGamesFor, seasonTeamGames } from "@/lib/stats/leaders";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import { consolidateSeasonRows } from "@/lib/stats/season-totals";
@@ -371,13 +371,13 @@ export default async function SaisonsPage({
                         const pctStr =
                           total === 0
                             ? "—"
-                            : ((row.wins / total) * 100).toFixed(1);
+                            : winPct(row.wins, row.losses);
                         const netStr =
                           row.netRating == null
                             ? "—"
                             : row.netRating >= 0
-                              ? `+${row.netRating.toFixed(1)}`
-                              : row.netRating.toFixed(1);
+                              ? `+${stat(row.netRating)}`
+                              : stat(row.netRating);
                         const isPlayoffSpot = row.rank <= 8;
 
                         return (

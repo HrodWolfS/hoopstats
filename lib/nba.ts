@@ -41,7 +41,7 @@ const KNOWN_SEASONS = Object.keys(SEASON_OPENERS).sort().reverse();
  * Date servant au calcul de la saison. `HOOPSTATS_NOW` simule une date (test
  * de la bascule en local) ; en production la variable n'existe pas.
  */
-function referenceDate(): Date {
+export function referenceDate(): Date {
   const simulated = process.env.HOOPSTATS_NOW;
   return simulated ? new Date(simulated) : new Date();
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { periodLabel } from "@/lib/game-status";
+import { frDecimal, pct as formatPct } from "@/lib/format";
 import { SourceNote } from "@/components/ui/source-note";
 
 export const revalidate = 300;
@@ -271,7 +272,7 @@ async function loadBoxScoreFromDb(
   const fmtPair = (m: number | null, a: number | null): string =>
     m == null || a == null ? "—" : `${m}/${a}`;
   const fmtPct = (m: number | null, a: number | null): string =>
-    m == null || a == null || a === 0 ? "—" : ((m / a) * 100).toFixed(1);
+    m == null || a == null || a === 0 ? "—" : formatPct(m / a);
   const fmtSigned = (v: number | null): string =>
     v == null ? "—" : v > 0 ? `+${v}` : String(v);
 
@@ -614,7 +615,7 @@ function TeamStatsComparison({
 
   // Format "43-90" or "43/90" → "43/90"
   const shoot = (v: string) => v.replace("-", "/");
-  const pct = (v: string) => (v !== "—" ? `${v}%` : "—");
+  const pct = (v: string) => (v !== "—" ? `${frDecimal(v)} %` : "—");
 
   type Row = {
     label: string;

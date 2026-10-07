@@ -67,7 +67,7 @@ export function LineChart({
               textAnchor="end"
               fontFamily="ui-monospace, monospace"
             >
-              {v.toFixed(range < yticks ? 1 : 0)}
+              {v.toFixed(range < yticks ? 1 : 0).replace(".", ",")}
             </text>
           </g>
         );

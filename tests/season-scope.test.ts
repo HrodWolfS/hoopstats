@@ -8,7 +8,7 @@ import { seasonsThrough } from "@/lib/nba";
 import { legacySeasonRedirect, queryRouteRewrite } from "@/lib/query-routes";
 import { neighbourSeasons, pageHasSeason, seasonScopeHref, type SeasonScope } from "@/lib/season-scope";
 import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
-import { frDecimal } from "@/lib/format";
+import { frDecimal, pct, stat, winPct } from "@/lib/format";
 
 const scope: SeasonScope = {
   seasons: ["2025-26", "2024-25", "2023-24"],
@@ -89,5 +89,14 @@ describe("décimale à la française", () => {
     expect(frDecimal("32.7")).toBe("32,7");
     expect(frDecimal("58.4 %")).toBe("58,4 %");
     expect(frDecimal("—")).toBe("—");
+  });
+
+  it("stat, pct et winPct affichent la virgule", () => {
+    expect(stat(19.6)).toBe("19,6");
+    expect(stat(-3.25, 2)).toBe("-3,25");
+    expect(stat(null)).toBe("—");
+    expect(pct(0.584)).toBe("58,4");
+    expect(winPct(41, 41)).toBe("50,0");
+    expect(winPct(0, 0)).toBe("0,0");
   });
 });

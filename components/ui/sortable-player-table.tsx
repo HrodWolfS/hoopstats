@@ -4,7 +4,7 @@ import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
 import { useState } from "react";
 import Link from "next/link";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
-import { stat } from "@/lib/format";
+import { pct, stat } from "@/lib/format";
 
 export type SortableRow = {
   id: string;
@@ -233,9 +233,7 @@ export function SortablePlayerTable({
                       {col.key === "assistsPerGame" && stat(row.assistsPerGame)}
                       {col.key === "trueShooting" && (
                         <span className="text-white/60">
-                          {row.trueShooting != null
-                            ? (row.trueShooting * 100).toFixed(1)
-                            : "—"}
+                          {pct(row.trueShooting)}
                         </span>
                       )}
                     </td>

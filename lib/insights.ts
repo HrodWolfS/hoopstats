@@ -310,7 +310,7 @@ function analyzeAchillesHeel(games: GameData[]): Insight | null {
     kind: "achilles_heel",
     emoji: "💔",
     title: "Talon d'Achille",
-    finding: `En défaite, ${cleanLabel} chute à ${top.lossesAvg.toFixed(dec)}${isPct ? "%" : ""} contre ${top.winsAvg.toFixed(dec)}${isPct ? "%" : ""} en victoire — c'est le facteur le plus différenciant.`,
+    finding: `En défaite, ${cleanLabel} chute à ${top.lossesAvg.toFixed(dec).replace(".", ",")}${isPct ? "%" : ""} contre ${top.winsAvg.toFixed(dec).replace(".", ",")}${isPct ? "%" : ""} en victoire — c'est le facteur le plus différenciant.`,
     strength: Math.min(1, top.gap * 4),
     sampleSize: wins.length + losses.length,
   };
@@ -394,13 +394,13 @@ function analyzeGameProfile(games: GameData[]): Insight | null {
   let strength: number;
 
   if (avgWinMargin > 12 && avgLossMargin < 7) {
-    finding = `Profil "bull rush" : quand ils gagnent, c'est large (+${avgWinMargin.toFixed(1)} pts). Quand ils perdent, c'est serré (-${avgLossMargin.toFixed(1)} pts). Ils écrasent ou résistent — rarement entre les deux.`;
+    finding = `Profil "bull rush" : quand ils gagnent, c'est large (+${avgWinMargin.toFixed(1).replace(".", ",")} pts). Quand ils perdent, c'est serré (-${avgLossMargin.toFixed(1).replace(".", ",")} pts). Ils écrasent ou résistent — rarement entre les deux.`;
     strength = 0.75;
   } else if (avgWinMargin < 7 && avgLossMargin > 12) {
-    finding = `Profil "fragile" : leurs défaites sont des effondrements (-${avgLossMargin.toFixed(1)} pts) alors que leurs victoires sont serrées (+${avgWinMargin.toFixed(1)} pts). Ils tiennent ou cèdent complètement.`;
+    finding = `Profil "fragile" : leurs défaites sont des effondrements (-${avgLossMargin.toFixed(1).replace(".", ",")} pts) alors que leurs victoires sont serrées (+${avgWinMargin.toFixed(1).replace(".", ",")} pts). Ils tiennent ou cèdent complètement.`;
     strength = 0.75;
   } else if (Math.abs(avgWinMargin - avgLossMargin) < 3) {
-    finding = `Équipe équilibrée : leurs victoires (+${avgWinMargin.toFixed(1)}) et défaites (-${avgLossMargin.toFixed(1)}) ont une amplitude similaire — pas de pattern blowout/close clair.`;
+    finding = `Équipe équilibrée : leurs victoires (+${avgWinMargin.toFixed(1).replace(".", ",")}) et défaites (-${avgLossMargin.toFixed(1).replace(".", ",")}) ont une amplitude similaire — pas de pattern blowout/close clair.`;
     strength = 0.4;
   } else {
     return null;
