@@ -35,6 +35,8 @@ import {
   seriesWinsRequired,
   validatePlayoffSeriesWinner,
 } from "../lib/playoff-series";
+import { validatePlayoffOutcome } from "../lib/playoff-outcome";
+import { validateTeamRatings } from "../lib/stats/team-ratings";
 import {
   PLAYOFF_SERIES_CORRECTIONS,
   findPlayoffSeriesCorrection,
@@ -207,6 +209,8 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const scoreboardErrors = validateScoreboardMonths();
   const correctionErrors = validatePlayoffCorrections();
   const seasonPhaseErrors = validateSeasonPhase();
+  const playoffOutcomeErrors = validatePlayoffOutcome();
+  const teamRatingErrors = validateTeamRatings();
 
   // Un match non classé est exclu des moyennes : s'il en reste, la
   // synchronisation n'a pas lu la saison ESPN ou le rattrapage n'a pas tourné.
@@ -665,6 +669,20 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       seriesWinnerErrors.length === 0
         ? "vainqueur déduit du décompte, y compris quand la tête de série tombe"
         : seriesWinnerErrors.join("; "),
+    ),
+    check(
+      "Résultat de playoffs par équipe",
+      playoffOutcomeErrors.length === 0,
+      playoffOutcomeErrors.length === 0
+        ? "déduit des séries jouées, jamais du code de qualification ESPN"
+        : playoffOutcomeErrors.join("; "),
+    ),
+    check(
+      "Ratings d'équipe",
+      teamRatingErrors.length === 0,
+      teamRatingErrors.length === 0
+        ? "ORtg, DRtg, Net Rating et Pace recalculés sur les possessions estimées"
+        : teamRatingErrors.join("; "),
     ),
     check(
       "Découpage du scoreboard ESPN",

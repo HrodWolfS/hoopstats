@@ -16,6 +16,8 @@ import type { GameRow } from "@/components/team/recent-games";
 import { COMPETITIVE_PHASES } from "@/lib/season-phase";
 import { SourceNote } from "@/components/ui/source-note";
 import { playerStatsOrigin } from "@/lib/data-sources";
+import { loadTeamRatings } from "@/lib/stats/team-ratings-data";
+import { teamPlayoffOutcome, teamSeasonSummary, type OutcomeSeries } from "@/lib/playoff-outcome";
 
 export const revalidate = 21600; // 6h ISR
 
@@ -31,11 +33,11 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ locale: string; slug: string }>;
+  params: Promise<{ locale: string; slug: string; saison?: string }>;
 }): Promise<Metadata> {
-  const { locale, slug } = await params;
+  const { locale, slug, saison } = await params;
   const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
-  const season = currentSeason();
+  const season = saison && isSeasonParam(saison) ? saison : currentSeason();
 
   const [team, seasonRow] = await Promise.all([
     prisma.team.findUnique({
@@ -59,7 +61,7 @@ export async function generateMetadata({
     ? `${seasonRow.wins}-${seasonRow.losses}`
     : null;
   const rankStr = seasonRow?.conferenceRank
-    ? `, ${seasonRow.conferenceRank}e Conférence ${confFr(team.conference)}`
+    ? `, ${seasonRow.conferenceRank === 1 ? "1re" : `${seasonRow.conferenceRank}e`} de la Conférence ${confFr(team.conference)}`
     : ` · Conférence ${confFr(team.conference)}`;
 
   const description = recordStr
@@ -101,7 +103,9 @@ export default async function TeamPage({
 }) {
   const { locale, slug, saison } = await params;
   if (saison !== undefined && !isSeasonParam(saison)) notFound();
-  const season = saison ?? currentSeason();
+  const liveSeason = currentSeason();
+  const season = saison ?? liveSeason;
+  const isLiveSeason = season === liveSeason;
 
   const team = await prisma.team.findUnique({ where: { slug } });
   if (!team) notFound();
@@ -136,8 +140,10 @@ export default async function TeamPage({
     history,
     rosterRows,
     conferenceStandings,
-    recentGamesRaw,
+    seasonGamesRaw,
     upcomingGamesRaw,
+    ratings,
+    allSeries,
   ] = await Promise.all([
     prisma.teamSeason.findFirst({
       where: { teamId: team.id, season },
@@ -187,30 +193,54 @@ export default async function TeamPage({
         },
       },
     }),
-    // 10 derniers matchs joués
+    // Tous les matchs joués de la saison sélectionnée, du plus récent au plus ancien
     prisma.game.findMany({
       where: {
         status: "final",
-        season: currentSeason(),
+        season,
         phase: { in: COMPETITIVE_PHASES },
         OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
       },
       orderBy: { gameDate: "desc" },
-      take: 10,
       include: gameInclude,
     }),
-    // 3 prochains matchs
-    prisma.game.findMany({
-      where: {
-        status: "scheduled",
-        gameDate: { gte: new Date() },
-        OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
+    // 3 prochains matchs : seulement pour la saison en cours
+    isLiveSeason
+      ? prisma.game.findMany({
+          where: {
+            status: "scheduled",
+            gameDate: { gte: new Date() },
+            OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
+          },
+          orderBy: { gameDate: "asc" },
+          take: 3,
+          include: gameInclude,
+        })
+      : Promise.resolve([]),
+    loadTeamRatings(season),
+    // Toutes les séries (≈ 700 lignes) : il faut savoir, saison par saison,
+    // si les playoffs sont importés pour distinguer « non qualifié » de « inconnu ».
+    prisma.playoffSeries.findMany({
+      select: {
+        season: true,
+        round: true,
+        completed: true,
+        team1Id: true,
+        team2Id: true,
+        team1Wins: true,
+        team2Wins: true,
       },
-      orderBy: { gameDate: "asc" },
-      take: 3,
-      include: gameInclude,
     }),
   ]);
+
+  const seriesBySeason = new Map<string, OutcomeSeries[]>();
+  for (const { season: seriesSeason, ...series } of allSeries) {
+    const list = seriesBySeason.get(seriesSeason);
+    if (list) list.push(series);
+    else seriesBySeason.set(seriesSeason, [series]);
+  }
+  const outcomeFor = (forSeason: string, code: string | null) =>
+    teamPlayoffOutcome(team.id, seriesBySeason.get(forSeason) ?? [], code, forSeason === liveSeason);
 
   // ── Adapter les types pour les composants ─────────────────────────────────
 
@@ -230,14 +260,24 @@ export default async function TeamPage({
 
   const seasonStats: SeasonStats | null = seasonRow
     ? {
+        season,
         wins: seasonRow.wins,
         losses: seasonRow.losses,
-        offRating: seasonRow.offRating,
-        defRating: seasonRow.defRating,
-        netRating: seasonRow.netRating,
-        pace: seasonRow.pace,
-        trueShooting: null,
-        summaryFr: seasonRow.summaryFr ?? null,
+        conferenceRank: seasonRow.conferenceRank,
+        ratings: ratings.get(team.id) ?? null,
+        playoff: outcomeFor(season, seasonRow.playoffResult),
+        // `summaryFr` en base lit le code de qualification ESPN comme un
+        // résultat (« ont remporté le titre NBA » pour le meilleur bilan de
+        // l'Ouest) : on recompose la phrase depuis des données vérifiées.
+        summary: teamSeasonSummary({
+          team: `${team.city} ${team.name}`,
+          season,
+          wins: seasonRow.wins,
+          losses: seasonRow.losses,
+          conferenceRank: seasonRow.conferenceRank,
+          conference: confFr(team.conference),
+          playoff: outcomeFor(season, seasonRow.playoffResult),
+        }),
       }
     : null;
 
@@ -246,7 +286,7 @@ export default async function TeamPage({
     wins: h.wins,
     losses: h.losses,
     conferenceRank: h.conferenceRank,
-    playoffResult: h.playoffResult,
+    playoff: outcomeFor(h.season, h.playoffResult),
   }));
 
   const standings: ConferenceRow[] = conferenceStandings.map((cs) => ({
@@ -260,7 +300,7 @@ export default async function TeamPage({
   const teamId = team.id;
 
   function toGameRow(
-    g: (typeof recentGamesRaw)[number] | (typeof upcomingGamesRaw)[number],
+    g: (typeof seasonGamesRaw)[number],
   ): GameRow {
     const isHome = g.homeTeamId === teamId;
     const opponent = isHome ? g.awayTeam : g.homeTeam;
@@ -270,12 +310,13 @@ export default async function TeamPage({
       homeScore: g.homeScore,
       awayScore: g.awayScore,
       status: g.status,
+      phase: g.phase,
       isHome,
       opponent,
     };
   }
 
-  const recentGames: GameRow[] = recentGamesRaw.map(toGameRow);
+  const seasonGames: GameRow[] = seasonGamesRaw.map(toGameRow);
   const upcomingGames: GameRow[] = upcomingGamesRaw.map(toGameRow);
 
   const wPct = seasonRow
@@ -374,7 +415,7 @@ export default async function TeamPage({
               <>
                 <div>
                   <div className="text-[11px] text-white/40 uppercase tracking-wider">
-                    Bilan
+                    Bilan {season}
                   </div>
                   <div className="font-display font-semibold text-3xl tabular-nums mt-1">
                     {seasonRow.wins}
@@ -382,7 +423,7 @@ export default async function TeamPage({
                     {seasonRow.losses}
                   </div>
                   <div className="text-xs text-white/40 font-mono mt-0.5">
-                    {wPct}% de victoires
+                    {wPct?.replace(".", ",")} % de victoires
                   </div>
                 </div>
                 {seasonRow.conferenceRank && (
@@ -392,7 +433,7 @@ export default async function TeamPage({
                     </div>
                     <div className="font-display font-semibold text-3xl tabular-nums mt-1">
                       {seasonRow.conferenceRank}
-                      <span className="text-white/40 text-lg">e</span>
+                      <span className="text-white/40 text-lg">{seasonRow.conferenceRank === 1 ? "er" : "e"}</span>
                       <span className="text-white/30 text-base font-sans">
                         {" "}
                         {confFr(team.conference)}
@@ -428,11 +469,13 @@ export default async function TeamPage({
         currentSeason={seasonStats}
         standings={standings}
         history={historySeason}
-        recentGames={recentGames}
+        seasonGames={seasonGames}
         upcomingGames={upcomingGames}
         rosterDate={rosterDate}
         locale={locale}
-        isLiveSeason={season === currentSeason()}
+        season={season}
+        teamSlug={slug}
+        liveSeason={liveSeason}
       />
 
       <script
@@ -447,7 +490,7 @@ export default async function TeamPage({
           __html: JSON.stringify(jsonLdBreadcrumb).replace(/</g, "\\u003c"),
         }}
       />
-      <SourceNote origins={["games", "standings", playerStatsOrigin(season)]} locale={locale} />
+      <SourceNote origins={["games", "standings", "teamRatings", "playoffs", playerStatsOrigin(season)]} locale={locale} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { validateEspnAthleteParsing } from "@/lib/espn-athlete";
 import { validateScoreboardMonths } from "@/lib/espn-scoreboard";
 import { validateGameStatus } from "@/lib/game-status";
 import { validatePlayoffCorrections } from "@/lib/playoff-corrections";
+import { validatePlayoffOutcome } from "@/lib/playoff-outcome";
 import { validatePlayoffSeriesWinner } from "@/lib/playoff-series";
 import { validateSeasonPhase } from "@/lib/season-phase";
 import { validateCareerAggregation } from "@/lib/stats/career";
@@ -21,6 +22,7 @@ import { validatePlayerIdentityResolver } from "@/lib/stats/player-identity";
 import { validatePlayerSimilarity } from "@/lib/stats/player-similarity";
 import { validateSeasonAggregation } from "@/lib/stats/season-aggregation";
 import { validateSeasonConsolidation } from "@/lib/stats/season-consolidation";
+import { validateTeamRatings } from "@/lib/stats/team-ratings";
 
 const SELF_CHECKS: Record<string, () => string[]> = {
   "couleurs d'accent": validateAccentOnDark,
@@ -30,6 +32,7 @@ const SELF_CHECKS: Record<string, () => string[]> = {
   "statuts de match": validateGameStatus,
   "corrections de playoffs": validatePlayoffCorrections,
   "vainqueur de série": validatePlayoffSeriesWinner,
+  "résultat de playoffs": validatePlayoffOutcome,
   "saison et phase ESPN": validateSeasonPhase,
   "agrégation de carrière": validateCareerAggregation,
   "contexte statistique": validateStatisticalContext,
@@ -39,6 +42,7 @@ const SELF_CHECKS: Record<string, () => string[]> = {
   "joueurs similaires": validatePlayerSimilarity,
   "saison depuis les box scores": validateSeasonAggregation,
   "ligne TOT": validateSeasonConsolidation,
+  "ratings d'équipe": validateTeamRatings,
 };
 
 describe("auto-contrôles des modules", () => {

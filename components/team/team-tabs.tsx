@@ -12,8 +12,8 @@ import {
   HistoryView,
   type HistorySeason,
 } from "@/components/team/history-view";
-import { RecentGames, type GameRow } from "@/components/team/recent-games";
-import { UpcomingGames } from "@/components/team/upcoming-games";
+import type { GameRow } from "@/components/team/recent-games";
+import { TeamGamesView } from "@/components/team/team-games-view";
 
 type TeamTabsProps = {
   primaryColor: string;
@@ -22,20 +22,17 @@ type TeamTabsProps = {
   currentSeason: SeasonStats | null;
   standings: ConferenceRow[];
   history: HistorySeason[];
-  recentGames: GameRow[];
+  /** Matchs joués de la saison sélectionnée, du plus récent au plus ancien. */
+  seasonGames: GameRow[];
   upcomingGames: GameRow[];
   rosterDate: string;
   locale: string;
+  /** Saison sélectionnée : tous les onglets s'y rapportent, sauf l'historique. */
+  season: string;
+  teamSlug: string;
   /** Saison en cours : un effectif vide veut dire qu'aucun match n'est encore joué. */
-  isLiveSeason: boolean;
+  liveSeason: string;
 };
-
-const TABS = [
-  { id: "roster", label: "Effectif" },
-  { id: "season", label: "Classement" },
-  { id: "history", label: "Historique" },
-  { id: "games", label: "Matchs" },
-];
 
 export function TeamTabs({
   primaryColor,
@@ -44,17 +41,27 @@ export function TeamTabs({
   currentSeason,
   standings,
   history,
-  recentGames,
+  seasonGames,
   upcomingGames,
   rosterDate,
   locale,
-  isLiveSeason,
+  season,
+  teamSlug,
+  liveSeason,
 }: TeamTabsProps) {
+  const isLiveSeason = season === liveSeason;
   const [active, setActive] = useState("roster");
+  // Portée de chaque onglet dans son libellé, comme sur la fiche joueur.
+  const tabs = [
+    { id: "roster", label: `Effectif ${season}` },
+    { id: "season", label: `Saison ${season}` },
+    { id: "games", label: `Matchs ${season}` },
+    { id: "history", label: "Historique" },
+  ];
 
   return (
     <div className="space-y-8">
-      <Tabs tabs={TABS} active={active} onChange={setActive} />
+      <Tabs tabs={tabs} active={active} onChange={setActive} />
 
       {active === "roster" && roster.length > 0 && (
         <RosterView players={roster} updatedAt={rosterDate} locale={locale} />
@@ -91,18 +98,29 @@ export function TeamTabs({
       {active === "season" && !currentSeason && (
         <div className="py-16 text-center space-y-2">
           <p className="text-white/40 text-sm font-mono">
-            Classement non disponible pour cette saison.
+            Bilan et classement non disponibles pour {season}.
           </p>
         </div>
       )}
       {active === "history" && (
-        <HistoryView seasons={history} primaryColor={primaryColor} />
+        <HistoryView
+          seasons={history}
+          primaryColor={primaryColor}
+          selectedSeason={season}
+          teamSlug={teamSlug}
+          locale={locale}
+          liveSeason={liveSeason}
+        />
       )}
       {active === "games" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <RecentGames games={recentGames} primaryColor={primaryColor} />
-          <UpcomingGames games={upcomingGames} />
-        </div>
+        <TeamGamesView
+          games={seasonGames}
+          upcoming={upcomingGames}
+          season={season}
+          liveSeason={liveSeason}
+          primaryColor={primaryColor}
+          locale={locale}
+        />
       )}
     </div>
   );

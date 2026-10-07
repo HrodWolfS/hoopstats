@@ -51,6 +51,11 @@ export const DATA_ORIGINS = {
     label: "Classements ESPN",
     logSources: ["sync-daily", "import-standings", "backfill-standings"],
   },
+  teamRatings: {
+    kind: "computed",
+    label: "Ratings et rythme d'équipe calculés par hoopstats à partir des box scores ESPN",
+    logSources: ["sync-daily", "sync-box-scores"],
+  },
   playoffs: {
     kind: "imported",
     label: "Séries de playoffs ESPN",

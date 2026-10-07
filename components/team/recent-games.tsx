@@ -1,4 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
+import { GAME_PHASE_LABELS, type GamePhase } from "@/lib/season-phase";
 
 export type GameRow = {
   id: string;
@@ -6,6 +8,7 @@ export type GameRow = {
   homeScore: number | null;
   awayScore: number | null;
   status: string;
+  phase: string | null;
   isHome: boolean;
   opponent: {
     slug: string;
@@ -17,103 +20,101 @@ export type GameRow = {
   };
 };
 
-type RecentGamesProps = {
-  games: GameRow[];
-  primaryColor: string;
+/** Score vu de l'équipe de la page ; `null` tant que le match n'est pas joué. */
+export function gameResult(game: GameRow): { teamScore: number; oppScore: number; won: boolean } | null {
+  const teamScore = game.isHome ? game.homeScore : game.awayScore;
+  const oppScore = game.isHome ? game.awayScore : game.homeScore;
+  if (teamScore == null || oppScore == null) return null;
+  return { teamScore, oppScore, won: teamScore > oppScore };
+}
+
+const PHASE_SHORT: Partial<Record<GamePhase, string>> = {
+  cup_final: "Cup",
+  play_in: "PI",
+  playoffs: "PO",
 };
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", {
     day: "numeric",
     month: "short",
+    timeZone: "Europe/Paris",
   });
 }
 
-export function RecentGames({ games, primaryColor }: RecentGamesProps) {
-  if (games.length === 0) {
-    return (
-      <p className="text-white/40 text-sm font-mono py-4">
-        Aucun match récent disponible.
-      </p>
-    );
-  }
+/** Ligne de résultat : date, lieu, adversaire (lien), phase hors saison régulière, score. */
+export function GameResultItem({
+  game,
+  primaryColor,
+  opponentHref,
+}: {
+  game: GameRow;
+  primaryColor: string;
+  /** Fiche de l'adversaire, sur la saison du match. */
+  opponentHref: string;
+}) {
+  const result = gameResult(game);
+  const phase = game.phase as GamePhase | null;
+  const phaseShort = phase ? PHASE_SHORT[phase] : undefined;
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden">
-      <div className="px-4 pt-5 pb-3">
-        <div className="text-[11px] text-white/40 uppercase tracking-[0.2em] font-medium">
-          Derniers matchs
-        </div>
-      </div>
-      <ul className="divide-y divide-white/[0.04]">
-        {games.map((game) => {
-          const teamScore = game.isHome ? game.homeScore : game.awayScore;
-          const oppScore = game.isHome ? game.awayScore : game.homeScore;
-          const isWin =
-            teamScore !== null && oppScore !== null && teamScore > oppScore;
-
-          return (
-            <li
-              key={game.id}
-              className="flex items-center gap-3 px-4 py-3 text-sm"
-            >
-              {/* Date */}
-              <span className="text-[11px] text-white/30 font-mono w-14 shrink-0">
-                {formatDate(game.gameDate)}
-              </span>
-
-              {/* Domicile/Déplacement */}
-              <span className="text-[11px] text-white/30 font-mono w-5 shrink-0 text-center">
-                {game.isHome ? "vs" : "@"}
-              </span>
-
-              {/* Logo adversaire */}
-              {game.opponent.logoUrl ? (
-                <Image
-                  src={game.opponent.logoUrl}
-                  alt={game.opponent.abbr}
-                  width={20}
-                  height={20}
-                  className="object-contain shrink-0"
-                />
-              ) : (
-                <div className="w-5 h-5 shrink-0" />
-              )}
-
-              {/* Nom adversaire */}
-              <span className="text-white/60 flex-1 truncate text-xs">
-                {game.opponent.city}{" "}
-                <span className="text-white/30">{game.opponent.name}</span>
-              </span>
-
-              {/* Score */}
-              {teamScore !== null && oppScore !== null ? (
-                <span
-                  className={`font-mono tabular-nums text-sm shrink-0 ${
-                    isWin ? "font-semibold" : "text-white/40"
-                  }`}
-                >
-                  {teamScore}–{oppScore}
-                </span>
-              ) : null}
-
-              {/* Badge W/L */}
-              {teamScore !== null && oppScore !== null ? (
-                <span
-                  className="text-[10px] font-bold w-5 h-5 rounded flex items-center justify-center shrink-0"
-                  style={
-                    isWin
-                      ? { background: `${primaryColor}33`, color: primaryColor }
-                      : { background: "rgba(239,68,68,0.12)", color: "#ef4444" }
-                  }
-                >
-                  {isWin ? "W" : "L"}
-                </span>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    <li className="flex items-center gap-2 px-4 py-3 text-sm sm:gap-3">
+      <span className="text-[11px] text-white/30 font-mono w-12 shrink-0 sm:w-14">
+        {formatDate(game.gameDate)}
+      </span>
+      <span className="text-[11px] text-white/30 font-mono w-4 shrink-0 text-center">
+        {game.isHome ? "vs" : "@"}
+      </span>
+      {game.opponent.logoUrl ? (
+        <Image
+          src={game.opponent.logoUrl}
+          alt=""
+          width={20}
+          height={20}
+          className="object-contain shrink-0"
+        />
+      ) : (
+        <div className="w-5 h-5 shrink-0" />
+      )}
+      <Link
+        href={opponentHref}
+        className="min-w-0 flex-1 truncate text-xs text-white/60 underline-offset-4 hover:underline"
+      >
+        <span className="sm:hidden">{game.opponent.abbr}</span>
+        <span className="hidden sm:inline">
+          {game.opponent.city} <span className="text-white/30">{game.opponent.name}</span>
+        </span>
+      </Link>
+      {phaseShort && phase && (
+        <abbr
+          title={GAME_PHASE_LABELS[phase]}
+          className="no-underline shrink-0 rounded border border-white/10 px-1 text-[10px] font-mono text-white/45"
+        >
+          {phaseShort}
+        </abbr>
+      )}
+      {result && (
+        <>
+          <span
+            className={`font-mono tabular-nums text-sm shrink-0 ${
+              result.won ? "font-semibold" : "text-white/40"
+            }`}
+          >
+            {result.teamScore}–{result.oppScore}
+          </span>
+          <span
+            aria-label={result.won ? "Victoire" : "Défaite"}
+            className="text-[10px] font-bold w-5 h-5 rounded flex items-center justify-center shrink-0"
+            style={
+              result.won
+                ? { background: `${primaryColor}33`, color: primaryColor }
+                : { background: "rgba(239,68,68,0.12)", color: "#ef4444" }
+            }
+          >
+            {result.won ? "V" : "D"}
+          </span>
+        </>
+      )}
+    </li>
   );
 }
