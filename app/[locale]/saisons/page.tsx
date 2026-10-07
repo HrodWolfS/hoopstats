@@ -11,6 +11,8 @@ import { consolidateSeasonRows } from "@/lib/stats/season-totals";
 import { hasSeriesStarted, seriesWinnerTeamId } from "@/lib/playoff-series";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
+import { SourceNote } from "@/components/ui/source-note";
+import { playerStatsOrigin } from "@/lib/data-sources";
 
 export const revalidate = 21600;
 
@@ -437,6 +439,7 @@ export default async function SaisonsPage({
           </div>
         </FadeIn>
       )}
+      <SourceNote origins={["standings", playerStatsOrigin(season), "playoffs"]} locale={locale} />
     </div>
   );
 }

@@ -18,6 +18,8 @@ import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { TeamMono } from "@/components/ui/team-mono";
 import { FadeIn } from "@/components/ui/fade-in";
 import { COMPETITIVE_PHASES, REGULAR_SEASON_PHASE } from "@/lib/season-phase";
+import { SourceNote } from "@/components/ui/source-note";
+import { playerStatsOrigin } from "@/lib/data-sources";
 
 export const metadata: Metadata = {
   title: "hoopstats — Stats NBA en français",
@@ -916,6 +918,7 @@ export default async function HomePage({
           </section>
         </FadeIn>
       )}
+      <SourceNote origins={[playerStatsOrigin(season), "games", "standings"]} locale={locale} />
     </div>
   );
 }

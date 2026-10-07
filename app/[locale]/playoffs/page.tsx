@@ -6,6 +6,7 @@ import { getPlayoffBracket } from "@/lib/playoffs";
 import { PlayoffBracket } from "@/components/ui/playoff-bracket";
 import { FadeIn } from "@/components/ui/fade-in";
 import { Crumbs } from "@/components/ui/crumbs";
+import { SourceNote } from "@/components/ui/source-note";
 
 export const metadata: Metadata = {
   title: "Playoffs NBA — hoopstats",
@@ -79,6 +80,7 @@ export default async function PlayoffsPage({
           </p>
         )}
       </FadeIn>
+      <SourceNote origins={["playoffs"]} locale={locale} />
     </div>
   );
 }

@@ -18,6 +18,8 @@ import {
 import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
 import { consolidateSeasonRows } from "@/lib/stats/season-totals";
 import { ShareButton } from "@/components/analytics/share-button";
+import { SourceNote } from "@/components/ui/source-note";
+import { playerStatsOrigin } from "@/lib/data-sources";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
 
@@ -132,6 +134,7 @@ export default async function LeaderboardPage({
         )}
       </div>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <SourceNote origins={[playerStatsOrigin(season, leaderboard.metric)]} locale={locale} />
     </div>
   );
 }

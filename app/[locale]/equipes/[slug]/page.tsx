@@ -14,6 +14,8 @@ import type { SeasonStats, ConferenceRow } from "@/components/team/season-view";
 import type { HistorySeason } from "@/components/team/history-view";
 import type { GameRow } from "@/components/team/recent-games";
 import { COMPETITIVE_PHASES } from "@/lib/season-phase";
+import { SourceNote } from "@/components/ui/source-note";
+import { playerStatsOrigin } from "@/lib/data-sources";
 
 export const revalidate = 21600; // 6h ISR
 
@@ -445,6 +447,7 @@ export default async function TeamPage({
           __html: JSON.stringify(jsonLdBreadcrumb).replace(/</g, "\\u003c"),
         }}
       />
+      <SourceNote origins={["games", "standings", playerStatsOrigin(season)]} locale={locale} />
     </div>
   );
 }

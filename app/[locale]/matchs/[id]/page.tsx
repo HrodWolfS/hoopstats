@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { periodLabel } from "@/lib/game-status";
+import { SourceNote } from "@/components/ui/source-note";
 
 export const revalidate = 300;
 
@@ -1194,22 +1195,13 @@ export default async function MatchPage({
         </div>
       )}
 
-      {/* Source note */}
-      <p className="text-[11px] text-white/20 leading-relaxed">
-        Statistiques issues de l&apos;API ESPN (site.api.espn.com) ·{" "}
-        <Link
-          href={`/${locale}/sources`}
-          className="hover:text-white/40 transition underline underline-offset-2"
-        >
-          Sources & Méthodologie
-        </Link>
-      </p>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(jsonLdGame).replace(/</g, "\\u003c"),
         }}
       />
+      <SourceNote origins={["games"]} locale={locale} />
     </div>
   );
 }

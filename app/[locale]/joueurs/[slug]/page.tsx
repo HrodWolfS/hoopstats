@@ -31,6 +31,8 @@ import {
 } from "@/components/player/player-context-sections";
 import { ShareButton } from "@/components/analytics/share-button";
 import { REGULAR_SEASON_PHASE } from "@/lib/season-phase";
+import { SourceNote } from "@/components/ui/source-note";
+import { playerStatsOrigin } from "@/lib/data-sources";
 
 export const revalidate = 21600;
 
@@ -696,6 +698,7 @@ export default async function PlayerPage({
           __html: JSON.stringify(jsonLdBreadcrumb).replace(/</g, "\\u003c"),
         }}
       />
+      <SourceNote origins={[playerStatsOrigin(season), "historicStats", "advancedStats", "games"]} locale={locale} />
     </div>
   );
 }
