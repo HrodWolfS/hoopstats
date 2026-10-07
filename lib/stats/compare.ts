@@ -80,3 +80,49 @@ export function resolveComparisonSeasons({
   const common = sorted1.filter((season) => sorted2.includes(season)).at(-1);
   return { season1: common ?? latest1, season2: common ?? latest2, unavailable };
 }
+
+/**
+ * Repère de ligue pour une métrique et une saison : moyenne simple et
+ * distribution des joueurs qualifiés (seuil du catalogue des métriques).
+ */
+export type LeagueDistribution = {
+  average: number;
+  /** Valeurs triées par ordre croissant. */
+  sorted: number[];
+};
+
+export function leagueDistribution(values: readonly number[]): LeagueDistribution | null {
+  const finite = values.filter((value) => Number.isFinite(value));
+  if (finite.length === 0) return null;
+  const sorted = [...finite].sort((a, b) => a - b);
+  const average = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
+  return { average, sorted };
+}
+
+/**
+ * Centile d'une valeur dans la distribution : part des joueurs qualifiés
+ * qu'elle dépasse, les égalités comptant pour moitié. Borné à 1-99 : « 100e
+ * centile » laisserait croire qu'aucun joueur ne fait mieux, même à égalité.
+ * Pour une métrique où moins vaut mieux, le sens est inversé.
+ */
+export function percentileOf(
+  distribution: LeagueDistribution,
+  value: number,
+  higherIsBetter = true,
+): number {
+  const { sorted } = distribution;
+  let below = 0;
+  let equal = 0;
+  for (const other of sorted) {
+    if (other < value) below += 1;
+    else if (other === value) equal += 1;
+  }
+  const share = (below + equal / 2) / sorted.length;
+  const percentile = Math.round((higherIsBetter ? share : 1 - share) * 100);
+  return Math.min(99, Math.max(1, percentile));
+}
+
+/** « 1er centile », « 82e centile ». */
+export function percentileLabel(percentile: number): string {
+  return `${percentile}${percentile === 1 ? "er" : "e"} centile`;
+}

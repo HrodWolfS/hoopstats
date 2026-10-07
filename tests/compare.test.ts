@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { closestSeason, resolveComparisonSeasons } from "@/lib/stats/compare";
+import {
+  closestSeason,
+  leagueDistribution,
+  percentileLabel,
+  percentileOf,
+  resolveComparisonSeasons,
+} from "@/lib/stats/compare";
 
 const lebron = ["2019-20", "2020-21", "2021-22", "2022-23"];
 const rookie = ["2021-22", "2022-23"];
@@ -71,5 +77,37 @@ describe("closestSeason", () => {
   it("préfère la plus récente à égale distance", () => {
     expect(closestSeason(["2018-19", "2020-21"], "2019-20")).toBe("2020-21");
     expect(closestSeason([], "2019-20")).toBeNull();
+  });
+});
+
+describe("repères de ligue", () => {
+  const distribution = leagueDistribution([10, 20, 30, 40, Number.NaN])!;
+
+  it("moyenne sur les valeurs finies, triées", () => {
+    expect(distribution.average).toBe(25);
+    expect(distribution.sorted).toEqual([10, 20, 30, 40]);
+  });
+
+  it("aucune valeur : pas de repère plutôt qu'un zéro", () => {
+    expect(leagueDistribution([])).toBeNull();
+  });
+
+  it("centile : joueurs dépassés, égalités pour moitié", () => {
+    expect(percentileOf(distribution, 30)).toBe(63);
+    expect(percentileOf(distribution, 25)).toBe(50);
+  });
+
+  it("centile borné à 1-99", () => {
+    expect(percentileOf(distribution, 1000)).toBe(99);
+    expect(percentileOf(distribution, 0)).toBe(1);
+  });
+
+  it("moins vaut mieux : sens inversé", () => {
+    expect(percentileOf(distribution, 10, false)).toBe(88);
+  });
+
+  it("libellé", () => {
+    expect(percentileLabel(1)).toBe("1er centile");
+    expect(percentileLabel(82)).toBe("82e centile");
   });
 });

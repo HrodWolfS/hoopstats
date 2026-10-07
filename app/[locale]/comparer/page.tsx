@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { currentSeason } from "@/lib/nba";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
@@ -12,96 +11,84 @@ import { SeasonSelect } from "@/components/compare/season-select";
 import { stat, pct } from "@/lib/format";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import { MULTI_TEAM_ABBR } from "@/lib/stats/career";
-import { resolveComparisonSeasons, SMALL_SAMPLE_GAMES } from "@/lib/stats/compare";
-import { consolidatePlayerCareer, loadShotVolume, type ShotVolume } from "@/lib/stats/season-totals";
-import type { Consolidated } from "@/lib/stats/season-consolidation";
+import { percentileLabel, percentileOf, SMALL_SAMPLE_GAMES } from "@/lib/stats/compare";
+import {
+  loadComparison,
+  loadLeagueReference,
+  loadPlayer,
+  type ComparedSeason,
+  type LeagueMetric,
+  type LeagueReference,
+} from "@/lib/stats/compare-data";
+import { loadShotVolume, type ShotVolume } from "@/lib/stats/season-totals";
 import { AnalyticsEvent } from "@/components/analytics/analytics-event";
 import { ShareButton } from "@/components/analytics/share-button";
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
+type ComparerSearchParams = { j1?: string; j2?: string; s1?: string; s2?: string; saison?: string };
+
+const BASE_METADATA = {
   title: "Comparer des joueurs NBA | hoopstats",
   description:
     "Compare les statistiques de deux joueurs NBA côte à côte : points, rebonds, passes, stats avancées et historique carrière.",
   alternates: { canonical: "/fr/comparer" },
   robots: { index: false, follow: true },
-};
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type PlayerWithSeasons = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  slug: string;
-  position: string | null;
-  photoUrl: string | null;
-  seasons: {
-    playerId: string;
-    season: string;
-    gamesPlayed: number;
-    minutesPerGame: number;
-    pointsPerGame: number;
-    reboundsPerGame: number;
-    assistsPerGame: number;
-    stealsPerGame: number;
-    blocksPerGame: number;
-    fgPct: number | null;
-    threePtPct: number | null;
-    trueShooting: number | null;
-    per: number | null;
-    netRating: number | null;
-    team: { abbr: string; primaryColor: string; secondaryColor: string };
-  }[];
-};
-
-// ── Fetch helper ──────────────────────────────────────────────────────────────
-
-async function fetchPlayer(slug: string): Promise<PlayerWithSeasons | null> {
-  // Carrière complète : une saison commune aux deux joueurs peut être
-  // ancienne, la tronquer empêcherait de la trouver.
-  return prisma.player.findUnique({
-    where: { slug },
-    include: {
-      seasons: {
-        orderBy: { season: "desc" },
-        include: {
-          team: {
-            select: { abbr: true, primaryColor: true, secondaryColor: true },
-          },
-        },
-      },
-    },
-  });
-}
-
-type SeasonRow = PlayerWithSeasons["seasons"][number];
+} satisfies Metadata;
 
 /**
- * Regroupe les lignes d'une même saison en une seule (ligne TOT).
- *
- * Sans cela, `seasons[0]` d'un joueur transféré désigne un passage en équipe
- * choisi arbitrairement, donc une saison partielle. Même politique que la
- * fiche joueur : comptage pondéré par les matchs, pourcentages de tir
- * recalculés sur les box scores, PER et Net Rating indisponibles.
+ * Adresse de la carte de partage, saisons résolues écrites en toutes
+ * lettres : l'image correspond exactement à ce que la page affiche.
  */
-async function seasonRowsBySeason(
-  rows: readonly SeasonRow[],
-): Promise<Map<string, Consolidated<SeasonRow>>> {
-  const { seasons } = await consolidatePlayerCareer(rows);
-  return new Map(seasons.map((row) => [row.season, row]));
+function comparisonImageUrl(locale: string, j1: string, j2: string, s1: string, s2: string): string {
+  return `/${locale}/comparer/image?${new URLSearchParams({ j1, j2, s1, s2 })}`;
 }
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<ComparerSearchParams>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const { j1, j2, s1, s2, saison } = await searchParams;
+  if (!j1 || !j2) return BASE_METADATA;
+  // Même chargement mémorisé que la page : aucune requête en plus.
+  const comparison = await loadComparison(j1, j2, s1, s2, saison);
+  if (!comparison?.s1 || !comparison.s2) return BASE_METADATA;
+  const { p1, p2, s1: row1, s2: row2 } = comparison;
+  const seasons = row1.season === row2.season ? row1.season : `${row1.season} et ${row2.season}`;
+  const title = `${p1.firstName} ${p1.lastName} vs ${p2.firstName} ${p2.lastName} (${seasons}) | hoopstats`;
+  const description = `Comparaison NBA ${seasons} : points, rebonds, passes, efficacité, repères de ligue et historique carrière.`;
+  const image = {
+    url: comparisonImageUrl(locale, p1.slug, p2.slug, row1.season, row2.season),
+    width: 1200,
+    height: 630,
+    alt: `${p1.lastName} contre ${p2.lastName}, ${seasons}`,
+  };
+  return {
+    ...BASE_METADATA,
+    title,
+    description,
+    openGraph: { title, description, siteName: "hoopstats", images: [image], locale: "fr_FR", type: "website" },
+    twitter: { card: "summary_large_image", title, description, images: [image.url] },
+  };
+}
+
+type SeasonRow = ComparedSeason;
 
 // ── Stat row helpers ──────────────────────────────────────────────────────────
 
 type StatRowDef = {
   label: string;
   getValue: (
-    s: PlayerWithSeasons["seasons"][number],
+    s: SeasonRow,
     volume: ShotVolume | null,
   ) => number | null | undefined;
   format: (v: number | null | undefined) => string;
+  /** Métrique située par rapport à la ligue (moyenne, centile). */
+  metric?: LeagueMetric;
 };
 
 /**
@@ -140,51 +127,61 @@ const STAT_ROWS: StatRowDef[] = [
   {
     label: getPlayerMetric("pointsPerGame").label,
     getValue: (s) => s.pointsPerGame,
+    metric: "pointsPerGame",
     format: (v) => stat(v),
   },
   {
     label: getPlayerMetric("reboundsPerGame").label,
     getValue: (s) => s.reboundsPerGame,
+    metric: "reboundsPerGame",
     format: (v) => stat(v),
   },
   {
     label: getPlayerMetric("assistsPerGame").label,
     getValue: (s) => s.assistsPerGame,
+    metric: "assistsPerGame",
     format: (v) => stat(v),
   },
   {
     label: getPlayerMetric("stealsPerGame").label,
     getValue: (s) => s.stealsPerGame,
+    metric: "stealsPerGame",
     format: (v) => stat(v),
   },
   {
     label: getPlayerMetric("blocksPerGame").label,
     getValue: (s) => s.blocksPerGame,
+    metric: "blocksPerGame",
     format: (v) => stat(v),
   },
   {
     label: getPlayerMetric("fgPct").shortLabel,
     getValue: (s) => s.fgPct,
+    metric: "fgPct",
     format: (v) => pct(v),
   },
   {
     label: getPlayerMetric("threePtPct").shortLabel,
     getValue: (s) => s.threePtPct,
+    metric: "threePtPct",
     format: (v) => pct(v),
   },
   {
     label: getPlayerMetric("trueShooting").shortLabel,
     getValue: (s) => s.trueShooting,
+    metric: "trueShooting",
     format: (v) => pct(v),
   },
   {
     label: getPlayerMetric("per").shortLabel,
     getValue: (s) => s.per,
+    metric: "per",
     format: (v) => stat(v),
   },
   {
     label: getPlayerMetric("netRating").shortLabel,
     getValue: (s) => s.netRating,
+    metric: "netRating",
     format: (v) => stat(v),
   },
 ];
@@ -196,7 +193,7 @@ export default async function ComparerPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ j1?: string; j2?: string; s1?: string; s2?: string; saison?: string }>;
+  searchParams: Promise<ComparerSearchParams>;
 }) {
   const { locale } = await params;
   const { j1, j2, s1: requested1, s2: requested2, saison } = await searchParams;
@@ -204,8 +201,8 @@ export default async function ComparerPage({
   // ── Empty / partial state ──────────────────────────────────────────────────
   if (!j1 || !j2) {
     const [player1Data, player2Data] = await Promise.all([
-      j1 ? fetchPlayer(j1) : null,
-      j2 ? fetchPlayer(j2) : null,
+      j1 ? loadPlayer(j1) : null,
+      j2 ? loadPlayer(j2) : null,
     ]);
 
     const p1Color = player1Data?.seasons[0]?.team.primaryColor ?? null;
@@ -305,30 +302,14 @@ export default async function ComparerPage({
   }
 
   // ── Both slugs present — fetch both ───────────────────────────────────────
-  const [p1, p2] = await Promise.all([fetchPlayer(j1), fetchPlayer(j2)]);
-
-  if (!p1 || !p2) notFound();
-
-  const [seasons1, seasons2] = await Promise.all([
-    seasonRowsBySeason(p1.seasons),
-    seasonRowsBySeason(p2.seasons),
-  ]);
-  const samePlayer = p1.slug === p2.slug;
-  // Même saison par défaut, saisons demandées respectées, saison absente
-  // signalée plutôt que remplacée en silence (lib/stats/compare.ts). La
-  // saison globale du site (`saison`) sert de demande commune.
-  const choice = resolveComparisonSeasons({
-    seasons1: [...seasons1.keys()],
-    seasons2: [...seasons2.keys()],
-    requested1: requested1 ?? (samePlayer ? null : saison),
-    requested2: requested2 ?? (samePlayer ? null : saison),
-    samePlayer,
-  });
-  const s1 = choice.season1 ? (seasons1.get(choice.season1) ?? null) : null;
-  const s2 = choice.season2 ? (seasons2.get(choice.season2) ?? null) : null;
-  const [volume1, volume2] = await Promise.all([
+  const comparison = await loadComparison(j1, j2, requested1, requested2, saison);
+  if (!comparison) notFound();
+  const { p1, p2, seasons1, seasons2, samePlayer, choice, s1, s2 } = comparison;
+  const [volume1, volume2, league1, league2] = await Promise.all([
     s1 ? loadShotVolume(p1.id, s1.season) : null,
     s2 ? loadShotVolume(p2.id, s2.season) : null,
+    s1 ? loadLeagueReference(s1.season) : null,
+    s2 ? loadLeagueReference(s2.season) : null,
   ]);
 
   const seasonsDiffer = s1 != null && s2 != null && s1.season !== s2.season;
@@ -366,7 +347,16 @@ export default async function ComparerPage({
         />
       )}
       <FadeIn>
-        <div className="mb-3 flex justify-end">
+        <div className="mb-3 flex justify-end gap-2">
+          {s1 && s2 && (
+            <a
+              href={comparisonImageUrl(locale, p1.slug, p2.slug, s1.season, s2.season)}
+              download={`hoopstats-${p1.slug}-${s1.season}-vs-${p2.slug}-${s2.season}.png`}
+              className="rounded-lg border border-white/[0.08] px-3 py-2 text-xs text-white/45 transition hover:text-white"
+            >
+              Image
+            </a>
+          )}
           <ShareButton dimension="comparison" />
         </div>
         <Crumbs
@@ -558,7 +548,25 @@ export default async function ComparerPage({
           )}
 
           <SectionLabel>Moyennes par match</SectionLabel>
-          <StatRows rows={STAT_ROWS} left={s1} right={s2} volumes={[volume1, volume2]} highlight />
+          <StatRows
+            rows={STAT_ROWS}
+            left={s1}
+            right={s2}
+            volumes={[volume1, volume2]}
+            leagues={[league1, league2]}
+            highlight
+          />
+          <p className="border-b border-white/[0.06] px-4 py-2.5 text-[11px] leading-relaxed text-white/35">
+            Ligue : moyenne des joueurs qualifiés de la saison. Centile : part de ces joueurs
+            que la valeur dépasse. Seuils de qualification des classements,{" "}
+            <Link
+              href={`/${locale}/sources#metriques`}
+              className="underline decoration-white/20 underline-offset-2 hover:text-white/70"
+            >
+              voir la méthode
+            </Link>
+            .
+          </p>
           <SectionLabel>Volume de jeu</SectionLabel>
           <StatRows rows={VOLUME_ROWS} left={s1} right={s2} volumes={[volume1, volume2]} />
           {noVolume && (
@@ -688,12 +696,15 @@ function StatRows({
   left,
   right,
   volumes,
+  leagues = [null, null],
   highlight = false,
 }: {
   rows: StatRowDef[];
   left: SeasonRow | null;
   right: SeasonRow | null;
   volumes: [ShotVolume | null, ShotVolume | null];
+  /** Repères de ligue de la saison de chaque côté. */
+  leagues?: [LeagueReference | null, LeagueReference | null];
   /** Met en avant la meilleure valeur ; jamais pour le volume de jeu. */
   highlight?: boolean;
 }) {
@@ -704,14 +715,47 @@ function StatRows({
     const comparable = highlight && v1 != null && v2 != null && row.format(v1) !== row.format(v2);
     const cell = (value: number | null | undefined, wins: boolean) =>
       `text-center text-sm tabular-nums ${comparable && wins ? "text-white font-semibold" : value == null ? "text-white/25" : "text-white/60"}`;
+    const distributions = row.metric
+      ? [leagues[0]?.[row.metric] ?? null, leagues[1]?.[row.metric] ?? null]
+      : [null, null];
+    const higherIsBetter = row.metric ? getPlayerMetric(row.metric).higherIsBetter : true;
+    const percentile = (value: number | null | undefined, side: 0 | 1) => {
+      const distribution = distributions[side];
+      if (value == null || !distribution) return null;
+      return (
+        <span className="mt-0.5 block text-[10px] font-normal leading-tight text-white/30">
+          {percentileLabel(percentileOf(distribution, value, higherIsBetter))}
+        </span>
+      );
+    };
+    // Une seule moyenne si les deux côtés portent sur la même saison, sinon
+    // une par côté, dans l'ordre des colonnes.
+    const sameSeason = left?.season === right?.season;
+    const shown = sameSeason ? distributions.slice(0, 1) : distributions;
+    const averages = shown.some((distribution) => distribution != null)
+      ? shown.map((distribution) => (distribution ? row.format(distribution.average) : "—"))
+      : [];
     return (
       <div
         key={row.label}
         className={`grid grid-cols-3 items-center gap-2 px-4 py-3 ${i % 2 === 1 ? "bg-white/[0.015]" : ""}`}
       >
-        <div className="text-xs text-white/40">{row.label}</div>
-        <div className={cell(v1, comparable && v1! > v2!)}>{row.format(v1)}</div>
-        <div className={cell(v2, comparable && v2! > v1!)}>{row.format(v2)}</div>
+        <div className="text-xs text-white/40">
+          {row.label}
+          {averages.length > 0 && (
+            <span className="mt-0.5 block text-[10px] leading-tight text-white/30">
+              Ligue : {averages.join(" / ")}
+            </span>
+          )}
+        </div>
+        <div className={cell(v1, comparable && v1! > v2!)}>
+          {row.format(v1)}
+          {percentile(v1, 0)}
+        </div>
+        <div className={cell(v2, comparable && v2! > v1!)}>
+          {row.format(v2)}
+          {percentile(v2, 1)}
+        </div>
       </div>
     );
   });
