@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { currentSeason } from "@/lib/nba";
+import { currentSeason, seasonsThrough } from "@/lib/nba";
 import { TeamMono } from "@/components/ui/team-mono";
 import { FadeIn, StaggerList, StaggerItem } from "@/components/ui/fade-in";
+import { SeasonScope } from "@/components/layout/season-scope";
 
 export const metadata: Metadata = {
   title: "Les 30 équipes NBA — hoopstats",
@@ -39,6 +40,7 @@ export default async function TeamsPage({
 
   return (
     <div className="space-y-12">
+      <SeasonScope seasons={seasonsThrough(currentSeason())} season={season} defaultSeason={currentSeason()} />
       <div>
         <h1 className="font-display font-semibold text-4xl tracking-tight mb-1">
           Les 30 franchises

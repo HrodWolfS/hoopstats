@@ -1,6 +1,6 @@
 import { type MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
-import { ALL_SEASONS, currentSeason } from "@/lib/nba";
+import { ALL_HISTORY_SEASONS, ALL_SEASONS, currentSeason, draftYearOf, previousSeason, UPCOMING_SEASON } from "@/lib/nba";
 import { LEADERBOARDS } from "@/lib/stats/leaders";
 import { GUIDES } from "@/lib/guides";
 
@@ -12,7 +12,8 @@ function seasonArchiveDate(season: string): Date {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [teams, players, games, latestSync] = await Promise.all([
+  const liveSeason = currentSeason();
+  const [teams, players, games, latestSync, teamSeasons, playoffSeasons, draftYears, awardSeasons] = await Promise.all([
     prisma.team.findMany({ select: { slug: true, updatedAt: true } }),
     prisma.player.findMany({
       where: { seasons: { some: {} } },
@@ -27,6 +28,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       orderBy: { completedAt: "desc" },
       select: { completedAt: true },
     }),
+    prisma.teamSeason.findMany({
+      where: { season: { lt: liveSeason } },
+      select: { season: true, team: { select: { slug: true } } },
+    }),
+    prisma.playoffSeries.findMany({ select: { season: true }, distinct: ["season"] }),
+    prisma.player.findMany({
+      where: { draftYear: { not: null }, draftPick: { not: null } },
+      select: { draftYear: true },
+      distinct: ["draftYear"],
+    }),
+    prisma.award.findMany({ select: { season: true }, distinct: ["season"], orderBy: { season: "desc" } }),
   ]);
 
   const contentUpdatedAt = latestSync?.completedAt ?? new Date("2026-01-01");
@@ -90,7 +102,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  const liveSeason = currentSeason();
   // La saison suivante n'a aucun leader avant son premier match : rien à indexer.
   const leaderboardSeasons = ALL_SEASONS.filter((season) => season <= liveSeason);
   const leaderboardRoutes: MetadataRoute.Sitemap = leaderboardSeasons.flatMap((season) =>
@@ -102,6 +113,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: season === liveSeason ? 0.8 : 0.6,
     })),
   );
+  // Saisons passées : chaque page de saison se déclare canonique. Seules les
+  // saisons qui ont du contenu en base sont listées ; l'adresse nue (saison
+  // par défaut) est déjà dans les routes statiques.
+  const archive = (path: string, season: string) => ({
+    url: `${BASE_URL}/fr/${path}?saison=${season}`,
+    lastModified: seasonArchiveDate(season),
+    changeFrequency: "yearly" as const,
+    priority: 0.5,
+  });
+  const teamSeasonRoutes: MetadataRoute.Sitemap = teamSeasons.map((row) =>
+    archive(`equipes/${row.team.slug}`, row.season),
+  );
+  const playoffSeasonList = playoffSeasons.map((row) => row.season);
+  const defaultPlayoffSeason = playoffSeasonList.includes(liveSeason) ? liveSeason : previousSeason(liveSeason);
+  const playoffRoutes: MetadataRoute.Sitemap = playoffSeasonList
+    .filter((season) => season !== defaultPlayoffSeason)
+    .map((season) => archive("playoffs", season));
+  const draftYearSet = new Set(draftYears.map((row) => row.draftYear));
+  const draftRoutes: MetadataRoute.Sitemap = ALL_HISTORY_SEASONS
+    .filter((season) => season !== UPCOMING_SEASON && draftYearSet.has(draftYearOf(season)))
+    .map((season) => archive("draft", season));
+  const trophySeasonRoutes: MetadataRoute.Sitemap = awardSeasons
+    .slice(1)
+    .map((row) => archive("trophees", row.season));
+
   const guideRoutes: MetadataRoute.Sitemap = GUIDES.map((guide) => ({
     url: `${BASE_URL}/fr/guides/${guide.slug}`,
     lastModified: new Date("2026-07-20"),
@@ -116,6 +152,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...playerRoutes,
     ...gameRoutes,
     ...leaderboardRoutes,
+    ...teamSeasonRoutes,
+    ...playoffRoutes,
+    ...draftRoutes,
+    ...trophySeasonRoutes,
     ...guideRoutes,
   ];
 }

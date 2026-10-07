@@ -5,7 +5,7 @@ import {
   isPilotagePath,
   PILOTAGE_CHALLENGE,
 } from "@/lib/pilotage-auth";
-import { queryRouteRewrite } from "@/lib/query-routes";
+import { legacySeasonRedirect, queryRouteRewrite } from "@/lib/query-routes";
 
 const LOCALES = ["fr"];
 const DEFAULT_LOCALE = "fr";
@@ -28,6 +28,8 @@ export function proxy(request: NextRequest) {
   );
 
   if (hasLocale) {
+    const legacy = legacySeasonRedirect(request.nextUrl);
+    if (legacy) return NextResponse.redirect(legacy, 308);
     const rewrite = queryRouteRewrite(request.nextUrl);
     return rewrite ? NextResponse.rewrite(rewrite) : NextResponse.next();
   }

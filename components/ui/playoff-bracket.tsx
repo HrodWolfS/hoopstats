@@ -2,10 +2,13 @@
 
 import type { PlayoffBracketData } from "@/lib/playoffs";
 import { PlayoffSeriesCard } from "./playoff-series-card";
+import { teamSeasonHref } from "@/lib/team-links";
 
 type Props = {
   data: PlayoffBracketData;
   locale: string;
+  /** Saison en cours : ses liens d'équipe gardent l'adresse nue. */
+  liveSeason: string;
 };
 
 /** Placeholder card for a series not yet determined. */
@@ -27,8 +30,9 @@ function ConferenceLabel({ label }: { label: string }) {
   );
 }
 
-export function PlayoffBracket({ data, locale }: Props) {
+export function PlayoffBracket({ data, locale, liveSeason }: Props) {
   const { west, east, nbaFinals } = data;
+  const teamHref = (slug: string) => teamSeasonHref(locale, slug, data.season, liveSeason);
 
   // Pad arrays with nulls so justify-around works for incomplete brackets
   const pad = <T,>(arr: T[], target: number): (T | null)[] => [
@@ -93,7 +97,7 @@ export function PlayoffBracket({ data, locale }: Props) {
             <div className="flex-1 min-w-0 flex flex-col justify-around gap-3">
               {westR1.map((s, i) =>
                 s ? (
-                  <PlayoffSeriesCard key={s.key} series={s} locale={locale} />
+                  <PlayoffSeriesCard key={s.key} series={s} teamHref={teamHref} />
                 ) : (
                   <TbdCard key={i} />
                 ),
@@ -103,7 +107,7 @@ export function PlayoffBracket({ data, locale }: Props) {
             <div className="flex-1 min-w-0 flex flex-col justify-around gap-3">
               {westSemis.map((s, i) =>
                 s ? (
-                  <PlayoffSeriesCard key={s.key} series={s} locale={locale} />
+                  <PlayoffSeriesCard key={s.key} series={s} teamHref={teamHref} />
                 ) : (
                   <TbdCard key={i} />
                 ),
@@ -112,7 +116,7 @@ export function PlayoffBracket({ data, locale }: Props) {
             {/* CF */}
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               {west.finals ? (
-                <PlayoffSeriesCard series={west.finals} locale={locale} />
+                <PlayoffSeriesCard series={west.finals} teamHref={teamHref} />
               ) : (
                 <TbdCard />
               )}
@@ -125,7 +129,7 @@ export function PlayoffBracket({ data, locale }: Props) {
               <span className="text-amber-400 text-sm">🏆</span>
             </div>
             {nbaFinals ? (
-              <PlayoffSeriesCard series={nbaFinals} locale={locale} />
+              <PlayoffSeriesCard series={nbaFinals} teamHref={teamHref} />
             ) : (
               <TbdCard />
             )}
@@ -137,7 +141,7 @@ export function PlayoffBracket({ data, locale }: Props) {
             <div className="flex-1 min-w-0 flex flex-col justify-around gap-3">
               {eastR1.map((s, i) =>
                 s ? (
-                  <PlayoffSeriesCard key={s.key} series={s} locale={locale} />
+                  <PlayoffSeriesCard key={s.key} series={s} teamHref={teamHref} />
                 ) : (
                   <TbdCard key={i} />
                 ),
@@ -147,7 +151,7 @@ export function PlayoffBracket({ data, locale }: Props) {
             <div className="flex-1 min-w-0 flex flex-col justify-around gap-3">
               {eastSemis.map((s, i) =>
                 s ? (
-                  <PlayoffSeriesCard key={s.key} series={s} locale={locale} />
+                  <PlayoffSeriesCard key={s.key} series={s} teamHref={teamHref} />
                 ) : (
                   <TbdCard key={i} />
                 ),
@@ -156,7 +160,7 @@ export function PlayoffBracket({ data, locale }: Props) {
             {/* CF */}
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               {east.finals ? (
-                <PlayoffSeriesCard series={east.finals} locale={locale} />
+                <PlayoffSeriesCard series={east.finals} teamHref={teamHref} />
               ) : (
                 <TbdCard />
               )}

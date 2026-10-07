@@ -1,7 +1,8 @@
 import { type Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { ALL_SEASONS } from "@/lib/nba";
+import { ALL_SEASONS, currentSeason, SEASON_OPENERS, seasonsThrough } from "@/lib/nba";
+import { SeasonScope } from "@/components/layout/season-scope";
 import { FadeIn } from "@/components/ui/fade-in";
 import {
   PlayerExplorerTable,
@@ -169,8 +170,13 @@ export default async function PlayersPage({
     })(),
   }));
 
+  const liveSeason = currentSeason();
+  const seasons = seasonsThrough(liveSeason, ALL_SEASONS);
+  const opener = resolvedParams.season > liveSeason ? SEASON_OPENERS[resolvedParams.season] : undefined;
+
   return (
     <div className="space-y-7">
+      <SeasonScope seasons={seasons} season={resolvedParams.season} defaultSeason={liveSeason} />
       {resolvedParams.query && (
         <AnalyticsEvent
           event="player_search"
@@ -193,7 +199,7 @@ export default async function PlayersPage({
               Explorer les joueurs
             </h1>
             <p className="text-white/40 text-sm">
-              Classements personnalisés, données NBA depuis 1980-81.
+              Classements personnalisés, statistiques joueurs depuis {ALL_SEASONS[ALL_SEASONS.length - 1]}.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -233,7 +239,7 @@ export default async function PlayersPage({
               label="Saison"
               name="saison"
               value={resolvedParams.season}
-              options={ALL_SEASONS.map((season) => ({ value: season, label: season }))}
+              options={(seasons.includes(resolvedParams.season) ? seasons : [resolvedParams.season, ...seasons]).map((season) => ({ value: season, label: season }))}
             />
             <FilterSelect
               label="Équipe"
@@ -367,10 +373,23 @@ export default async function PlayersPage({
 
       {tableRows.length === 0 ? (
         <div className="rounded-2xl border border-white/[0.06] bg-[#111114] py-16 text-center space-y-2">
-          <p className="text-white/50">Aucun joueur ne correspond à ces critères.</p>
-          <p className="text-xs text-white/25">
-            Essaie une autre saison ou réduis le minimum de matchs.
-          </p>
+          {resolvedParams.season > liveSeason ? (
+            <>
+              <p className="text-white/50">La saison {resolvedParams.season} n&apos;a pas encore commencé.</p>
+              <p className="text-xs text-white/25">
+                {opener
+                  ? `Premier match le ${new Date(opener).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}.`
+                  : "Les statistiques arrivent après la première nuit de matchs."}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-white/50">Aucun joueur ne correspond à ces critères.</p>
+              <p className="text-xs text-white/25">
+                Essaie une autre saison ou réduis le minimum de matchs.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <FadeIn delay={0.08}>

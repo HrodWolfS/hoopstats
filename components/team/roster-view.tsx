@@ -2,6 +2,8 @@ import { RosterCard } from "@/components/team/roster-card";
 
 export type RosterPlayer = {
   slug: string;
+  /** Fiche du joueur, sur la saison de l'effectif. */
+  href: string;
   firstName: string;
   lastName: string;
   position: string | null;
@@ -15,31 +17,22 @@ export type RosterPlayer = {
 };
 
 type RosterViewProps = {
+  /** Joueurs alignés par l'équipe dans la saison, triés par points par match. */
   players: RosterPlayer[];
-  updatedAt: string;
-  locale: string;
+  season: string;
 };
 
-export function RosterView({ players, updatedAt, locale }: RosterViewProps) {
+export function RosterView({ players, season }: RosterViewProps) {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between text-xs text-white/40">
-        <div className="font-mono">
-          {players.length} joueurs · effectif au {updatedAt}
-        </div>
-        <div className="flex items-center gap-2 font-mono">
-          <span className="px-2 py-1 rounded-md bg-white/[0.04]">
-            Tous postes
-          </span>
-          <span className="px-2 py-1 rounded-md bg-white/[0.04]">↓ PPM</span>
-        </div>
-      </div>
+      <p className="text-xs font-mono text-white/40">
+        {players.length} joueurs alignés en {season} · triés par points par match
+      </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {players.map((p) => (
           <RosterCard
             key={p.slug}
-            slug={p.slug}
-            locale={locale}
+            href={p.href}
             firstName={p.firstName}
             lastName={p.lastName}
             position={p.position}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSyncExternalStore } from "react";
 import { useSidebar } from "./sidebar-context";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -305,6 +306,30 @@ function formatSyncAge(date: Date): string {
   return `il y a ${diffD}j`;
 }
 
+const subscribeNothing = () => () => {};
+
+/**
+ * Âge de la dernière synchro. Le HTML est mis en cache (ISR) : la durée
+ * calculée au rendu serveur n'est plus juste au chargement et casse
+ * l'hydratation. On montre donc l'heure exacte, identique des deux côtés,
+ * puis la durée une fois la page hydratée.
+ */
+function SyncAge({ date }: { date: Date }) {
+  const hydrated = useSyncExternalStore(subscribeNothing, () => true, () => false);
+  if (hydrated) return <>{formatSyncAge(date)}</>;
+  return (
+    <>
+      {new Date(date).toLocaleString("fr-FR", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Europe/Paris",
+      })}
+    </>
+  );
+}
+
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 type Props = { lastSync: Date | null };
@@ -403,7 +428,7 @@ export function SidebarClient({ lastSync }: Props) {
           {lastSync ? (
             <p className="text-[11px] text-white/40 leading-relaxed">
               Mis à jour{" "}
-              <span className="text-white/70">{formatSyncAge(lastSync)}</span>
+              <span className="text-white/70"><SyncAge date={lastSync} /></span>
             </p>
           ) : (
             <p className="text-[11px] text-white/25">

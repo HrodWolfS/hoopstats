@@ -18,6 +18,8 @@ import { SourceNote } from "@/components/ui/source-note";
 import { playerStatsOrigin } from "@/lib/data-sources";
 import { loadTeamRatings } from "@/lib/stats/team-ratings-data";
 import { teamPlayoffOutcome, teamSeasonSummary, type OutcomeSeries } from "@/lib/playoff-outcome";
+import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
+import { SeasonScope } from "@/components/layout/season-scope";
 
 export const revalidate = 21600; // 6h ISR
 
@@ -37,7 +39,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug, saison } = await params;
   const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
-  const season = saison && isSeasonParam(saison) ? saison : currentSeason();
+  const liveSeason = currentSeason();
+  const season = saison && isSeasonParam(saison) ? saison : liveSeason;
+  // Chaque saison passée a sa propre adresse canonique : son bilan, son roster et ses matchs diffèrent.
+  const pageUrl = teamSeasonHref(locale, slug, season, liveSeason);
 
   const [team, seasonRow] = await Promise.all([
     prisma.team.findUnique({
@@ -73,11 +78,11 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: { canonical: `/${locale}/equipes/${slug}` },
+    alternates: { canonical: pageUrl },
     openGraph: {
       title,
       description,
-      url: `${BASE}/fr/equipes/${slug}`,
+      url: `${BASE}${pageUrl}`,
       siteName: "hoopstats",
       images: team.logoUrl
         ? [{ url: team.logoUrl, width: 200, height: 200 }]
@@ -155,7 +160,6 @@ export default async function TeamPage({
     prisma.playerSeason.findMany({
       where: { teamId: team.id, season },
       orderBy: { pointsPerGame: "desc" },
-      take: 20,
       include: {
         player: {
           select: {
@@ -233,6 +237,9 @@ export default async function TeamPage({
     }),
   ]);
 
+  // Saison antérieure à la franchise (Raptors 1985-86…) : rien à montrer.
+  if (!seasonRow && !isLiveSeason) notFound();
+
   const seriesBySeason = new Map<string, OutcomeSeries[]>();
   for (const { season: seriesSeason, ...series } of allSeries) {
     const list = seriesBySeason.get(seriesSeason);
@@ -246,6 +253,7 @@ export default async function TeamPage({
 
   const roster: RosterPlayer[] = rosterRows.map((ps) => ({
     slug: ps.player.slug,
+    href: playerSeasonHref(locale, ps.player.slug, season, liveSeason),
     firstName: ps.player.firstName,
     lastName: ps.player.lastName,
     position: ps.player.position,
@@ -323,7 +331,6 @@ export default async function TeamPage({
     ? winPct(seasonRow.wins, seasonRow.losses)
     : null;
 
-  const rosterDate = new Date().toLocaleDateString("fr-FR");
 
   const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
 
@@ -377,6 +384,11 @@ export default async function TeamPage({
 
   return (
     <div className="space-y-10">
+      <SeasonScope
+        seasons={history.map((h) => h.season).reverse()}
+        season={season}
+        defaultSeason={liveSeason}
+      />
       <Crumbs
         items={[
           { label: "Accueil", href: `/${locale}` },
@@ -459,7 +471,13 @@ export default async function TeamPage({
       </section>
 
       {/* Insights auto-découverts */}
-      <TeamInsights insights={insights} primaryColor={team.primaryColor} />
+      <TeamInsights
+        insights={insights}
+        primaryColor={team.primaryColor}
+        season={season}
+        isLiveSeason={isLiveSeason}
+        gamesPlayed={seasonGames.length}
+      />
 
       {/* Tabs + vues */}
       <TeamTabs
@@ -471,7 +489,6 @@ export default async function TeamPage({
         history={historySeason}
         seasonGames={seasonGames}
         upcomingGames={upcomingGames}
-        rosterDate={rosterDate}
         locale={locale}
         season={season}
         teamSlug={slug}

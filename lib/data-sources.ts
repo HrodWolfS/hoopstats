@@ -11,6 +11,9 @@ import type { PlayerMetricKey } from "@/lib/stats/metrics";
  * jamais passer pour un chiffre officiel.
  */
 
+/** Première saison dont les box scores d'équipe sont en base (ratings, tendances). */
+export const TEAM_BOX_SCORES_SINCE = "2025-26";
+
 export type DataKind = "official" | "imported" | "computed";
 
 export const DATA_KIND_LABEL: Record<DataKind, string> = {

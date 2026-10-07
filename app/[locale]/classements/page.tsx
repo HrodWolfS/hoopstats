@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ALL_SEASONS, currentSeason } from "@/lib/nba";
 import { LEADERBOARDS } from "@/lib/stats/leaders";
+import { SeasonScope } from "@/components/layout/season-scope";
 
 export const metadata: Metadata = {
   title: "Classements et leaders NBA par saison | hoopstats",
@@ -21,6 +22,7 @@ export default async function LeaderboardsPage({
   const archives = ALL_SEASONS.filter((s) => s <= season);
   return (
     <div className="space-y-8">
+      <SeasonScope seasons={archives} season={season} defaultSeason={season} pathTemplate={`/${locale}/classements/{saison}/points`} />
       <div>
         <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-orange-400/70">
           Leaders NBA

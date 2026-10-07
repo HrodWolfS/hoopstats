@@ -6,13 +6,33 @@ import { prisma } from "@/lib/prisma";
 import { FadeIn } from "@/components/ui/fade-in";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { INDIVIDUAL_AWARDS } from "@/lib/awards";
+import { currentSeason } from "@/lib/nba";
+import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
+import { SeasonScope } from "@/components/layout/season-scope";
 
-export const metadata: Metadata = {
-  title: "Trophées NBA — MVP, DPOY, Champions | hoopstats",
-  description:
-    "Tous les trophées NBA depuis 2015-16 : MVP, DPOY, MIP, ROY, Sixième homme, Finals MVP, NBA Cup et champions NBA / Est / Ouest.",
-  alternates: { canonical: "/fr/trophees" },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ saison?: string }>;
+}): Promise<Metadata> {
+  const { saison } = await params;
+  const seasons = await getSeasons();
+  // Chaque saison passée est une page à part entière : elle se déclare canonique.
+  const season = saison !== undefined && saison !== seasons[0] && seasons.includes(saison) ? saison : null;
+  if (!season) {
+    return {
+      title: "Trophées NBA — MVP, DPOY, Champions | hoopstats",
+      description:
+        "Tous les trophées NBA depuis 2015-16 : MVP, DPOY, MIP, ROY, Sixième homme, Finals MVP, NBA Cup et champions NBA / Est / Ouest.",
+      alternates: { canonical: "/fr/trophees" },
+    };
+  }
+  return {
+    title: `Trophées NBA ${season} — MVP, DPOY, champions | hoopstats`,
+    description: `Palmarès NBA ${season} : MVP, DPOY, MIP, ROY, Sixième homme, Finals MVP et champions NBA / Est / Ouest.`,
+    alternates: { canonical: `/fr/trophees?saison=${season}` },
+  };
+}
 
 export const revalidate = 21600;
 
@@ -137,7 +157,7 @@ function IndividualCard({
 
   return (
     <Link
-      href={`/${locale}/joueurs/${p.slug}`}
+      href={playerSeasonHref(locale, p.slug, award.season, currentSeason())}
       className={`group relative block rounded-2xl border bg-[#111114] overflow-hidden hover:border-white/[0.12] transition ${
         highlight
           ? "border-orange-500/30 shadow-lg shadow-orange-500/[0.08]"
@@ -203,7 +223,7 @@ function ChampionCard({
   if (size === "lg") {
     return (
       <Link
-        href={`/${locale}/equipes/${t.slug}`}
+        href={teamSeasonHref(locale, t.slug, award.season, currentSeason())}
         className="group relative block overflow-hidden rounded-3xl border border-white/[0.06] hover:border-white/[0.12] transition"
         style={{
           background: `linear-gradient(135deg, ${t.primaryColor}22 0%, #111114 60%)`,
@@ -262,7 +282,7 @@ function ChampionCard({
 
   return (
     <Link
-      href={`/${locale}/equipes/${t.slug}`}
+      href={teamSeasonHref(locale, t.slug, award.season, currentSeason())}
       className="group relative block overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111114] hover:border-white/[0.12] transition"
     >
       <div
@@ -317,7 +337,7 @@ function CoachCard({
 
   return (
     <Link
-      href={t ? `/${locale}/equipes/${t.slug}` : "#"}
+      href={t ? teamSeasonHref(locale, t.slug, award.season, currentSeason()) : "#"}
       className="group relative block overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111114] hover:border-white/[0.12] transition"
     >
       {t && (
@@ -398,6 +418,7 @@ export default async function TropheesPage({
 
   return (
     <div className="space-y-8">
+      <SeasonScope seasons={seasons} season={selectedSeason} defaultSeason={seasons[0]} />
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <FadeIn>
         <section className="flex flex-wrap items-end justify-between gap-4">
@@ -424,7 +445,7 @@ export default async function TropheesPage({
             return (
               <Link
                 key={s}
-                href={`/${locale}/trophees${s === seasons[0] ? "" : `?season=${s}`}`}
+                href={`/${locale}/trophees${s === seasons[0] ? "" : `?saison=${s}`}`}
                 className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-mono transition ${
                   active
                     ? "bg-orange-500/15 text-orange-300 border border-orange-500/30"

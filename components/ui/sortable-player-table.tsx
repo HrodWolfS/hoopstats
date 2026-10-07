@@ -1,5 +1,6 @@
 "use client";
 
+import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
 import { useState } from "react";
 import Link from "next/link";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
@@ -49,6 +50,10 @@ type SortablePlayerTableProps = {
   defaultSort: ColKey;
   defaultDir?: SortDir;
   locale: string;
+  /** Saison du tableau : les fiches liées s'ouvrent sur elle. */
+  season: string;
+  /** Saison en cours, dont les liens gardent l'adresse nue. */
+  liveSeason: string;
   showCollege?: boolean;
   footerNote?: string;
 };
@@ -59,6 +64,8 @@ export function SortablePlayerTable({
   defaultSort,
   defaultDir = "desc",
   locale,
+  season,
+  liveSeason,
   showCollege = false,
   footerNote,
 }: SortablePlayerTableProps) {
@@ -161,7 +168,7 @@ export function SortablePlayerTable({
                   <td className="px-5 py-2.5 text-white/30 text-xs">{i + 1}</td>
                   <td className="px-3 py-2.5">
                     <Link
-                      href={`/${locale}/joueurs/${row.playerSlug}`}
+                      href={playerSeasonHref(locale, row.playerSlug, season, liveSeason)}
                       className="flex items-center gap-3"
                     >
                       <PlayerAvatar
@@ -188,7 +195,7 @@ export function SortablePlayerTable({
                   </td>
                   <td className="px-3 py-2.5">
                     <Link
-                      href={`/${locale}/equipes/${row.teamSlug}`}
+                      href={teamSeasonHref(locale, row.teamSlug, season, liveSeason)}
                       className="text-xs text-white/50 hover:text-white/90 transition font-sans"
                     >
                       {row.teamAbbr}

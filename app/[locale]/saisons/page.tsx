@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { currentSeason } from "@/lib/nba";
+import { currentSeason, seasonsThrough } from "@/lib/nba";
 import { stat } from "@/lib/format";
 import { isQualified, minimumGamesFor, seasonTeamGames } from "@/lib/stats/leaders";
 import { getPlayerMetric } from "@/lib/stats/metrics";
@@ -13,6 +13,8 @@ import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
 import { SourceNote } from "@/components/ui/source-note";
 import { playerStatsOrigin } from "@/lib/data-sources";
+import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
+import { SeasonScope } from "@/components/layout/season-scope";
 
 export const revalidate = 21600;
 
@@ -240,6 +242,7 @@ export default async function SaisonsPage({
 
   return (
     <div className="space-y-6">
+      <SeasonScope seasons={seasonsThrough(currentSeason())} season={season} defaultSeason={currentSeason()} />
       <FadeIn>
         <Crumbs
           items={[
@@ -293,7 +296,7 @@ export default async function SaisonsPage({
                 </p>
                 {leader.player && (
                   <Link
-                    href={`/${locale}/joueurs/${leader.player.slug}`}
+                    href={playerSeasonHref(locale, leader.player.slug, season, currentSeason())}
                     className="text-xs text-white/50 hover:text-white/90 transition truncate block"
                   >
                     {leader.player.firstName} {leader.player.lastName}
@@ -387,7 +390,7 @@ export default async function SaisonsPage({
                             </td>
                             <td className="px-2 py-2.5">
                               <Link
-                                href={`/${locale}/equipes/${row.teamSlug}`}
+                                href={teamSeasonHref(locale, row.teamSlug, season, currentSeason())}
                                 className="hover:text-white/90 transition text-white/80"
                               >
                                 <span className="hidden sm:inline">{row.teamCity} </span>

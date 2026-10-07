@@ -1,22 +1,45 @@
 import type { Insight } from "@/lib/insights";
+import { TEAM_BOX_SCORES_SINCE } from "@/lib/data-sources";
+
+/** Matchs avec box score nécessaires avant de chercher des tendances (`getTeamInsights`). */
+const INSIGHT_MIN_GAMES = 10;
 
 type Props = {
   insights: Insight[];
   primaryColor: string;
+  season: string;
+  isLiveSeason: boolean;
+  /** Matchs joués par l'équipe dans la saison. */
+  gamesPlayed: number;
 };
 
-export function TeamInsights({ insights, primaryColor }: Props) {
+/** Pourquoi aucune tendance n'est affichée, selon la saison et le nombre de matchs. */
+function emptyMessage(season: string, isLiveSeason: boolean, gamesPlayed: number): [string, string] {
+  if (season < TEAM_BOX_SCORES_SINCE) {
+    return [
+      `Tendances non disponibles pour ${season}`,
+      `Elles se calculent sur les box scores d'équipe, en base depuis ${TEAM_BOX_SCORES_SINCE}.`,
+    ];
+  }
+  if (gamesPlayed < INSIGHT_MIN_GAMES) {
+    return isLiveSeason
+      ? [
+          "Pas encore assez de matchs pour dégager des tendances",
+          `Elles apparaissent après ${INSIGHT_MIN_GAMES} matchs joués et sont recalculées chaque matin.`,
+        ]
+      : [`Pas assez de matchs en base pour ${season}`, `Il en faut ${INSIGHT_MIN_GAMES} pour dégager des tendances.`];
+  }
+  return [`Aucune tendance marquante sur ${season}`, "Aucun écart notable n'a été détecté dans les box scores de l'équipe."];
+}
+
+export function TeamInsights({ insights, primaryColor, season, isLiveSeason, gamesPlayed }: Props) {
   if (insights.length === 0) {
+    const [title, detail] = emptyMessage(season, isLiveSeason, gamesPlayed);
     return (
       <div className="rounded-2xl border border-white/[0.06] bg-[#111114] px-6 py-8 flex flex-col items-center gap-2 text-center">
         <div className="text-2xl opacity-20">🔍</div>
-        <p className="text-white/30 text-sm">
-          Pas encore assez de matchs pour dégager des tendances
-        </p>
-        <p className="text-white/20 text-xs max-w-sm">
-          Les tendances de l&apos;équipe s&apos;afficheront ici après une
-          quinzaine de matchs, mises à jour chaque matin.
-        </p>
+        <p className="text-white/30 text-sm">{title}</p>
+        <p className="text-white/20 text-xs max-w-sm">{detail}</p>
       </div>
     );
   }

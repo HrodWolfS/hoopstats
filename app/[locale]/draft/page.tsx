@@ -10,13 +10,30 @@ import {
 } from "@/lib/draft-2026";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
+import { SeasonScope } from "@/components/layout/season-scope";
 
-export const metadata: Metadata = {
-  title: "Draft NBA — résultats par saison | hoopstats",
-  description:
-    "Consultez les résultats des Drafts NBA par saison : choix, joueurs, équipes et parcours.",
-  alternates: { canonical: "/fr/draft" },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ saison?: string }>;
+}): Promise<Metadata> {
+  const { saison } = await params;
+  // Chaque draft passée est une page à part entière : elle se déclare canonique.
+  if (saison === undefined || saison === UPCOMING_SEASON || !ALL_HISTORY_SEASONS.includes(saison)) {
+    return {
+      title: "Draft NBA — résultats par saison | hoopstats",
+      description:
+        "Consultez les résultats des Drafts NBA par saison : choix, joueurs, équipes et parcours.",
+      alternates: { canonical: "/fr/draft" },
+    };
+  }
+  const year = seasonToDraftYear(saison);
+  return {
+    title: `Draft NBA ${year} — tous les choix | hoopstats`,
+    description: `Résultats de la Draft NBA ${year} (saison ${saison}) : choix par choix, joueurs, équipes et parcours.`,
+    alternates: { canonical: `/fr/draft?saison=${saison}` },
+  };
+}
 
 type DraftRow = DraftPick2026 & {
   slug?: string;
@@ -161,6 +178,7 @@ export default async function DraftPage({
   return (
     <div className="space-y-8">
       <FadeIn>
+      <SeasonScope seasons={ALL_HISTORY_SEASONS} season={season} defaultSeason={UPCOMING_SEASON} />
         <Crumbs
           items={[
             { label: "Accueil", href: `/${locale}` },

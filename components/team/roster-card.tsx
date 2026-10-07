@@ -16,8 +16,8 @@ type RosterCardProps = {
   pts: number;
   reb: number;
   ast: number;
-  slug: string;
-  locale: string;
+  /** Fiche du joueur, sur la saison de l'effectif. */
+  href: string;
 };
 
 function StatBox({ label, value }: { label: string; value: string }) {
@@ -44,14 +44,13 @@ export function RosterCard({
   pts,
   reb,
   ast,
-  slug,
-  locale,
+  href,
 }: RosterCardProps) {
   const [hover, setHover] = useState(false);
 
   return (
     <Link
-      href={`/${locale}/joueurs/${slug}`}
+      href={href}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       className="group relative rounded-2xl border border-white/[0.06] bg-[#111114] p-4 transition hover:border-white/[0.15] overflow-hidden block"

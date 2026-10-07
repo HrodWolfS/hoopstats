@@ -25,7 +25,6 @@ type TeamTabsProps = {
   /** Matchs joués de la saison sélectionnée, du plus récent au plus ancien. */
   seasonGames: GameRow[];
   upcomingGames: GameRow[];
-  rosterDate: string;
   locale: string;
   /** Saison sélectionnée : tous les onglets s'y rapportent, sauf l'historique. */
   season: string;
@@ -43,7 +42,6 @@ export function TeamTabs({
   history,
   seasonGames,
   upcomingGames,
-  rosterDate,
   locale,
   season,
   teamSlug,
@@ -64,7 +62,7 @@ export function TeamTabs({
       <Tabs tabs={tabs} active={active} onChange={setActive} />
 
       {active === "roster" && roster.length > 0 && (
-        <RosterView players={roster} updatedAt={rosterDate} locale={locale} />
+        <RosterView players={roster} season={season} />
       )}
       {active === "roster" && roster.length === 0 && isLiveSeason && (
         <div className="py-16 text-center space-y-2">

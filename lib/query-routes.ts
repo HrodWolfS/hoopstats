@@ -42,14 +42,8 @@ const QUERY_ROUTES: QueryRoute[] = [
     accepts: isSeasonParam,
   },
   {
-    path: /^\/fr\/(equipes|rookies|playoffs|saisons|draft)$/,
+    path: /^\/fr\/(equipes|rookies|playoffs|saisons|draft|trophees)$/,
     param: "saison",
-    segment: "saison",
-    accepts: isSeasonParam,
-  },
-  {
-    path: /^\/fr\/trophees$/,
-    param: "season",
     segment: "saison",
     accepts: isSeasonParam,
   },
@@ -74,4 +68,17 @@ export function queryRouteRewrite(url: URL): URL | null {
     return target;
   }
   return null;
+}
+
+/**
+ * Les trophées lisaient `?season=` : les liens déjà partagés sont renvoyés
+ * vers `?saison=`, le paramètre commun à toutes les pages. `null` sinon.
+ */
+export function legacySeasonRedirect(url: URL): URL | null {
+  if (url.pathname !== "/fr/trophees" || !url.searchParams.has("season")) return null;
+  const target = new URL(url);
+  const season = target.searchParams.get("season") ?? "";
+  target.searchParams.delete("season");
+  if (!target.searchParams.has("saison")) target.searchParams.set("saison", season);
+  return target;
 }

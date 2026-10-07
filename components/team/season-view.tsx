@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { winPct } from "@/lib/format";
+import { TEAM_BOX_SCORES_SINCE } from "@/lib/data-sources";
 import type { TeamRatingKey, TeamRatings } from "@/lib/stats/team-ratings";
 import type { PlayoffOutcome } from "@/lib/playoff-outcome";
 import { PlayoffBadge } from "@/components/team/playoff-badge";
@@ -16,8 +17,6 @@ export type SeasonStats = {
   summary: string;
 };
 
-/** Première saison couverte par les box scores d'équipe en base. */
-const TEAM_BOX_SCORES_SINCE = "2025-26";
 
 const RATING_CARDS: { key: TeamRatingKey; code: string; label: string; hint: string }[] = [
   { key: "offRating", code: "ORtg", label: "Offensive Rating", hint: "Points marqués pour 100 possessions" },

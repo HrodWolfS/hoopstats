@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { teamSeasonHref } from "@/lib/team-links";
 import { useState } from "react";
 import { ColumnHeader, ColumnHelpPanel } from "@/components/ui/column-help";
 import { stat } from "@/lib/format";
@@ -58,10 +59,11 @@ type GameLogViewProps = {
   /** Matchs de la saison, du plus récent au plus ancien. */
   logs: PlayerGameLog[];
   season: string;
+  liveSeason: string;
   locale: string;
 };
 
-export function GameLogView({ logs, season, locale }: GameLogViewProps) {
+export function GameLogView({ logs, season, liveSeason, locale }: GameLogViewProps) {
   const [page, setPage] = useState(0);
 
   if (logs.length === 0) {
@@ -144,7 +146,7 @@ export function GameLogView({ logs, season, locale }: GameLogViewProps) {
                     <Link href={`/${locale}/matchs/${log.id}`} className="hover:text-orange-300">{log.date}</Link>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
-                    <Link href={`/${locale}/equipes/${log.opponentSlug}`} className="text-white/65 hover:text-orange-300">
+                    <Link href={teamSeasonHref(locale, log.opponentSlug, season, liveSeason)} className="text-white/65 hover:text-orange-300">
                       {log.home ? "vs" : "@"} {log.opponent}
                     </Link>
                   </td>
@@ -193,7 +195,7 @@ export function GameLogView({ logs, season, locale }: GameLogViewProps) {
         <h3 className="mb-4 text-[10px] font-mono uppercase tracking-[0.16em] text-white/30">Splits par adversaire</h3>
         <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {opponentSplits.map((split) => (
-            <Link key={split.opponent} href={`/${locale}/equipes/${split.slug}`} className="flex items-center justify-between border-b border-white/[0.04] pb-2 text-xs hover:text-orange-300">
+            <Link key={split.opponent} href={teamSeasonHref(locale, split.slug, season, liveSeason)} className="flex items-center justify-between border-b border-white/[0.04] pb-2 text-xs hover:text-orange-300">
               <span className="text-white/55">{split.opponent} <span className="text-white/20">· {split.rows.length} MJ</span></span>
               <span className="font-mono tabular-nums text-white/40">{stat(average(split.rows, "pts"))} PTS</span>
             </Link>

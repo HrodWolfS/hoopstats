@@ -21,6 +21,8 @@ type PlayerTabsProps = {
   gameLogs: PlayerGameLog[];
   /** Saison du journal des matchs : celle sélectionnée, ou la dernière jouée. */
   gameSeason: string;
+  /** Saison en cours : ses liens d'équipe gardent l'adresse nue. */
+  liveSeason: string;
   locale: string;
 };
 
@@ -32,6 +34,7 @@ export function PlayerTabs({
   advanced,
   gameLogs,
   gameSeason,
+  liveSeason,
   locale,
 }: PlayerTabsProps) {
   const [active, setActive] = useState("career");
@@ -58,7 +61,7 @@ export function PlayerTabs({
         {active === "advanced" && (
           <AdvancedView seasons={advanced} primaryColor={primaryColor} />
         )}
-        {active === "games" && <GameLogView logs={gameLogs} season={gameSeason} locale={locale} />}
+        {active === "games" && <GameLogView logs={gameLogs} season={gameSeason} liveSeason={liveSeason} locale={locale} />}
       </ColumnHelpProvider>
     </div>
   );

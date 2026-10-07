@@ -4,7 +4,8 @@ import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
 import { prisma } from "@/lib/prisma";
-import { currentSeason, draftYearOf, previousSeason } from "@/lib/nba";
+import { currentSeason, draftYearOf, previousSeason, seasonsThrough } from "@/lib/nba";
+import { SeasonScope } from "@/components/layout/season-scope";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
@@ -42,7 +43,8 @@ export default async function RookiesPage({
 }) {
   const { locale, saison } = await params;
   if (saison !== undefined && !isSeasonParam(saison)) notFound();
-  const season = saison ?? (await defaultRookieSeason());
+  const defaultSeason = await defaultRookieSeason();
+  const season = saison ?? defaultSeason;
   const draftYear = draftYearOf(season);
 
   // Requête depuis Player pour inclure tous les draftés même sans stats
@@ -131,6 +133,7 @@ export default async function RookiesPage({
 
   return (
     <div className="space-y-6">
+      <SeasonScope seasons={seasonsThrough(currentSeason())} season={season} defaultSeason={defaultSeason} />
       <FadeIn>
         <Crumbs
           items={[
@@ -167,6 +170,8 @@ export default async function RookiesPage({
             defaultSort="pick"
             defaultDir="asc"
             locale={locale}
+            season={season}
+            liveSeason={currentSeason()}
             showCollege
             footerNote={`Classe ${draftYear} · Cliquer sur une colonne pour trier`}
           />

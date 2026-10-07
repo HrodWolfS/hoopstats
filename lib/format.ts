@@ -4,6 +4,11 @@ export function stat(value: number | null | undefined, decimals = 1): string {
   return value.toFixed(decimals);
 }
 
+/** Décimale à la française : « 32.7 » → « 32,7 ». Laisse « — » tel quel. */
+export function frDecimal(formatted: string): string {
+  return formatted.replace(".", ",");
+}
+
 /** Formate un pourcentage (0.584 → "58.4"). */
 export function pct(value: number | null | undefined, decimals = 1): string {
   if (value == null) return "—";

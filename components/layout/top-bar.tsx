@@ -4,38 +4,34 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ALL_NAV_ITEMS, isItemActive } from "./sidebar-client";
-import { ALL_SEASONS, ALL_HISTORY_SEASONS, UPCOMING_SEASON } from "@/lib/nba";
+import { useSeasonScope } from "./season-scope";
+import { neighbourSeasons, pageHasSeason, seasonScopeHref } from "@/lib/season-scope";
 
 // ─── Season Selector ─────────────────────────────────────────────────────────
 
-function SeasonSelector({ currentSeason }: { currentSeason: string }) {
+/**
+ * Place réservée, vide, tant que la page n'a pas transmis ses saisons : rien
+ * ne bouge à l'arrivée du sélecteur, et aucune saison n'est affichée à tort.
+ */
+function SeasonSelectorPlaceholder() {
+  return <div aria-hidden="true" className="h-[30px] w-[150px] md:w-[200px]" />;
+}
+
+function SeasonSelector() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const scope = useSeasonScope();
   const [open, setOpen] = useState(false);
 
-  const isHistoryPage =
-    pathname.includes("/equipes/") ||
-    pathname.includes("/draft") ||
-    pathname.includes("/rookies") ||
-    pathname.includes("/playoffs") ||
-    pathname.includes("/saisons");
-  const seasons = isHistoryPage ? ALL_HISTORY_SEASONS : ALL_SEASONS;
+  if (!scope) return pageHasSeason(pathname) ? <SeasonSelectorPlaceholder /> : null;
+  if (scope.seasons.length === 0) return null;
 
-  const defaultSeason = pathname.includes("/draft")
-    ? UPCOMING_SEASON
-    : currentSeason;
-  const season = searchParams.get("saison") ?? defaultSeason;
+  const { seasons, season } = scope;
+  const { older, newer } = neighbourSeasons(scope);
 
   function navigate(s: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (s === defaultSeason) {
-      params.delete("saison");
-    } else {
-      params.set("saison", s);
-    }
-    const query = params.toString();
-    router.push(pathname + (query ? `?${query}` : ""));
+    router.push(seasonScopeHref(scope!, pathname, searchParams.toString(), s));
   }
 
   function selectSeason(s: string) {
@@ -43,9 +39,8 @@ function SeasonSelector({ currentSeason }: { currentSeason: string }) {
     setOpen(false);
   }
 
-  const idx = seasons.indexOf(season);
-  const canGoNewer = idx > 0;
-  const canGoOlder = idx >= 0 && idx < seasons.length - 1;
+  const canGoNewer = newer !== null;
+  const canGoOlder = older !== null;
 
   const arrowClass =
     "flex items-center justify-center h-[30px] w-7 rounded-md border border-white/10 bg-white/[0.02] transition text-white/50";
@@ -53,7 +48,7 @@ function SeasonSelector({ currentSeason }: { currentSeason: string }) {
   return (
     <div className="flex items-center gap-1">
       <button
-        onClick={() => canGoOlder && navigate(seasons[idx + 1])}
+        onClick={() => older && navigate(older)}
         disabled={!canGoOlder}
         aria-label="Saison précédente"
         className={`${arrowClass} ${canGoOlder ? "hover:border-white/20 hover:text-white/80" : "opacity-25 cursor-not-allowed"}`}
@@ -93,7 +88,7 @@ function SeasonSelector({ currentSeason }: { currentSeason: string }) {
         {open && (
           <div className="absolute right-0 top-full mt-1.5 w-44 rounded-lg border border-white/10 bg-bg-card shadow-2xl py-1 z-30 max-h-72 overflow-y-auto">
             {seasons.map((s, i) => {
-              const showDivider = isHistoryPage && s === "2014-15" && i > 0;
+              const showDivider = s === "2014-15" && i > 0;
               return (
                 <div key={s}>
                   {showDivider && (
@@ -120,7 +115,7 @@ function SeasonSelector({ currentSeason }: { currentSeason: string }) {
       </div>
 
       <button
-        onClick={() => canGoNewer && navigate(seasons[idx - 1])}
+        onClick={() => newer && navigate(newer)}
         disabled={!canGoNewer}
         aria-label="Saison suivante"
         className={`${arrowClass} ${canGoNewer ? "hover:border-white/20 hover:text-white/80" : "opacity-25 cursor-not-allowed"}`}
@@ -234,8 +229,7 @@ function MobileDrawer({
 
 // ─── TopBar ───────────────────────────────────────────────────────────────────
 
-/** `currentSeason` vient du serveur : il suit la page mise en cache, pas l'horloge du visiteur. */
-export function TopBar({ currentSeason }: { currentSeason: string }) {
+export function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -295,7 +289,7 @@ export function TopBar({ currentSeason }: { currentSeason: string }) {
 
           {/* Season selector — poussé à droite */}
           <div className="shrink-0 ml-auto">
-            <SeasonSelector currentSeason={currentSeason} />
+            <SeasonSelector />
           </div>
         </div>
       </header>

@@ -18,11 +18,11 @@ function formatGameDate(iso: string): string {
 function TeamRow({
   team,
   isWinner,
-  locale,
+  teamHref,
 }: {
   team: PlayoffTeam;
   isWinner: boolean;
-  locale: string;
+  teamHref: (slug: string) => string;
 }) {
   const row = (
     <div
@@ -73,7 +73,7 @@ function TeamRow({
   if (team.slug) {
     return (
       <Link
-        href={`/${locale}/equipes/${team.slug}`}
+        href={teamHref(team.slug)}
         className="block hover:bg-white/[0.03] transition-colors rounded"
       >
         {row}
@@ -85,10 +85,11 @@ function TeamRow({
 
 type Props = {
   series: PlayoffSeries;
-  locale: string;
+  /** Fiche d'une équipe, sur la saison du tableau. */
+  teamHref: (slug: string) => string;
 };
 
-export function PlayoffSeriesCard({ series, locale }: Props) {
+export function PlayoffSeriesCard({ series, teamHref }: Props) {
   const { team1, team2, status, summary, completed, gameNumber } = series;
 
   const winner = completed
@@ -125,13 +126,13 @@ export function PlayoffSeriesCard({ series, locale }: Props) {
       <TeamRow
         team={team1}
         isWinner={winner === 1 || winner === null}
-        locale={locale}
+        teamHref={teamHref}
       />
       <div className="border-t border-white/[0.04]" />
       <TeamRow
         team={team2}
         isWinner={winner === 2 || winner === null}
-        locale={locale}
+        teamHref={teamHref}
       />
 
       {/* Next game */}

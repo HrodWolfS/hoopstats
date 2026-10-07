@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { stat, pct } from "@/lib/format";
+import { currentSeason } from "@/lib/nba";
+import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import type { MetricContext, PopulationSummary } from "@/lib/stats/context";
 import {
@@ -57,6 +59,7 @@ export function PlayerExplorerTable({
   previousSeason: string | null;
 }) {
   const metric = getPlayerMetric(params.metric);
+  const liveSeason = currentSeason();
   const firstRank = (params.page - 1) * pageSize + 1;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -105,7 +108,7 @@ export function PlayerExplorerTable({
                   </td>
                   <td className="px-3 py-2.5">
                     <Link
-                      href={`/${locale}/joueurs/${row.playerSlug}`}
+                      href={playerSeasonHref(locale, row.playerSlug, params.season, liveSeason)}
                       className="flex items-center gap-3"
                     >
                       <PlayerAvatar
@@ -130,7 +133,7 @@ export function PlayerExplorerTable({
                   <td className="px-3 py-2.5">
                     {row.teamSlug ? (
                       <Link
-                        href={`/${locale}/equipes/${row.teamSlug}`}
+                        href={teamSeasonHref(locale, row.teamSlug, params.season, liveSeason)}
                         className="font-sans text-xs text-white/45 hover:text-white transition"
                       >
                         {row.teamAbbr}

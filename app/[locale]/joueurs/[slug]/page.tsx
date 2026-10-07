@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { isSeasonParam } from "@/lib/query-routes";
+import { SeasonScope } from "@/components/layout/season-scope";
 import { type Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { accentOnDark } from "@/lib/color";
@@ -179,7 +180,8 @@ export default async function PlayerPage({
 }) {
   const { locale, slug, saison } = await params;
   if (saison !== undefined && !isSeasonParam(saison)) notFound();
-  const season = saison ?? currentSeason();
+  const liveSeason = currentSeason();
+  const season = saison ?? liveSeason;
 
   const player = await prisma.player.findUnique({
     where: { slug },
@@ -567,8 +569,15 @@ export default async function PlayerPage({
     ],
   };
 
+  const careerSeasons = consolidatedSeasons.map((row) => row.season).reverse();
   return (
     <div className="space-y-10">
+      {/* Saison montrée sans paramètre : la saison en cours si jouée, sinon la dernière. */}
+      <SeasonScope
+        seasons={careerSeasons}
+        season={seasonRow?.season ?? season}
+        defaultSeason={careerSeasons.includes(liveSeason) ? liveSeason : (careerSeasons[0] ?? liveSeason)}
+      />
       <div className="flex items-center justify-between gap-4">
         <Crumbs
           items={[
@@ -719,6 +728,7 @@ export default async function PlayerPage({
         advanced={advanced}
         gameLogs={gameLogs}
         gameSeason={seasonRow?.season ?? season}
+        liveSeason={liveSeason}
         locale={locale}
       />
 

@@ -96,3 +96,8 @@ export const ALL_SEASONS = seasonsDownTo(2016);
 
 /** Toutes les saisons historiques disponibles (TeamSeason backfill 1980-81+). */
 export const ALL_HISTORY_SEASONS = seasonsDownTo(1981);
+
+/** Saisons de la liste jusqu'à `last` incluse : une saison pas encore commencée n'a rien à montrer. */
+export function seasonsThrough(last: string, seasons: readonly string[] = ALL_HISTORY_SEASONS): string[] {
+  return seasons.filter((season) => season <= last);
+}

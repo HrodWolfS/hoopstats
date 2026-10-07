@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ALL_SEASONS } from "@/lib/nba";
-import { pct, stat } from "@/lib/format";
+import { ALL_SEASONS, currentSeason, seasonsThrough } from "@/lib/nba";
+import { frDecimal, pct, stat } from "@/lib/format";
+import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import {
   competitionRanks,
@@ -20,6 +21,7 @@ import { consolidateSeasonRows } from "@/lib/stats/season-totals";
 import { ShareButton } from "@/components/analytics/share-button";
 import { SourceNote } from "@/components/ui/source-note";
 import { playerStatsOrigin } from "@/lib/data-sources";
+import { SeasonScope } from "@/components/layout/season-scope";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
 
@@ -58,6 +60,7 @@ export default async function LeaderboardPage({
   const leaderboard = getLeaderboard(metric);
   if (!leaderboard || !ALL_SEASONS.includes(season)) notFound();
   const definition = getPlayerMetric(leaderboard.metric);
+  const liveSeason = currentSeason();
   // Le seuil de qualification s'applique après regroupement : un joueur
   // transféré ne doit pas être écarté parce qu'aucune de ses deux lignes ne
   // l'atteint séparément.
@@ -103,6 +106,12 @@ export default async function LeaderboardPage({
 
   return (
     <div className="space-y-7">
+      <SeasonScope
+        seasons={seasonsThrough(liveSeason, ALL_SEASONS)}
+        season={season}
+        defaultSeason={liveSeason}
+        pathTemplate={`/${locale}/classements/{saison}/${metric}`}
+      />
       <nav className="text-xs text-white/30">
         <Link href={`/${locale}/classements`} className="hover:text-white">Classements</Link>
         <span className="mx-2">/</span>{season}<span className="mx-2">/</span>{leaderboard.label}
@@ -123,7 +132,7 @@ export default async function LeaderboardPage({
       <div className="overflow-x-auto rounded-2xl border border-white/[0.06] bg-[#111114]">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-white/[0.06] text-[10px] uppercase tracking-wider text-white/30"><th className="px-3 py-3 sm:px-5 text-left">#</th><th className="px-3 py-3 text-left">Joueur</th><th className="hidden px-3 py-3 text-left sm:table-cell">Équipe</th><th className="px-3 py-3 text-right">MJ</th><th className="px-3 py-3 sm:px-5 text-right text-orange-300">{definition.shortLabel}</th></tr></thead>
-          <tbody>{leaders.map(({ row, value, gamesPlayed }, index) => <tr key={row.id} className="border-b border-white/[0.04]"><td className="px-3 py-3 sm:px-5 font-mono text-white/25">{ranks[index]}</td><td className="px-3 py-3"><Link href={`/${locale}/joueurs/${row.player.slug}`} className="font-medium text-white/80 hover:text-orange-300">{row.player.firstName} {row.player.lastName}</Link><span className="mt-0.5 block font-mono text-[11px] text-white/35 sm:hidden">{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</span></td><td className="hidden px-3 py-3 sm:table-cell"><Link href={`/${locale}/equipes/${row.team.slug}`} className="text-white/40 hover:text-white" title={row.isMultiTeam ? `Saison en ${row.stints.length} équipes : ${row.stints.map((stint) => stint.team.abbr).join(", ")}` : undefined}>{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</Link></td><td className="px-3 py-3 text-right font-mono text-white/35">{gamesPlayed}</td><td className="px-3 py-3 sm:px-5 text-right font-mono font-semibold">{definition.mode === "percentage" ? `${pct(value)} %` : stat(value)}</td></tr>)}</tbody>
+          <tbody>{leaders.map(({ row, value, gamesPlayed }, index) => <tr key={row.id} className="border-b border-white/[0.04]"><td className="px-3 py-3 sm:px-5 font-mono text-white/25">{ranks[index]}</td><td className="px-3 py-3"><Link href={playerSeasonHref(locale, row.player.slug, season, liveSeason)} className="font-medium text-white/80 hover:text-orange-300">{row.player.firstName} {row.player.lastName}</Link><span className="mt-0.5 block font-mono text-[11px] text-white/35 sm:hidden">{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</span></td><td className="hidden px-3 py-3 sm:table-cell"><Link href={teamSeasonHref(locale, row.team.slug, season, liveSeason)} className="text-white/40 hover:text-white" title={row.isMultiTeam ? `Saison en ${row.stints.length} équipes : ${row.stints.map((stint) => stint.team.abbr).join(", ")}` : undefined}>{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</Link></td><td className="px-3 py-3 text-right font-mono text-white/35">{gamesPlayed}</td><td className="px-3 py-3 sm:px-5 text-right font-mono font-semibold">{frDecimal(definition.mode === "percentage" ? `${pct(value)} %` : stat(value))}</td></tr>)}</tbody>
         </table>
         {leaders.length === 0 && (
           <p className="px-5 py-12 text-center text-sm text-white/35">
