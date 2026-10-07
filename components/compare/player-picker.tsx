@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { MIN_QUERY_LENGTH, type SearchOutcome, type SearchResult } from "@/lib/search";
 
@@ -23,6 +23,7 @@ export function PlayerPicker({
   locale,
 }: PlayerPickerProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -64,40 +65,30 @@ export function PlayerPicker({
     return () => document.removeEventListener("mousedown", handleMouseDown);
   }, []);
 
-  const buildUrl = useCallback(
-    (slug: string) => {
-      const params = new URLSearchParams();
-      if (slot === "j1") {
-        params.set("j1", slug);
-        if (otherSlug) params.set("j2", otherSlug);
-      } else {
-        if (otherSlug) params.set("j1", otherSlug);
-        params.set("j2", slug);
-      }
-      return `/${locale}/comparer?${params.toString()}`;
+  // Changer un joueur garde l'autre côté (joueur et saison) et oublie la
+  // saison de ce côté : elle appartenait au joueur remplacé.
+  const comparerUrl = useCallback(
+    (slug: string | null) => {
+      const params = new URLSearchParams(searchParams.toString());
+      const other = slot === "j1" ? "j2" : "j1";
+      if (otherSlug) params.set(other, otherSlug);
+      if (slug) params.set(slot, slug);
+      else params.delete(slot);
+      params.delete(slot === "j1" ? "s1" : "s2");
+      const qs = params.toString();
+      return `/${locale}/comparer${qs ? `?${qs}` : ""}`;
     },
-    [slot, otherSlug, locale],
+    [searchParams, slot, otherSlug, locale],
   );
-
-  const clearUrl = useCallback(() => {
-    const params = new URLSearchParams();
-    if (slot === "j1") {
-      if (otherSlug) params.set("j2", otherSlug);
-    } else {
-      if (otherSlug) params.set("j1", otherSlug);
-    }
-    const qs = params.toString();
-    return `/${locale}/comparer${qs ? `?${qs}` : ""}`;
-  }, [slot, otherSlug, locale]);
 
   function handleSelect(hit: SearchResult) {
     setOpen(false);
     setQuery("");
-    router.push(buildUrl(hit.slug));
+    router.push(comparerUrl(hit.slug));
   }
 
   function handleClear() {
-    router.push(clearUrl());
+    router.push(comparerUrl(null));
   }
 
   // Selected state

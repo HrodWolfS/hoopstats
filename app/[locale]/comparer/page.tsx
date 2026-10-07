@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -7,10 +8,12 @@ import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { PlayerPicker } from "@/components/compare/player-picker";
+import { SeasonSelect } from "@/components/compare/season-select";
 import { stat, pct } from "@/lib/format";
 import { getPlayerMetric } from "@/lib/stats/metrics";
-import { MULTI_TEAM_ABBR, mostRecentCommonSeason } from "@/lib/stats/career";
-import { consolidatePlayerCareer } from "@/lib/stats/season-totals";
+import { MULTI_TEAM_ABBR } from "@/lib/stats/career";
+import { resolveComparisonSeasons, SMALL_SAMPLE_GAMES } from "@/lib/stats/compare";
+import { consolidatePlayerCareer, loadShotVolume, type ShotVolume } from "@/lib/stats/season-totals";
 import type { Consolidated } from "@/lib/stats/season-consolidation";
 import { AnalyticsEvent } from "@/components/analytics/analytics-event";
 import { ShareButton } from "@/components/analytics/share-button";
@@ -38,6 +41,7 @@ type PlayerWithSeasons = {
     playerId: string;
     season: string;
     gamesPlayed: number;
+    minutesPerGame: number;
     pointsPerGame: number;
     reboundsPerGame: number;
     assistsPerGame: number;
@@ -95,10 +99,42 @@ type StatRowDef = {
   label: string;
   getValue: (
     s: PlayerWithSeasons["seasons"][number],
+    volume: ShotVolume | null,
   ) => number | null | undefined;
   format: (v: number | null | undefined) => string;
-  higherIsBetter?: boolean;
 };
+
+/**
+ * Volume de jeu : affiché à côté des moyennes pour juger de leur poids, sans
+ * désigner de « meilleur ». Les tentatives viennent des box scores.
+ */
+const VOLUME_ROWS: StatRowDef[] = [
+  {
+    label: "Matchs joués",
+    getValue: (s) => s.gamesPlayed,
+    format: (v) => (v == null ? "—" : String(v)),
+  },
+  {
+    label: getPlayerMetric("minutesPerGame").label,
+    getValue: (s) => s.minutesPerGame,
+    format: (v) => stat(v),
+  },
+  {
+    label: "Tirs tentés / match",
+    getValue: (_, volume) => volume?.fgaPerGame,
+    format: (v) => stat(v),
+  },
+  {
+    label: "Tirs à 3 pts tentés / match",
+    getValue: (_, volume) => volume?.threePaPerGame,
+    format: (v) => stat(v),
+  },
+  {
+    label: "Lancers francs tentés / match",
+    getValue: (_, volume) => volume?.ftaPerGame,
+    format: (v) => stat(v),
+  },
+];
 
 const STAT_ROWS: StatRowDef[] = [
   {
@@ -160,10 +196,10 @@ export default async function ComparerPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ j1?: string; j2?: string }>;
+  searchParams: Promise<{ j1?: string; j2?: string; s1?: string; s2?: string; saison?: string }>;
 }) {
   const { locale } = await params;
-  const { j1, j2 } = await searchParams;
+  const { j1, j2, s1: requested1, s2: requested2, saison } = await searchParams;
 
   // ── Empty / partial state ──────────────────────────────────────────────────
   if (!j1 || !j2) {
@@ -200,7 +236,7 @@ export default async function ComparerPage({
 
         <FadeIn delay={0.05}>
           <div className="flex flex-col items-center gap-8 py-16">
-            <p className="text-white/40 text-sm">
+            <p className="text-white/40 text-sm text-center">
               Sélectionne deux joueurs pour les comparer
             </p>
             <div className="grid grid-cols-2 gap-6 w-full max-w-2xl">
@@ -251,6 +287,17 @@ export default async function ComparerPage({
                 </Suspense>
               </div>
             </div>
+            {(player1Data ?? player2Data) && (() => {
+              const alone = (player1Data ?? player2Data)!;
+              return (
+                <Link
+                  href={`/${locale}/comparer?j1=${alone.slug}&j2=${alone.slug}`}
+                  className="text-sm text-white/50 underline underline-offset-4 transition hover:text-white/80"
+                >
+                  Ou comparer {alone.firstName} {alone.lastName} à lui-même sur deux saisons
+                </Link>
+              );
+            })()}
           </div>
         </FadeIn>
       </div>
@@ -262,30 +309,52 @@ export default async function ComparerPage({
 
   if (!p1 || !p2) notFound();
 
-  // Comparer la même saison par défaut. À défaut de recouvrement, on garde la
-  // dernière saison de chacun mais on l'affiche explicitement : pas de
-  // substitution silencieuse (feuille de route § 0.3).
   const [seasons1, seasons2] = await Promise.all([
     seasonRowsBySeason(p1.seasons),
     seasonRowsBySeason(p2.seasons),
   ]);
-  const commonSeason = mostRecentCommonSeason(p1.seasons, p2.seasons);
-
-  const s1 = commonSeason
-    ? (seasons1.get(commonSeason) ?? null)
-    : (seasons1.get(p1.seasons[0]?.season) ?? null);
-  const s2 = commonSeason
-    ? (seasons2.get(commonSeason) ?? null)
-    : (seasons2.get(p2.seasons[0]?.season) ?? null);
+  const samePlayer = p1.slug === p2.slug;
+  // Même saison par défaut, saisons demandées respectées, saison absente
+  // signalée plutôt que remplacée en silence (lib/stats/compare.ts). La
+  // saison globale du site (`saison`) sert de demande commune.
+  const choice = resolveComparisonSeasons({
+    seasons1: [...seasons1.keys()],
+    seasons2: [...seasons2.keys()],
+    requested1: requested1 ?? (samePlayer ? null : saison),
+    requested2: requested2 ?? (samePlayer ? null : saison),
+    samePlayer,
+  });
+  const s1 = choice.season1 ? (seasons1.get(choice.season1) ?? null) : null;
+  const s2 = choice.season2 ? (seasons2.get(choice.season2) ?? null) : null;
+  const [volume1, volume2] = await Promise.all([
+    s1 ? loadShotVolume(p1.id, s1.season) : null,
+    s2 ? loadShotVolume(p2.id, s2.season) : null,
+  ]);
 
   const seasonsDiffer = s1 != null && s2 != null && s1.season !== s2.season;
+  // Saison commune la plus proche du choix : celle du joueur 2, sinon celle du joueur 1.
+  const alignSeason =
+    samePlayer || !s1 || !s2
+      ? null
+      : seasons1.has(s2.season)
+        ? s2.season
+        : seasons2.has(s1.season)
+          ? s1.season
+          : null;
+  const seasonList1 = [...seasons1.keys()].reverse();
+  const seasonList2 = [...seasons2.keys()].reverse();
 
   const p1Primary = s1?.team.primaryColor ?? "#7C3AED";
   const p1Secondary = s1?.team.secondaryColor ?? "#06B6D4";
   const p2Primary = s2?.team.primaryColor ?? "#7C3AED";
   const p2Secondary = s2?.team.secondaryColor ?? "#06B6D4";
 
-  const season = commonSeason ?? s1?.season ?? s2?.season ?? currentSeason();
+  const season = s1?.season ?? s2?.season ?? currentSeason();
+  const sides = [
+    { slot: "j1" as const, player: p1, row: s1, color: p1Primary },
+    { slot: "j2" as const, player: p2, row: s2, color: p2Primary },
+  ];
+  const noVolume = (volume1 === null && s1) || (volume2 === null && s2);
 
   return (
     <div className="space-y-8">
@@ -354,10 +423,10 @@ export default async function ComparerPage({
 
       {/* ── Player header cards ── */}
       <FadeIn delay={0.1}>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4">
           {/* Player 1 card */}
           <div
-            className="rounded-2xl border border-white/[0.06] bg-[#111114] p-6 flex flex-col items-center gap-3"
+            className="min-w-0 rounded-2xl border border-white/[0.06] bg-[#111114] p-3 sm:p-6 flex flex-col items-center gap-3"
             style={{ borderTop: `3px solid ${p1Primary}` }}
           >
             <PlayerAvatar
@@ -368,9 +437,10 @@ export default async function ComparerPage({
               photoUrl={p1.photoUrl}
               size="xl"
               showNum={false}
+              className="max-sm:[&>div]:h-20 max-sm:[&>div]:w-20 max-sm:[&>div]:text-2xl"
             />
             <div className="text-center">
-              <h2 className="font-display font-semibold text-xl tracking-tight">
+              <h2 className="font-display font-semibold text-base sm:text-xl tracking-tight break-words">
                 {p1.firstName} {p1.lastName}
               </h2>
               <p className="text-white/40 text-sm mt-0.5">
@@ -381,14 +451,14 @@ export default async function ComparerPage({
 
           {/* VS */}
           <div className="flex flex-col items-center gap-1">
-            <span className="font-display font-bold text-2xl text-white/20">
+            <span className="font-display font-bold text-lg sm:text-2xl text-white/20">
               VS
             </span>
           </div>
 
           {/* Player 2 card */}
           <div
-            className="rounded-2xl border border-white/[0.06] bg-[#111114] p-6 flex flex-col items-center gap-3"
+            className="min-w-0 rounded-2xl border border-white/[0.06] bg-[#111114] p-3 sm:p-6 flex flex-col items-center gap-3"
             style={{ borderTop: `3px solid ${p2Primary}` }}
           >
             <PlayerAvatar
@@ -399,9 +469,10 @@ export default async function ComparerPage({
               photoUrl={p2.photoUrl}
               size="xl"
               showNum={false}
+              className="max-sm:[&>div]:h-20 max-sm:[&>div]:w-20 max-sm:[&>div]:text-2xl"
             />
             <div className="text-center">
-              <h2 className="font-display font-semibold text-xl tracking-tight">
+              <h2 className="font-display font-semibold text-base sm:text-xl tracking-tight break-words">
                 {p2.firstName} {p2.lastName}
               </h2>
               <p className="text-white/40 text-sm mt-0.5">
@@ -415,93 +486,87 @@ export default async function ComparerPage({
       {/* ── Comparison table ── */}
       <FadeIn delay={0.15}>
         <div className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden">
-          {/* Table header */}
-          <div className="grid grid-cols-3 border-b border-white/[0.06] px-4 py-3">
-            <div className="text-xs text-white/40 uppercase tracking-wider">
-              {seasonsDiffer ? "STATS" : `STATS ${season}`}
+          {/* Table header : saison choisie de chaque côté */}
+          <div className="grid grid-cols-3 gap-2 border-b border-white/[0.06] px-4 py-3">
+            <div className="self-center text-xs text-white/40 uppercase tracking-wider">
+              {seasonsDiffer ? "Stats" : `Stats ${season}`}
             </div>
-            <div className="flex flex-col items-center">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: p1Primary }}
-                />
-                <span className="text-xs font-medium text-white/70 truncate">
-                  {p1.lastName}
-                </span>
-              </div>
-              {seasonsDiffer && (
-                <span className="text-[10px] text-amber-300/70 font-mono">
-                  {s1?.season}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: p2Primary }}
-                />
-                <span className="text-xs font-medium text-white/70 truncate">
-                  {p2.lastName}
-                </span>
-              </div>
-              {seasonsDiffer && (
-                <span className="text-[10px] text-amber-300/70 font-mono">
-                  {s2?.season}
-                </span>
-              )}
-            </div>
+            {sides.map(({ slot, player, row, color }) => {
+              const other = slot === "j1" ? s2 : s1;
+              return (
+                <div key={slot} className="flex min-w-0 flex-col items-center gap-1.5">
+                  <div className="flex max-w-full items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="truncate text-xs font-medium text-white/70">{player.lastName}</span>
+                  </div>
+                  {row && (
+                    <Suspense fallback={<div className="h-9 w-full rounded-lg bg-white/[0.03]" />}>
+                      <SeasonSelect
+                        slot={slot}
+                        seasons={slot === "j1" ? seasonList1 : seasonList2}
+                        value={row.season}
+                        otherValue={other?.season ?? null}
+                        otherSeasons={slot === "j1" ? seasonList2 : seasonList1}
+                        samePlayer={samePlayer}
+                        label={`Saison de ${player.firstName} ${player.lastName}`}
+                      />
+                    </Suspense>
+                  )}
+                  {row && row.gamesPlayed < SMALL_SAMPLE_GAMES && (
+                    <span className="text-center text-[10px] leading-tight text-amber-300/80">
+                      Échantillon faible ({row.gamesPlayed} match{row.gamesPlayed > 1 ? "s" : ""})
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {seasonsDiffer && (
+          {choice.unavailable.map(({ slot, season: missing }) => {
+            const player = slot === "j1" ? p1 : p2;
+            const shown = slot === "j1" ? s1 : s2;
+            return (
+              <div key={slot} className="flex items-start gap-3 border-b border-white/[0.06] bg-amber-500/[0.04] px-4 py-3">
+                <span className="shrink-0 text-amber-400/70">⚠</span>
+                <p className="text-xs leading-relaxed text-white/50">
+                  {player.firstName} {player.lastName} n&apos;a pas joué en {missing}
+                  {shown ? ` : saison ${shown.season} affichée à la place.` : "."}
+                </p>
+              </div>
+            );
+          })}
+
+          {seasonsDiffer && !samePlayer && (
             <div className="flex items-start gap-3 border-b border-white/[0.06] bg-amber-500/[0.04] px-4 py-3">
               <span className="shrink-0 text-amber-400/70">⚠</span>
               <p className="text-xs leading-relaxed text-white/50">
-                Ces deux joueurs n&apos;ont aucune saison en commun : la
-                comparaison porte sur des saisons différentes, dans des
-                contextes de jeu qui ne sont pas équivalents.
+                Saisons différentes : {s1?.season} contre {s2?.season}. Les contextes de jeu ne sont pas
+                équivalents.{" "}
+                {alignSeason ? (
+                  <Link
+                    href={`/${locale}/comparer?j1=${p1.slug}&j2=${p2.slug}&s1=${alignSeason}&s2=${alignSeason}`}
+                    scroll={false}
+                    className="text-white/70 underline underline-offset-2 hover:text-white"
+                  >
+                    Comparer les deux en {alignSeason}
+                  </Link>
+                ) : (
+                  "Ces deux joueurs n'ont aucune saison en commun."
+                )}
               </p>
             </div>
           )}
 
-          {/* Stat rows */}
-          {STAT_ROWS.map((row, i) => {
-            const v1 = s1 ? row.getValue(s1) : null;
-            const v2 = s2 ? row.getValue(s2) : null;
-            const n1 = v1 ?? 0;
-            const n2 = v2 ?? 0;
-            const p1Better = n1 >= n2;
-            const p2Better = n2 >= n1;
-            const tied = n1 === n2;
-
-            return (
-              <div
-                key={row.label}
-                className={`grid grid-cols-3 items-center px-4 py-3 ${i % 2 === 1 ? "bg-white/[0.015]" : ""}`}
-              >
-                <div className="text-xs text-white/40">{row.label}</div>
-                <div
-                  className={`text-center text-sm tabular-nums ${
-                    !tied && p1Better
-                      ? "text-white font-semibold"
-                      : "text-white/50"
-                  }`}
-                >
-                  {row.format(v1)}
-                </div>
-                <div
-                  className={`text-center text-sm tabular-nums ${
-                    !tied && p2Better
-                      ? "text-white font-semibold"
-                      : "text-white/50"
-                  }`}
-                >
-                  {row.format(v2)}
-                </div>
-              </div>
-            );
-          })}
+          <SectionLabel>Moyennes par match</SectionLabel>
+          <StatRows rows={STAT_ROWS} left={s1} right={s2} volumes={[volume1, volume2]} highlight />
+          <SectionLabel>Volume de jeu</SectionLabel>
+          <StatRows rows={VOLUME_ROWS} left={s1} right={s2} volumes={[volume1, volume2]} />
+          {noVolume && (
+            <p className="border-t border-white/[0.06] px-4 py-3 text-[11px] leading-relaxed text-white/35">
+              Tentatives de tir calculées sur les feuilles de match, disponibles en base
+              uniquement pour les saisons récentes.
+            </p>
+          )}
         </div>
       </FadeIn>
 
@@ -511,12 +576,15 @@ export default async function ComparerPage({
           Historique carrière
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[
-            { player: p1, color: p1Primary, seasons: seasons1 },
-            { player: p2, color: p2Primary, seasons: seasons2 },
-          ].map(({ player, color, seasons }) => (
+          {(samePlayer
+            ? [{ player: p1, color: p1Primary, seasons: seasons1, selected: [s1?.season, s2?.season], slotKey: "j1" }]
+            : [
+                { player: p1, color: p1Primary, seasons: seasons1, selected: [s1?.season], slotKey: "j1" },
+                { player: p2, color: p2Primary, seasons: seasons2, selected: [s2?.season], slotKey: "j2" },
+              ]
+          ).map(({ player, color, seasons, selected, slotKey }) => (
             <div
-              key={player.slug}
+              key={`${player.slug}-${slotKey}`}
               className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden"
             >
               <div
@@ -559,7 +627,10 @@ export default async function ComparerPage({
                     {[...seasons.values()].reverse().map((s) => (
                       <tr
                         key={s.season}
-                        className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition"
+                        aria-current={selected.includes(s.season) ? "true" : undefined}
+                        className={`border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition ${
+                          selected.includes(s.season) ? "bg-white/[0.04]" : ""
+                        }`}
                       >
                         <td className="px-4 py-2 text-white/60 font-mono">
                           {s.season}
@@ -602,4 +673,46 @@ export default async function ComparerPage({
       </FadeIn>
     </div>
   );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-b border-white/[0.04] bg-white/[0.02] px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-white/30">
+      {children}
+    </div>
+  );
+}
+
+function StatRows({
+  rows,
+  left,
+  right,
+  volumes,
+  highlight = false,
+}: {
+  rows: StatRowDef[];
+  left: SeasonRow | null;
+  right: SeasonRow | null;
+  volumes: [ShotVolume | null, ShotVolume | null];
+  /** Met en avant la meilleure valeur ; jamais pour le volume de jeu. */
+  highlight?: boolean;
+}) {
+  return rows.map((row, i) => {
+    const v1 = left ? row.getValue(left, volumes[0]) : null;
+    const v2 = right ? row.getValue(right, volumes[1]) : null;
+    // Égalité jugée sur la valeur affichée : pas de gras pour « 0.6 » contre « 0.6 ».
+    const comparable = highlight && v1 != null && v2 != null && row.format(v1) !== row.format(v2);
+    const cell = (value: number | null | undefined, wins: boolean) =>
+      `text-center text-sm tabular-nums ${comparable && wins ? "text-white font-semibold" : value == null ? "text-white/25" : "text-white/60"}`;
+    return (
+      <div
+        key={row.label}
+        className={`grid grid-cols-3 items-center gap-2 px-4 py-3 ${i % 2 === 1 ? "bg-white/[0.015]" : ""}`}
+      >
+        <div className="text-xs text-white/40">{row.label}</div>
+        <div className={cell(v1, comparable && v1! > v2!)}>{row.format(v1)}</div>
+        <div className={cell(v2, comparable && v2! > v1!)}>{row.format(v2)}</div>
+      </div>
+    );
+  });
 }

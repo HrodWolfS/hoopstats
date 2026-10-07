@@ -123,3 +123,35 @@ export async function consolidatePlayerCareer<
 
   return { seasons, exactBySeason };
 }
+
+export type ShotVolume = {
+  games: number;
+  fgaPerGame: number;
+  threePaPerGame: number;
+  ftaPerGame: number;
+};
+
+/**
+ * Tentatives de tir par match sur une saison régulière, tirées des box
+ * scores. `null` quand la saison n'en a pas en base : `PlayerSeason` ne
+ * stocke que les pourcentages, pas les volumes.
+ */
+export async function loadShotVolume(playerId: string, season: string): Promise<ShotVolume | null> {
+  const result = await prisma.playerBoxScore.aggregate({
+    where: {
+      playerId,
+      didNotPlay: false,
+      game: { season, status: "final", phase: REGULAR_SEASON_PHASE },
+    },
+    _sum: { fga: true, threePa: true, fta: true },
+    _count: true,
+  });
+  const games = result._count;
+  if (games === 0) return null;
+  return {
+    games,
+    fgaPerGame: (result._sum.fga ?? 0) / games,
+    threePaPerGame: (result._sum.threePa ?? 0) / games,
+    ftaPerGame: (result._sum.fta ?? 0) / games,
+  };
+}
