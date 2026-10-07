@@ -11,6 +11,7 @@ import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
 import {
   consolidatePlayerCareer,
   consolidateSeasonRows,
+  loadPlayerSeasonTotals,
 } from "@/lib/stats/season-totals";
 import { PlayerTabs } from "@/components/player/player-tabs";
 import {
@@ -192,8 +193,11 @@ export default async function PlayerPage({
 
   // Une ligne par saison : un joueur transféré n'est pas réduit à l'un de
   // ses passages (bandeau, radar, joueurs similaires, stats avancées).
-  const { seasons: consolidatedSeasons, exactBySeason } =
-    await consolidatePlayerCareer(player.seasons);
+  const [{ seasons: consolidatedSeasons, exactBySeason }, totalsBySeason] =
+    await Promise.all([
+      consolidatePlayerCareer(player.seasons),
+      loadPlayerSeasonTotals(player.id),
+    ]);
   const seasonRow =
     consolidatedSeasons.find((s) => s.season === season) ??
     consolidatedSeasons[consolidatedSeasons.length - 1] ??
@@ -452,6 +456,7 @@ export default async function PlayerPage({
       { fgPct: exact.fgPct, threePtPct: exact.threePtPct, ftPct: exact.ftPct },
     ]),
   );
+  const seasonTotals = Object.fromEntries(totalsBySeason);
   const career: CareerSeason[] = player.seasons.map((ps) => ({
     season: ps.season,
     teamAbbr: ps.team.abbr,
@@ -681,6 +686,7 @@ export default async function PlayerPage({
         primaryColor={accentColor}
         career={career}
         careerShooting={careerShooting}
+        seasonTotals={seasonTotals}
         advanced={advanced}
         gameLogs={gameLogs}
         locale={locale}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import { CareerView, type CareerSeason } from "@/components/player/career-view";
 import type { SeasonShooting } from "@/lib/stats/career";
+import type { SeasonTotals } from "@/lib/stats/season-aggregation";
 import {
   AdvancedView,
   type AdvancedSeason,
@@ -14,6 +15,7 @@ type PlayerTabsProps = {
   primaryColor: string;
   career: CareerSeason[];
   careerShooting: Record<string, SeasonShooting>;
+  seasonTotals: Record<string, SeasonTotals>;
   advanced: AdvancedSeason[];
   gameLogs: PlayerGameLog[];
   locale: string;
@@ -29,6 +31,7 @@ export function PlayerTabs({
   primaryColor,
   career,
   careerShooting,
+  seasonTotals,
   advanced,
   gameLogs,
   locale,
@@ -42,6 +45,7 @@ export function PlayerTabs({
         <CareerView
           seasons={career}
           exactShooting={careerShooting}
+          seasonTotals={seasonTotals}
           primaryColor={primaryColor}
         />
       )}

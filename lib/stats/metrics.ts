@@ -238,6 +238,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     description:
       "Métrique NBA estimant la part de la performance totale d’un match attribuable au joueur. Ce champ ne contient pas le PER de John Hollinger.",
     formula: "Métrique propriétaire NBA.com",
+    unit: "%",
     source: "NBA Stats API",
     availableSince: "2015-16",
     higherIsBetter: true,
@@ -343,7 +344,7 @@ export function validatePlayerMetricRegistry(): string[] {
     if ((rule === "none") !== (gamesShare === 0)) {
       errors.push(`règle de qualification incohérente : ${metric.key}`);
     }
-    if (metric.mode === "percentage" && metric.unit !== "%" && metric.key !== "per") {
+    if (metric.mode === "percentage" && metric.unit !== "%") {
       errors.push(`unité pourcentage manquante : ${metric.key}`);
     }
     keys.add(metric.key);

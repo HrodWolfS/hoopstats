@@ -14,8 +14,11 @@ import { prisma } from "@/lib/prisma";
 import { REGULAR_SEASON_PHASE } from "@/lib/season-phase";
 import {
   deriveSeasonFromBoxScores,
+  sumSeasonTotals,
   type BoxScoreLine,
   type DerivedSeason,
+  type SeasonTotals,
+  type StarterBoxScoreLine,
 } from "@/lib/stats/season-aggregation";
 import {
   consolidatePlayerSeasons,
@@ -154,4 +157,50 @@ export async function loadShotVolume(playerId: string, season: string): Promise<
     threePaPerGame: (result._sum.threePa ?? 0) / games,
     ftaPerGame: (result._sum.fta ?? 0) / games,
   };
+}
+
+/**
+ * Totaux exacts d'un joueur, saison régulière par saison régulière, toutes
+ * équipes confondues. Seules les saisons couvertes par les box scores y
+ * figurent : pour les autres, aucun total n'est affiché plutôt qu'un produit
+ * moyenne × matchs faussé par l'arrondi des moyennes.
+ */
+export async function loadPlayerSeasonTotals(playerId: string): Promise<Map<string, SeasonTotals>> {
+  const rows = await prisma.playerBoxScore.findMany({
+    where: {
+      playerId,
+      didNotPlay: false,
+      game: { status: "final", phase: REGULAR_SEASON_PHASE },
+    },
+    select: {
+      starter: true,
+      minutes: true,
+      pts: true,
+      reb: true,
+      ast: true,
+      stl: true,
+      blk: true,
+      fgm: true,
+      fga: true,
+      threePm: true,
+      threePa: true,
+      ftm: true,
+      fta: true,
+      game: { select: { season: true } },
+    },
+  });
+
+  const bySeason = new Map<string, StarterBoxScoreLine[]>();
+  for (const { game, ...line } of rows) {
+    const lines = bySeason.get(game.season);
+    if (lines) lines.push(line);
+    else bySeason.set(game.season, [line]);
+  }
+
+  const totals = new Map<string, SeasonTotals>();
+  for (const [season, lines] of bySeason) {
+    const seasonTotals = sumSeasonTotals(lines);
+    if (seasonTotals) totals.set(season, seasonTotals);
+  }
+  return totals;
 }

@@ -107,6 +107,54 @@ export function deriveSeasonFromBoxScores(
   };
 }
 
+/** Ligne de box score avec le statut de titulaire, pour les totaux. */
+export type StarterBoxScoreLine = BoxScoreLine & { starter: boolean };
+
+/**
+ * Totaux exacts d'une saison, additionnés match par match. Contrairement aux
+ * moyennes stockées (arrondies au dixième pour l'historique), `moyenne ×
+ * matchs` n'est pas un total : seuls les box scores en donnent un.
+ */
+export type SeasonTotals = {
+  games: number;
+  starts: number;
+  minutes: number;
+  pts: number;
+  reb: number;
+  ast: number;
+  stl: number;
+  blk: number;
+  fgm: number;
+  fga: number;
+  threePm: number;
+  threePa: number;
+  ftm: number;
+  fta: number;
+};
+
+/** Totaux d'une saison, ou `null` sans aucune ligne. */
+export function sumSeasonTotals(
+  lines: readonly StarterBoxScoreLine[],
+): SeasonTotals | null {
+  if (lines.length === 0) return null;
+  return {
+    games: lines.length,
+    starts: lines.filter((line) => line.starter).length,
+    minutes: lines.reduce((total, line) => total + parseMinutes(line.minutes), 0),
+    pts: sum(lines, (line) => line.pts),
+    reb: sum(lines, (line) => line.reb),
+    ast: sum(lines, (line) => line.ast),
+    stl: sum(lines, (line) => line.stl),
+    blk: sum(lines, (line) => line.blk),
+    fgm: sum(lines, (line) => line.fgm),
+    fga: sum(lines, (line) => line.fga),
+    threePm: sum(lines, (line) => line.threePm),
+    threePa: sum(lines, (line) => line.threePa),
+    ftm: sum(lines, (line) => line.ftm),
+    fta: sum(lines, (line) => line.fta),
+  };
+}
+
 // ── Auto-contrôles ───────────────────────────────────────────────────────────
 
 function line(partial: Partial<BoxScoreLine>): BoxScoreLine {
@@ -185,6 +233,21 @@ export function validateSeasonAggregation(): string[] {
   const ts = deriveSeasonFromBoxScores([line({ pts: 20, fga: 10, fta: 4 })]);
   if (!near(ts?.trueShooting ?? null, 20 / (2 * (10 + 0.44 * 4)))) {
     errors.push("formule de true shooting incorrecte");
+  }
+
+  // Totaux : sommes match par match, titularisations comptées.
+  const totals = sumSeasonTotals([
+    { ...line({ minutes: "30:30", pts: 20, fgm: 8, fga: 16 }), starter: true },
+    { ...line({ minutes: "20", pts: 10, fgm: 2, fga: 4 }), starter: false },
+  ]);
+  if (totals?.games !== 2 || totals.starts !== 1) {
+    errors.push("totaux : matchs ou titularisations incorrects");
+  }
+  if (totals?.pts !== 30 || totals.fga !== 20 || !near(totals.minutes, 50.5)) {
+    errors.push("totaux : sommes incorrectes");
+  }
+  if (sumSeasonTotals([]) !== null) {
+    errors.push("totaux inventés pour une saison sans match");
   }
 
   return errors;

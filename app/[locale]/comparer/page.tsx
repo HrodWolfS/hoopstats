@@ -176,7 +176,7 @@ const STAT_ROWS: StatRowDef[] = [
     label: getPlayerMetric("per").shortLabel,
     getValue: (s) => s.per,
     metric: "per",
-    format: (v) => stat(v),
+    format: (v) => pct(v),
   },
   {
     label: getPlayerMetric("netRating").shortLabel,
