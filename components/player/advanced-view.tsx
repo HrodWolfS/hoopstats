@@ -1,3 +1,4 @@
+import { ColumnHeader, ColumnHelpPanel } from "@/components/ui/column-help";
 import { stat, pct } from "@/lib/format";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 
@@ -57,19 +58,20 @@ export function AdvancedView({ seasons, primaryColor }: AdvancedViewProps) {
 
       {/* Table */}
       <div className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden">
+        <ColumnHelpPanel />
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[560px]">
             <thead>
               <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-wider text-white/40">
                 <th className="text-left px-5 py-3 font-medium">Saison</th>
                 <th className="text-left px-3 py-3 font-medium">Équipe</th>
-                <th className="text-right px-3 py-3 font-medium">MJ</th>
-                <th className="text-right px-3 py-3 font-medium">TS%</th>
-                <th className="text-right px-3 py-3 font-medium">USG%</th>
-                <th className="text-right px-3 py-3 font-medium">PIE</th>
-                <th className="text-right px-3 py-3 font-medium">ORtg</th>
-                <th className="text-right px-3 py-3 font-medium">DRtg</th>
-                <th className="text-right px-5 py-3 font-medium">NRtg</th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="MJ" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="TS%" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="USG%" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="PIE" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="ORtg" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="DRtg" /></th>
+                <th className="text-right px-5 py-3 font-medium"><ColumnHeader code="NRtg" /></th>
               </tr>
             </thead>
             <tbody className="font-mono tabular-nums">

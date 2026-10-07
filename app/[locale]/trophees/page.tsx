@@ -5,6 +5,7 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { FadeIn } from "@/components/ui/fade-in";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
+import { INDIVIDUAL_AWARDS } from "@/lib/awards";
 
 export const metadata: Metadata = {
   title: "Trophées NBA — MVP, DPOY, Champions | hoopstats",
@@ -40,19 +41,6 @@ type AwardRow = {
     logoUrl: string | null;
   } | null;
 };
-
-// ── Config awards ────────────────────────────────────────────────────────────
-
-const INDIVIDUAL_AWARDS: { type: string; label: string; sub: string }[] = [
-  { type: "MVP", label: "MVP", sub: "Most Valuable Player" },
-  { type: "FMVP", label: "Finals MVP", sub: "MVP des finales NBA" },
-  { type: "DPOY", label: "DPOY", sub: "Defensive Player of the Year" },
-  { type: "ROY", label: "ROY", sub: "Rookie of the Year" },
-  { type: "MIP", label: "MIP", sub: "Most Improved Player" },
-  { type: "SMOY", label: "6e homme", sub: "Sixth Man of the Year" },
-  { type: "CPOY", label: "Clutch", sub: "Clutch Player of the Year" },
-  { type: "NBA_CUP_MVP", label: "Cup MVP", sub: "NBA Cup MVP" },
-];
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 

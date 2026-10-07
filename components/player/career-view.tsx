@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ColumnHeader, ColumnHelpPanel } from "@/components/ui/column-help";
 import { LineChart } from "@/components/ui/line-chart";
 import { stat, pct } from "@/lib/format";
 import {
@@ -167,23 +168,24 @@ export function CareerView({
             ))}
           </div>
         </div>
+        <ColumnHelpPanel />
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[780px]">
             <thead>
               <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-wider text-white/40">
                 <th className="sticky left-0 z-10 bg-[#111114] text-left px-4 sm:px-5 py-3 font-medium">Saison</th>
                 <th className="text-left px-3 py-3 font-medium">Équipe</th>
-                <th className="text-right px-3 py-3 font-medium" title="Matchs joués">MJ</th>
-                <th className="text-right px-3 py-3 font-medium" title="Titularisations">TIT</th>
-                <th className="text-right px-3 py-3 font-medium">MIN</th>
-                <th className="text-right px-3 py-3 font-medium">PTS</th>
-                <th className="text-right px-3 py-3 font-medium">REB</th>
-                <th className="text-right px-3 py-3 font-medium">PAS</th>
-                <th className="text-right px-3 py-3 font-medium">INT</th>
-                <th className="text-right px-3 py-3 font-medium">CTR</th>
-                <th className="text-right px-3 py-3 font-medium" title="Tirs : pourcentage, réussis/tentés">FG%</th>
-                <th className="text-right px-3 py-3 font-medium" title="Tirs à trois points : pourcentage, réussis/tentés">3P%</th>
-                <th className="text-right px-4 sm:px-5 py-3 font-medium" title="Lancers francs : pourcentage, réussis/tentés">LF%</th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="MJ" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="TIT" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="MIN" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="PTS" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="REB" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="PAS" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="INT" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="CTR" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="FG%" /></th>
+                <th className="text-right px-3 py-3 font-medium"><ColumnHeader code="3P%" /></th>
+                <th className="text-right px-4 sm:px-5 py-3 font-medium"><ColumnHeader code="LF%" /></th>
               </tr>
             </thead>
             <tbody className="font-mono tabular-nums">

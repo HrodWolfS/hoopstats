@@ -14,6 +14,7 @@ import {
   loadPlayerSeasonTotals,
 } from "@/lib/stats/season-totals";
 import { PlayerTabs } from "@/components/player/player-tabs";
+import { PlayerAwards } from "@/components/player/player-awards";
 import {
   PlayerRadarChart,
   type RadarStat,
@@ -193,11 +194,20 @@ export default async function PlayerPage({
 
   // Une ligne par saison : un joueur transféré n'est pas réduit à l'un de
   // ses passages (bandeau, radar, joueurs similaires, stats avancées).
-  const [{ seasons: consolidatedSeasons, exactBySeason }, totalsBySeason] =
+  const [{ seasons: consolidatedSeasons, exactBySeason }, totalsBySeason, awardRows] =
     await Promise.all([
       consolidatePlayerCareer(player.seasons),
       loadPlayerSeasonTotals(player.id),
+      prisma.award.findMany({
+        where: { playerId: player.id },
+        select: { type: true, season: true, team: { select: { abbr: true } } },
+      }),
     ]);
+  const awards = awardRows.map((row) => ({
+    type: row.type,
+    season: row.season,
+    teamAbbr: row.team?.abbr ?? null,
+  }));
   const seasonRow =
     consolidatedSeasons.find((s) => s.season === season) ??
     consolidatedSeasons[consolidatedSeasons.length - 1] ??
@@ -251,14 +261,32 @@ export default async function PlayerPage({
         month: "2-digit",
         timeZone: "Europe/Paris",
       }),
+      fullDate: row.game.gameDate.toLocaleDateString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+        timeZone: "Europe/Paris",
+      }),
       opponent: opponent.abbr,
       opponentSlug: opponent.slug,
       home,
       won: (teamScore ?? 0) > (opponentScore ?? 0),
+      teamScore,
+      opponentScore,
+      starter: row.starter,
       minutes: row.minutes,
       pts: row.pts,
       reb: row.reb,
       ast: row.ast,
+      stl: row.stl,
+      blk: row.blk,
+      tov: row.tov,
+      fgm: row.fgm,
+      fga: row.fga,
+      threePm: row.threePm,
+      threePa: row.threePa,
+      ftm: row.ftm,
+      fta: row.fta,
       plusMinus: row.plusMinus,
     };
   });
@@ -679,6 +707,7 @@ export default async function PlayerPage({
         </section>
       )}
 
+      <PlayerAwards awards={awards} locale={locale} />
       <PlayerInsights insights={playerInsights} />
       <SimilarPlayers players={similarPlayers} locale={locale} />
 
@@ -689,6 +718,7 @@ export default async function PlayerPage({
         seasonTotals={seasonTotals}
         advanced={advanced}
         gameLogs={gameLogs}
+        gameSeason={seasonRow?.season ?? season}
         locale={locale}
       />
 
