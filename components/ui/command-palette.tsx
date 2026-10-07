@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { TeamMono } from "@/components/ui/team-mono";
-import type { SearchResult } from "@/app/api/search/route";
+import { sendAnalyticsEvent } from "@/components/analytics/analytics-event";
+import { MIN_QUERY_LENGTH, type SearchOutcome, type SearchResult } from "@/lib/search";
+
+type Outcome = "results" | "empty";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -31,7 +35,12 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [approximate, setApproximate] = useState(false);
+  const [settledQuery, setSettledQuery] = useState("");
   const [active, setActive] = useState(0);
+  // Issue de la dernière recherche, mesurée à la fermeture : une recherche
+  // compte une fois, pas à chaque lettre tapée. La requête n'est jamais envoyée.
+  const outcomeRef = useRef<Outcome | null>(null);
 
   // Track pathname to detect navigation without an effect
   const [prevPathname, setPrevPathname] = useState(pathname);
@@ -53,16 +62,22 @@ export function CommandPalette() {
 
   // ── Derived display state ────────────────────────────────────────────────
   // isPending: query typed but debounce hasn't fired yet → show spinner
-  const isPending = query.length >= 2 && query !== debouncedQuery;
-  const displayResults = debouncedQuery.length >= 2 ? results : [];
-  const displayActive = debouncedQuery.length >= 2 ? active : 0;
+  const isPending =
+    query.length >= MIN_QUERY_LENGTH && (query !== debouncedQuery || settledQuery !== debouncedQuery);
+  const displayResults = debouncedQuery.length >= MIN_QUERY_LENGTH ? results : [];
+  const displayActive = debouncedQuery.length >= MIN_QUERY_LENGTH ? active : 0;
 
   // ── Open / close ─────────────────────────────────────────────────────────
 
-  const close = useCallback(() => {
+  const close = useCallback((selected = false) => {
+    const outcome = outcomeRef.current;
+    if (selected) sendAnalyticsEvent("global_search", "selected");
+    else if (outcome) sendAnalyticsEvent("global_search", outcome === "empty" ? "empty" : "no_click");
+    outcomeRef.current = null;
     setOpen(false);
     setQuery("");
     setResults([]);
+    setSettledQuery("");
     setActive(0);
   }, []);
 
@@ -89,13 +104,20 @@ export function CommandPalette() {
   // ── Search (setState only in async callbacks, never synchronously) ───────
 
   useEffect(() => {
-    if (debouncedQuery.length < 2) return;
-    fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}`)
+    if (debouncedQuery.length < MIN_QUERY_LENGTH) return;
+    // Une réponse lente ne doit pas écraser celle d'une saisie plus récente.
+    const controller = new AbortController();
+    fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}`, { signal: controller.signal })
       .then((r) => r.json())
-      .then((data: { results: SearchResult[] }) => {
+      .then((data: SearchOutcome) => {
         setResults(data.results);
+        setApproximate(data.approximate);
+        setSettledQuery(debouncedQuery);
         setActive(0);
-      });
+        outcomeRef.current = data.results.length > 0 ? "results" : "empty";
+      })
+      .catch(() => {});
+    return () => controller.abort();
   }, [debouncedQuery]);
 
   // ── Keyboard navigation ──────────────────────────────────────────────────
@@ -128,7 +150,7 @@ export function CommandPalette() {
         ? `/${locale}/joueurs/${result.slug}`
         : `/${locale}/equipes/${result.slug}`;
     router.push(href);
-    close();
+    close(true);
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -137,14 +159,17 @@ export function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4"
-      onClick={close}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[8vh] sm:pt-[15vh] px-4"
+      onClick={() => close()}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       {/* Panel */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Recherche globale"
         className="relative w-full max-w-xl bg-[#16161A] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -168,8 +193,21 @@ export function CommandPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Rechercher un joueur ou une équipe…"
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-white/30 outline-none"
+            type="search"
+            role="combobox"
+            aria-expanded={displayResults.length > 0}
+            aria-controls="global-search-results"
+            aria-activedescendant={
+              displayResults[displayActive] ? `global-search-option-${displayActive}` : undefined
+            }
+            aria-autocomplete="list"
+            enterKeyHint="go"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="Joueur, équipe, surnom…"
+            className="flex-1 min-w-0 bg-transparent text-base sm:text-sm text-white placeholder:text-white/30 outline-none [&::-webkit-search-cancel-button]:hidden"
           />
           {isPending && (
             <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin flex-shrink-0" />
@@ -180,11 +218,28 @@ export function CommandPalette() {
         </div>
 
         {/* Results */}
+        {approximate && displayResults.length > 0 && (
+          <p className="px-4 pt-3 text-[11px] text-amber-300/80">
+            Aucune correspondance exacte pour « {settledQuery} » : orthographes proches
+          </p>
+        )}
         {displayResults.length > 0 && (
-          <ul ref={listRef} className="max-h-80 overflow-y-auto py-1.5">
+          <ul
+            ref={listRef}
+            id="global-search-results"
+            role="listbox"
+            aria-label="Résultats"
+            className="max-h-[50vh] sm:max-h-80 overflow-y-auto py-1.5"
+          >
             {displayResults.map((result, i) => (
-              <li key={`${result.type}-${result.slug}`}>
+              <li
+                key={`${result.type}-${result.slug}`}
+                id={`global-search-option-${i}`}
+                role="option"
+                aria-selected={i === displayActive}
+              >
                 <button
+                  tabIndex={-1}
                   onClick={() => navigate(result)}
                   onMouseEnter={() => setActive(i)}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition ${
@@ -216,9 +271,11 @@ export function CommandPalette() {
                     <div className="text-sm font-medium truncate">
                       {result.label}
                     </div>
-                    {result.sub && (
-                      <div className="text-[11px] text-white/40 font-sans">
-                        {result.sub}
+                    {(result.sub || result.matchedAlias) && (
+                      <div className="text-[11px] leading-snug text-white/40 font-sans">
+                        {[result.matchedAlias && `« ${result.matchedAlias} »`, result.sub]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </div>
                     )}
                   </div>
@@ -238,17 +295,30 @@ export function CommandPalette() {
         )}
 
         {/* Empty state */}
-        {query.length >= 2 && !isPending && displayResults.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-white/30 font-mono">
-            Aucun résultat pour « {query} »
+        {query.length >= MIN_QUERY_LENGTH && !isPending && displayResults.length === 0 && (
+          <div className="px-4 py-6 text-sm text-white/40 space-y-2">
+            <p className="text-white/60">Aucun joueur ni équipe pour « {query} ».</p>
+            <p className="text-[12px] leading-relaxed">
+              La recherche couvre les 30 équipes et tous les joueurs ayant disputé
+              un match NBA depuis 1980-81. Essayez le nom de famille seul, ou
+              parcourez{" "}
+              <Link href={`/${locale}/joueurs`} className="underline underline-offset-2 hover:text-white/80" onClick={() => close()}>
+                les joueurs
+              </Link>{" "}
+              et{" "}
+              <Link href={`/${locale}/equipes`} className="underline underline-offset-2 hover:text-white/80" onClick={() => close()}>
+                les équipes
+              </Link>
+              .
+            </p>
           </div>
         )}
 
         {/* Hint */}
-        {query.length < 2 && (
-          <div className="px-4 py-4 flex items-center justify-between text-[11px] text-white/20">
-            <span>Tapez au moins 2 caractères</span>
-            <div className="flex items-center gap-3">
+        {query.length < MIN_QUERY_LENGTH && (
+          <div className="px-4 py-4 flex items-center justify-between gap-3 text-[11px] text-white/30">
+            <span>Joueurs depuis 1980-81, équipes, surnoms (« Shaq », « Sixers »)</span>
+            <div className="hidden sm:flex items-center gap-3 shrink-0">
               <span className="flex items-center gap-1">
                 <kbd className="px-1 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] font-mono">
                   ↑↓

@@ -1,5 +1,6 @@
 export const ANALYTICS_EVENTS = [
   "player_search",
+  "global_search",
   "filter_apply",
   "comparison",
   "share",

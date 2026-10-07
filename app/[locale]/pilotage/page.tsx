@@ -56,6 +56,13 @@ export default async function PilotagePage({
     events
       .filter((row) => row.event === event)
       .reduce((sum, row) => sum + (row._sum.count ?? 0), 0);
+  const count = (event: string, dimension: string) =>
+    events
+      .filter((row) => row.event === event && row.dimension === dimension)
+      .reduce((sum, row) => sum + (row._sum.count ?? 0), 0);
+  const globalSearches = total("global_search");
+  const globalEmpty = count("global_search", "empty");
+  const globalEmptyRate = globalSearches ? Math.round((globalEmpty / globalSearches) * 100) : null;
   const sitemapEstimate = 3 + 8 + teams + players + games + 66;
 
   return (
@@ -69,7 +76,7 @@ export default async function PilotagePage({
         <form method="get"><input type="month" name="mois" defaultValue={month} className="rounded-lg border border-white/[0.08] bg-[#111114] px-3 py-2 text-sm" /><button className="ml-2 rounded-lg bg-orange-600 px-3 py-2 text-sm">Afficher</button></form>
       </div>
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Recherches" value={total("player_search")} />
+        <Kpi label="Recherches" value={total("player_search") + globalSearches} />
         <Kpi label="Filtres appliqués" value={total("filter_apply")} />
         <Kpi label="Comparaisons" value={total("comparison")} />
         <Kpi label="Partages" value={total("share")} />
@@ -80,6 +87,16 @@ export default async function PilotagePage({
           <Row label="Box scores manquants" value={boxScoreMissing} alert={boxScoreMissing > 0} />
           <Row label="Identités nommées non résolues" value={unresolved} alert={unresolved > 0} />
           <Row label="Synchronisations en erreur" value={failedSyncs} alert={failedSyncs > 0} />
+        </Panel>
+        <Panel title="Recherche globale">
+          <Row label="Recherches (⌘K)" value={globalSearches} />
+          <Row label="Suivies d’un clic sur un résultat" value={count("global_search", "selected")} />
+          <Row label="Sans résultat" value={globalEmpty} />
+          <Row
+            label="Taux sans résultat (objectif < 10 %)"
+            value={globalEmptyRate === null ? "—" : `${globalEmptyRate} %`}
+            alert={globalEmptyRate !== null && globalEmptyRate >= 10}
+          />
         </Panel>
         <Panel title="Acquisition et exploitation">
           <Row label="URLs estimées dans le sitemap" value={sitemapEstimate} />

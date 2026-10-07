@@ -3,16 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
-
-type SearchHit = {
-  type: string;
-  slug: string;
-  label: string;
-  sub: string;
-  photoUrl: string | null;
-  primaryColor: string;
-  secondaryColor: string;
-};
+import { MIN_QUERY_LENGTH, type SearchOutcome, type SearchResult } from "@/lib/search";
 
 type PlayerPickerProps = {
   slot: "j1" | "j2";
@@ -33,23 +24,22 @@ export function PlayerPicker({
 }: PlayerPickerProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchHit[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Debounced search — only runs when query >= 2 chars
   useEffect(() => {
-    if (query.length < 2) return;
+    if (query.length < MIN_QUERY_LENGTH) return;
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        const playerHits: SearchHit[] = (data.results ?? []).filter(
-          (r: SearchHit) => r.type === "player",
-        );
-        setResults(playerHits.slice(0, 6));
+        // Même moteur que la palette, restreint aux joueurs.
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&type=player`);
+        const data: SearchOutcome = await res.json();
+        const playerHits = data.results.slice(0, 6);
+        setResults(playerHits);
         setOpen(playerHits.length > 0);
       } catch {
         setResults([]);
@@ -100,7 +90,7 @@ export function PlayerPicker({
     return `/${locale}/comparer${qs ? `?${qs}` : ""}`;
   }, [slot, otherSlug, locale]);
 
-  function handleSelect(hit: SearchHit) {
+  function handleSelect(hit: SearchResult) {
     setOpen(false);
     setQuery("");
     router.push(buildUrl(hit.slug));
