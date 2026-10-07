@@ -82,6 +82,12 @@ describe("trophées : ?season= devient ?saison=", () => {
     expect(rewrite?.pathname).toBe("/fr/trophees/saison/2018-19");
     expect(queryRouteRewrite(new URL("https://hoopstats.fr/fr/trophees?season=2018-19"))).toBeNull();
   });
+
+  it("garde fenêtre et tri des tendances en réécrivant la saison", () => {
+    const rewrite = queryRouteRewrite(new URL("https://hoopstats.fr/fr/tendances?saison=2025-26&fenetre=20&tri=ts"));
+    expect(rewrite?.pathname).toBe("/fr/tendances/saison/2025-26");
+    expect(rewrite?.search).toBe("?fenetre=20&tri=ts");
+  });
 });
 
 describe("décimale à la française", () => {

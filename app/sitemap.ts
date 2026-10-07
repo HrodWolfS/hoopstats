@@ -70,6 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "playoffs",
     "draft",
     "rookies",
+    "tendances",
     "trophees",
     "meilleurs-5",
     "sources",

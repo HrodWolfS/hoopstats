@@ -1,5 +1,6 @@
 import { type Metadata } from "next";
 import { NIGHT_RULES } from "@/lib/stats/night";
+import { TREND_RULES } from "@/lib/stats/trends";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { qualificationRule } from "@/lib/stats/leaders";
@@ -336,6 +337,29 @@ export default async function SourcesPage() {
         </p>
         <dl className="space-y-2">
           {NIGHT_RULES.map((item) => (
+            <div key={item.title} className="rounded-xl border border-white/[0.06] bg-[#111114] px-5 py-4">
+              <dt className="text-sm font-medium text-white/80">{item.title}</dt>
+              <dd className="mt-1 text-xs leading-relaxed text-white/50">{item.rule}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {/* Tendances */}
+      <section id="tendances" className="scroll-mt-20 space-y-4">
+        <h2 className="text-lg font-display font-semibold text-white">
+          Règles des tendances
+        </h2>
+        <p className="text-xs leading-relaxed text-white/40">
+          La page{" "}
+          <Link href="/fr/tendances" className="underline decoration-white/20 underline-offset-2 hover:text-white">
+            Tendances
+          </Link>{" "}
+          compare les derniers matchs joués de chaque joueur à sa moyenne de
+          saison régulière, avec ces règles.
+        </p>
+        <dl className="space-y-2">
+          {TREND_RULES.map((item) => (
             <div key={item.title} className="rounded-xl border border-white/[0.06] bg-[#111114] px-5 py-4">
               <dt className="text-sm font-medium text-white/80">{item.title}</dt>
               <dd className="mt-1 text-xs leading-relaxed text-white/50">{item.rule}</dd>

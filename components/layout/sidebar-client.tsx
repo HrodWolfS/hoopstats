@@ -71,6 +71,21 @@ function IconCompare() {
   );
 }
 
+function IconTrends() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M3 17l6-6 4 4 8-8M15 7h6v6" />
+    </svg>
+  );
+}
+
 function IconSeasons() {
   return (
     <svg
@@ -232,6 +247,12 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     label: "Classements",
     icon: <IconTrophy />,
     href: "/fr/classements",
+  },
+  {
+    id: "trends",
+    label: "Tendances",
+    icon: <IconTrends />,
+    href: "/fr/tendances",
   },
   {
     id: "guides",
