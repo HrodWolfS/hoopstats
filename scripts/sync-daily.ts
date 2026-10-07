@@ -3,9 +3,14 @@
  *
  * Ce script est déclenché chaque matin à 6h (Paris) par GitHub Actions.
  * Il met à jour :
- *   1. TeamSeason 2025-26 (standings ESPN API — fonctionne depuis GitHub Actions)
- *   2. summaryFr des équipes (régénération template)
+ *   1. TeamSeason de la saison en cours (standings ESPN API — fonctionne depuis GitHub Actions)
+ *   2. Matchs, séries de playoffs, box scores et agrégats joueurs
  *   3. Invalide le cache ISR Vercel via /api/revalidate
+ *
+ * Le résumé de saison d'une équipe n'est plus écrit en base : la page le
+ * compose au rendu depuis le bilan et les séries de playoffs vérifiés
+ * (`teamSeasonSummary`). L'ancien gabarit lisait le code de qualification
+ * ESPN comme un résultat de playoffs.
  *
  * Note : les stats joueurs (PlayerSeason) ne sont pas syncées ici car
  * stats.nba.com et BDL bulk sont bloqués depuis les IPs CI.
@@ -496,73 +501,6 @@ async function syncCurrentPlayoffs(): Promise<{
   return { upserted, skipped };
 }
 
-// ─── 4. Régénération résumés équipes ─────────────────────────────────────────
-// Note : les biographies joueurs sont générées séparément (script one-shot)
-// car elles sont stables dans le temps (draft, université, parcours).
-
-async function regenerateSummaries(): Promise<void> {
-  console.log("\n📝 Régénération résumés équipes…");
-
-  // Équipes
-  const teamSeasons = await prisma.teamSeason.findMany({
-    where: { season: CURRENT_SEASON },
-    include: { team: { select: { city: true, name: true, conference: true } } },
-  });
-
-  const perfLevel = (w: number, l: number) => {
-    const pct = w / (w + l);
-    if (pct >= 0.7) return "exceptionnelle";
-    if (pct >= 0.6) return "très solide";
-    if (pct >= 0.5) return "positive";
-    if (pct >= 0.4) return "difficile";
-    return "compliquée";
-  };
-
-  const rankLabel = (r: number | null) => {
-    if (!r) return "";
-    if (r === 1) return "en tête de leur conférence (1re place)";
-    if (r <= 3) return `dans le top 3 de leur conférence (${r}e)`;
-    if (r <= 6) return `en bonne position pour les playoffs (${r}e)`;
-    return `au ${r}e rang de leur conférence`;
-  };
-
-  const playoffOutcome = (code: string | null) => {
-    if (!code) return "n'ont pas de résultat de playoff enregistré";
-    const c = code
-      .replace(/\s*-\s*/, "")
-      .toLowerCase()
-      .trim();
-    if (c === "w") return "ont remporté le titre NBA";
-    if (c === "e")
-      return "ont atteint les Finales NBA (champions de la Conférence Est)";
-    if (["a", "se", "c"].includes(c))
-      return "ont remporté leur division (Conférence Est)";
-    if (["nw", "sw", "p"].includes(c))
-      return "ont remporté leur division (Conférence Ouest)";
-    if (c === "x") return "se sont qualifiés pour les playoffs";
-    if (c === "pi") return "ont participé au play-in";
-    return "n'ont pas accédé aux playoffs";
-  };
-
-  let teamDone = 0;
-  for (const ts of teamSeasons) {
-    const confFr = ts.team.conference === "East" ? "Est" : "Ouest";
-    const perf = perfLevel(ts.wins, ts.losses);
-    const rankStr = rankLabel(ts.conferenceRank);
-    const outcome = playoffOutcome(ts.playoffResult);
-    const summary =
-      `Les ${ts.team.city} ${ts.team.name} ont réalisé une saison ${CURRENT_SEASON} ${perf} ` +
-      `avec un bilan de ${ts.wins}-${ts.losses}${rankStr ? `, terminant ${rankStr}` : ""} ` +
-      `en Conférence ${confFr}. À l'issue de la saison régulière, ils ${outcome}.`;
-    await prisma.teamSeason.update({
-      where: { id: ts.id },
-      data: { summaryFr: summary },
-    });
-    teamDone++;
-  }
-  console.log(`  ✅ ${teamDone} résumés équipes régénérés`);
-}
-
 // ─── 4. Revalidate Vercel ISR ─────────────────────────────────────────────────
 
 async function revalidateVercel(): Promise<void> {
@@ -599,7 +537,6 @@ async function main() {
     const standingsResult = await syncStandings();
     const gamesResult = await syncRecentGames();
     const playoffsResult = await syncCurrentPlayoffs();
-    await regenerateSummaries();
 
     // Box scores ESPN pour les matchs terminés des 7 derniers jours
     console.log("\n📊 Sync box scores ESPN…");

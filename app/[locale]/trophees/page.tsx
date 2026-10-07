@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { FadeIn } from "@/components/ui/fade-in";
+import { ActiveChipRow } from "@/components/ui/active-chip-row";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { INDIVIDUAL_AWARDS } from "@/lib/awards";
 import { currentSeason } from "@/lib/nba";
@@ -439,13 +440,14 @@ export default async function TropheesPage({
 
       {/* ── Sélecteur saison ───────────────────────────────────────────── */}
       <FadeIn delay={0.04}>
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+        <ActiveChipRow className="relative flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
           {seasons.map((s) => {
             const active = s === selectedSeason;
             return (
               <Link
                 key={s}
                 href={`/${locale}/trophees${s === seasons[0] ? "" : `?saison=${s}`}`}
+                aria-current={active ? "page" : undefined}
                 className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-mono transition ${
                   active
                     ? "bg-orange-500/15 text-orange-300 border border-orange-500/30"
@@ -456,7 +458,7 @@ export default async function TropheesPage({
               </Link>
             );
           })}
-        </div>
+        </ActiveChipRow>
       </FadeIn>
 
       {/* ── Champion NBA (hero) ────────────────────────────────────────── */}

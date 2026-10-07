@@ -45,7 +45,6 @@ export function CommandPalette() {
   // Track pathname to detect navigation without an effect
   const [prevPathname, setPrevPathname] = useState(pathname);
 
-  const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
   const debouncedQuery = useDebounce(query, 250);
@@ -93,13 +92,6 @@ export function CommandPalette() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [close]);
-
-  // Focus input when opening
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [open]);
 
   // ── Search (setState only in async callbacks, never synchronously) ───────
 
@@ -188,8 +180,10 @@ export function CommandPalette() {
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
             />
           </svg>
+          {/* Focus dès le montage, dans le même geste que l'ouverture : une
+              frappe immédiate n'est pas perdue et le clavier iOS s'ouvre. */}
           <input
-            ref={inputRef}
+            autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
