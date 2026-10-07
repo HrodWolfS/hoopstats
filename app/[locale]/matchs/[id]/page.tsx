@@ -4,7 +4,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { periodLabel } from "@/lib/game-status";
+import {
+  capitalizeFirst,
+  checkScore,
+  dayKeyOf,
+  dayShort,
+  dayTitle,
+  hasBlockingIssue,
+  LEADER_STATS,
+  overtimeLabel,
+  pickLeaders,
+  SCORE_ISSUE_LABELS,
+  type LeaderLine,
+} from "@/lib/schedule";
 import { frDecimal, pct as formatPct } from "@/lib/format";
+import { nightLabel } from "@/lib/stats/night";
 import { SourceNote } from "@/components/ui/source-note";
 
 export const revalidate = 300;
@@ -821,6 +835,80 @@ function TeamStatsComparison({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+function toLeaderLine(player: PlayerRow): LeaderLine {
+  const value = (raw: string) => {
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  return { name: player.name, slug: player.slug, pts: value(player.pts), reb: value(player.reb), ast: value(player.ast) };
+}
+
+/** Meilleur joueur de chaque équipe en points, rebonds et passes. */
+function GameLeaders({
+  away,
+  home,
+  awayAbbr,
+  homeAbbr,
+  locale,
+}: {
+  away: TeamBoxScore;
+  home: TeamBoxScore;
+  awayAbbr: string;
+  homeAbbr: string;
+  locale: string;
+}) {
+  const played = (team: TeamBoxScore) => team.players.filter((player) => !player.didNotPlay).map(toLeaderLine);
+  const leaders = { away: pickLeaders(played(away)), home: pickLeaders(played(home)) };
+  const cell = (side: "away" | "home", key: (typeof LEADER_STATS)[number]["key"]) => {
+    const leader = leaders[side][key];
+    if (!leader) return <span className="text-white/25">—</span>;
+    return (
+      <span className="[overflow-wrap:anywhere]">
+        {leader.players.map((player, index) => (
+          <span key={player.name}>
+            {index > 0 && ", "}
+            {player.slug ? (
+              <Link href={`/${locale}/joueurs/${player.slug}`} className="text-white/80 hover:text-orange-300 hover:underline">
+                {player.name}
+              </Link>
+            ) : (
+              <span className="text-white/80">{player.name}</span>
+            )}
+          </span>
+        ))}{" "}
+        <span className="font-mono tabular-nums text-white">{leader.value}</span>
+      </span>
+    );
+  };
+  return (
+    <section aria-labelledby="leaders-titre" className="space-y-3">
+      <h2 id="leaders-titre" className="font-display font-semibold text-lg tracking-tight">
+        Meilleurs du match
+      </h2>
+      <div className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden">
+        <table className="w-full table-fixed text-sm">
+          <thead>
+            <tr className="text-[10px] uppercase tracking-wider text-white/35 font-mono">
+              <th className="w-[4.5rem] sm:w-28 px-3 py-2 text-left font-medium">Stat</th>
+              <th className="px-2 py-2 text-left font-medium">{awayAbbr}</th>
+              <th className="px-2 py-2 text-left font-medium">{homeAbbr}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.04]">
+            {LEADER_STATS.map(({ key, label }) => (
+              <tr key={key} className="align-top">
+                <th scope="row" className="px-3 py-2.5 text-left text-xs font-normal text-white/45">{label}</th>
+                <td className="px-2 py-2.5">{cell("away", key)}</td>
+                <td className="px-2 py-2.5">{cell("home", key)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default async function MatchPage({
   params,
 }: {
@@ -891,11 +979,18 @@ export default async function MatchPage({
       return total + (Number.isFinite(points) ? points : 0);
     }, 0);
 
-  const hasIncompletePlayerTotals =
-    isFinal &&
-    boxScore != null &&
-    (playerPointsTotal(boxScore.away) !== game.awayScore ||
-      playerPointsTotal(boxScore.home) !== game.homeScore);
+  // Contrôle du score avant affichage (lib/schedule.ts, règles sur /sources#matchs).
+  const scoreIssues = checkScore({
+    status: game.status,
+    homeScore: game.homeScore,
+    awayScore: game.awayScore,
+    homeLinescores: dbBoxScore?.linescores?.home ?? null,
+    awayLinescores: dbBoxScore?.linescores?.away ?? null,
+    homePlayerPoints: boxScore ? playerPointsTotal(boxScore.home) : null,
+    awayPlayerPoints: boxScore ? playerPointsTotal(boxScore.away) : null,
+  });
+  const scoreUnverified = hasBlockingIssue(scoreIssues);
+  const hasIncompletePlayerTotals = scoreIssues.includes("player_points_mismatch");
 
   // Quarter scores : DB en priorité, sinon ESPN header
   const competition = espnData?.header?.competitions?.[0];
@@ -914,17 +1009,15 @@ export default async function MatchPage({
         home: homeComp?.linescores?.[i]?.displayValue ?? "—",
       }));
 
-  const homeWon = isFinal && (game.homeScore ?? 0) > (game.awayScore ?? 0);
-  const awayWon = isFinal && (game.awayScore ?? 0) > (game.homeScore ?? 0);
+  const decided = isFinal && !scoreUnverified;
+  const homeWon = decided && (game.homeScore ?? 0) > (game.awayScore ?? 0);
+  const awayWon = decided && (game.awayScore ?? 0) > (game.homeScore ?? 0);
+  const overtime = isFinal && quarters ? overtimeLabel(quarters.length) : null;
+  const dayKey = dayKeyOf(game.gameDate);
+  const parisTime = game.gameDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 
-  const gameDate = new Date(game.gameDate);
-  const displayDate = gameDate.toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/Paris",
-  });
+  // Journée NBA (date de New York), comme la page Matchs et le fil d'Ariane.
+  const displayDate = dayTitle(dayKey);
   const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
   const jsonLdGame = {
     "@context": "https://schema.org",
@@ -952,12 +1045,19 @@ export default async function MatchPage({
   return (
     <div className="space-y-8 max-w-4xl">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs text-white/30">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/30">
         <Link
           href={`/${locale}/matchs`}
           className="hover:text-white/60 transition"
         >
           Matchs
+        </Link>
+        <span>/</span>
+        <Link
+          href={`/${locale}/matchs?date=${dayKey}`}
+          className="hover:text-white/60 transition"
+        >
+          Journée du {dayShort(dayKey)}
         </Link>
         <span>/</span>
         <span className="text-white/50">
@@ -1018,9 +1118,19 @@ export default async function MatchPage({
             )}
 
             <div className="flex flex-col items-center gap-1">
-              {isFinal && (
+              {isFinal && !scoreUnverified && (
                 <span className="text-[10px] font-mono uppercase tracking-widest text-white/30">
-                  Final
+                  Final{overtime ? ` · ${overtime}` : ""}
+                </span>
+              )}
+              {scoreUnverified && (
+                <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400/80">
+                  Score à vérifier
+                </span>
+              )}
+              {isScheduled && (
+                <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">
+                  À venir · {parisTime} à Paris
                 </span>
               )}
               {isLive && (
@@ -1034,8 +1144,10 @@ export default async function MatchPage({
                   Reporté
                 </span>
               )}
-              <span className="text-[11px] text-white/25 capitalize">
-                {displayDate}
+              <span className="text-[11px] text-white/35 text-center">
+                {capitalizeFirst(displayDate)}
+                <br />
+                <span className="text-white/25">{nightLabel(dayKey)} en France</span>
               </span>
             </div>
           </div>
@@ -1149,6 +1261,31 @@ export default async function MatchPage({
         </div>
       )}
 
+      <nav aria-label="Calendriers" className="flex flex-wrap gap-x-4 gap-y-1 text-sm -mt-4">
+        <Link href={`/${locale}/matchs?date=${dayKey}`} className="min-h-11 flex items-center text-orange-300 hover:underline">
+          Tous les matchs de la journée
+        </Link>
+        <Link href={`/${locale}/matchs?equipe=${game.awayTeam.abbr.toLowerCase()}`} className="min-h-11 flex items-center text-white/60 hover:text-white hover:underline">
+          Calendrier {game.awayTeam.abbr}
+        </Link>
+        <Link href={`/${locale}/matchs?equipe=${game.homeTeam.abbr.toLowerCase()}`} className="min-h-11 flex items-center text-white/60 hover:text-white hover:underline">
+          Calendrier {game.homeTeam.abbr}
+        </Link>
+      </nav>
+
+      {scoreUnverified && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] px-5 py-4 flex items-start gap-3">
+          <span className="text-amber-400/70 shrink-0">⚠</span>
+          <div className="space-y-1">
+            <p className="text-sm text-amber-200/80">Score en cours de vérification</p>
+            <p className="text-xs text-white/40 leading-relaxed">
+              {scoreIssues.filter((issue) => issue !== "player_points_mismatch").map((issue) => capitalizeFirst(SCORE_ISSUE_LABELS[issue])).join(". ")}.
+              Le score est affiché tel que publié par la source, sans vainqueur, jusqu&apos;à la prochaine synchronisation.
+            </p>
+          </div>
+        </div>
+      )}
+
       {hasIncompletePlayerTotals && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] px-5 py-4 flex items-start gap-3">
           <span className="text-amber-400/70 shrink-0">⚠</span>
@@ -1162,6 +1299,16 @@ export default async function MatchPage({
             </p>
           </div>
         </div>
+      )}
+
+      {boxScore && isFinal && (
+        <GameLeaders
+          away={boxScore.away}
+          home={boxScore.home}
+          awayAbbr={game.awayTeam.abbr}
+          homeAbbr={game.homeTeam.abbr}
+          locale={locale}
+        />
       )}
 
       {/* Team stats comparison */}

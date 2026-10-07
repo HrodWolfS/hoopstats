@@ -11,6 +11,7 @@ import { PrismaClient } from "@prisma/client";
 import { currentSeason } from "../lib/nba";
 import { gameStatusFromEspn } from "../lib/game-status";
 import { seasonAndPhaseFromEspn } from "../lib/season-phase";
+import { monthsBetween } from "../lib/espn-scoreboard";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -51,31 +52,23 @@ function parseArgs() {
   return { season, dryRun: args.includes("--dry-run") };
 }
 
-function monthlyRanges(season: string): string[] {
+/**
+ * Mois d'octobre à juin de la saison, au format AAAAMM. ESPN refuse les plages
+ * de dates (400) mais accepte un mois entier (voir lib/espn-scoreboard.ts).
+ */
+function seasonMonths(season: string): string[] {
   const startYear = Number.parseInt(season.split("-")[0], 10);
-  const ranges: string[] = [];
-
-  for (let offset = 0; offset < 9; offset++) {
-    const monthIndex = 9 + offset;
-    const year = startYear + Math.floor(monthIndex / 12);
-    const month = monthIndex % 12;
-    const first = new Date(Date.UTC(year, month, 1));
-    const last = new Date(Date.UTC(year, month + 1, 0));
-    const compact = (date: Date) => date.toISOString().slice(0, 10).replaceAll("-", "");
-    ranges.push(`${compact(first)}-${compact(last)}`);
-  }
-
-  return ranges;
+  return monthsBetween(`${startYear}1001`, `${startYear + 1}0630`);
 }
 
-async function fetchEvents(range: string): Promise<EspnEvent[]> {
+async function fetchEvents(month: string): Promise<EspnEvent[]> {
   const url =
     "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard" +
-    `?dates=${range}&limit=500`;
+    `?dates=${month}&limit=500`;
   const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error(`ESPN ${response.status} pour ${range}`);
+    throw new Error(`ESPN ${response.status} pour ${month}`);
   }
 
   const data = (await response.json()) as { events?: EspnEvent[] };
@@ -89,14 +82,19 @@ async function main() {
 
   console.log(`Backfill calendrier ${season}${dryRun ? " — simulation" : ""}\n`);
 
-  for (const range of monthlyRanges(season)) {
-    const events = await fetchEvents(range);
+  for (const month of seasonMonths(season)) {
+    const events = await fetchEvents(month);
     events.forEach((event) => allEvents.set(event.id, event));
-    console.log(`${range}: ${events.length} événement(s)`);
+    console.log(`${month}: ${events.length} événement(s)`);
   }
 
   const teams = await prisma.team.findMany({ select: { id: true, abbr: true } });
   const teamByAbbr = new Map(teams.map((team) => [team.abbr, team.id]));
+  const known = new Set(
+    (await prisma.game.findMany({ where: { season }, select: { espnId: true } })).map((game) => game.espnId),
+  );
+  const phases: Record<string, number> = {};
+  let fresh = 0;
   let valid = 0;
   let upserted = 0;
   let skipped = 0;
@@ -159,6 +157,8 @@ async function main() {
     }
 
     valid++;
+    phases[phase] = (phases[phase] ?? 0) + 1;
+    if (!known.has(event.id)) fresh++;
     if (dryRun) continue;
 
     await prisma.game.upsert({
@@ -191,6 +191,7 @@ async function main() {
   console.log(
     `\n${allEvents.size} unique(s), ${valid} valide(s), ${skipped} ignoré(s)`,
   );
+  console.log(`${fresh} nouveau(x) en base, ${valid - fresh} déjà connu(s) · ${JSON.stringify(phases)}`);
   if (errors.length > 0) {
     console.log(errors.slice(0, 10).map((error) => `- ${error}`).join("\n"));
   }

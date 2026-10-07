@@ -2,6 +2,7 @@ import { type Metadata } from "next";
 import { NIGHT_RULES } from "@/lib/stats/night";
 import { FRENCH_RULES } from "@/lib/french";
 import { TREND_RULES } from "@/lib/stats/trends";
+import { SCHEDULE_RULES } from "@/lib/schedule";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { qualificationRule } from "@/lib/stats/leaders";
@@ -361,6 +362,28 @@ export default async function SourcesPage() {
         </p>
         <dl className="space-y-2">
           {TREND_RULES.map((item) => (
+            <div key={item.title} className="rounded-xl border border-white/[0.06] bg-[#111114] px-5 py-4">
+              <dt className="text-sm font-medium text-white/80">{item.title}</dt>
+              <dd className="mt-1 text-xs leading-relaxed text-white/50">{item.rule}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {/* Matchs et calendrier */}
+      <section id="matchs" className="scroll-mt-20 space-y-4">
+        <h2 className="text-lg font-display font-semibold text-white">
+          Matchs et calendrier
+        </h2>
+        <p className="text-xs leading-relaxed text-white/40">
+          Règles de la page{" "}
+          <Link href="/fr/matchs" className="underline decoration-white/20 underline-offset-2 hover:text-white">
+            Matchs
+          </Link>{" "}
+          et des fiches match.
+        </p>
+        <dl className="space-y-2">
+          {SCHEDULE_RULES.map((item) => (
             <div key={item.title} className="rounded-xl border border-white/[0.06] bg-[#111114] px-5 py-4">
               <dt className="text-sm font-medium text-white/80">{item.title}</dt>
               <dd className="mt-1 text-xs leading-relaxed text-white/50">{item.rule}</dd>

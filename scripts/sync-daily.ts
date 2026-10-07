@@ -225,10 +225,11 @@ async function syncRecentGames(): Promise<{
         await prisma.game.upsert({
           where: { espnId: event.id },
           // Ne mettre à jour le score que si le match est terminé
-          // (évite d'écraser "final" avec un statut en cours lors d'un retry)
+          // (évite d'écraser "final" avec un statut en cours lors d'un retry).
+          // La date suit ESPN : un match reporté puis reprogrammé change de journée.
           update: isFinal
-            ? { homeScore, awayScore, status, season, phase }
-            : { status, season, phase },
+            ? { homeScore, awayScore, status, season, phase, gameDate: new Date(event.date) }
+            : { status, season, phase, gameDate: new Date(event.date) },
           create: {
             espnId: event.id,
             homeTeamId,

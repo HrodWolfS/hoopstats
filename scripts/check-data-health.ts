@@ -31,6 +31,7 @@ import {
   validateSeasonConsolidation,
 } from "../lib/stats/season-consolidation";
 import { isStaleStatus, validateGameStatus } from "../lib/game-status";
+import { checkScore, hasBlockingIssue, linescoreValues } from "../lib/schedule";
 import {
   seriesWinsRequired,
   validatePlayoffSeriesWinner,
@@ -559,6 +560,32 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       homePlayerPoints !== game.homeScore || awayPlayerPoints !== game.awayScore
     );
   });
+  // Contrôle publié sur /sources#matchs : un score bloquant (manquant,
+  // négatif, nul, ou contredit par le tableau des quart-temps) est affiché
+  // « à vérifier » au lieu d'un vainqueur.
+  const unverifiedScores = (
+    await prisma.game.findMany({
+      where: { season: CURRENT_SEASON, status: "final" },
+      select: {
+        espnId: true,
+        homeScore: true,
+        awayScore: true,
+        boxScore: { select: { homeLinescores: true, awayLinescores: true } },
+      },
+    })
+  ).filter((game) =>
+    hasBlockingIssue(
+      checkScore({
+        status: "final",
+        homeScore: game.homeScore,
+        awayScore: game.awayScore,
+        homeLinescores: linescoreValues(game.boxScore?.homeLinescores),
+        awayLinescores: linescoreValues(game.boxScore?.awayLinescores),
+        homePlayerPoints: null,
+        awayPlayerPoints: null,
+      }),
+    ),
+  );
   // Le matin de la reprise, aucun match n'est terminé : rien n'est incomplet.
   const completeBoxScoreRate =
     finalGameCount === 0
@@ -837,6 +864,14 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
             ` (lignes manquantes chez ESPN, signalées par un bandeau sur la page match) : ` +
             summarizeMismatches(scoreMismatches),
       "warn",
+    ),
+    check(
+      "Cohérence des scores finaux",
+      unverifiedScores.length === 0,
+      unverifiedScores.length === 0
+        ? "scores présents, sans égalité, conformes au tableau des quart-temps"
+        : `${unverifiedScores.length} match(s) affiché(s) « score à vérifier » : ` +
+            unverifiedScores.slice(0, 5).map((game) => game.espnId).join(", "),
     ),
     check(
       "Volume de la dernière synchronisation",
