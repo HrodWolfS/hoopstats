@@ -1,5 +1,6 @@
 import { type Metadata } from "next";
 import { NIGHT_RULES } from "@/lib/stats/night";
+import { FRENCH_RULES } from "@/lib/french";
 import { TREND_RULES } from "@/lib/stats/trends";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -360,6 +361,28 @@ export default async function SourcesPage() {
         </p>
         <dl className="space-y-2">
           {TREND_RULES.map((item) => (
+            <div key={item.title} className="rounded-xl border border-white/[0.06] bg-[#111114] px-5 py-4">
+              <dt className="text-sm font-medium text-white/80">{item.title}</dt>
+              <dd className="mt-1 text-xs leading-relaxed text-white/50">{item.rule}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {/* Français en NBA */}
+      <section id="francais" className="scroll-mt-20 space-y-4">
+        <h2 className="text-lg font-display font-semibold text-white">
+          Qui compte comme Français
+        </h2>
+        <p className="text-xs leading-relaxed text-white/40">
+          La même règle sert au hub{" "}
+          <Link href="/fr/francais" className="underline decoration-white/20 underline-offset-2 hover:text-white">
+            Français en NBA
+          </Link>{" "}
+          et à l&apos;accueil.
+        </p>
+        <dl className="space-y-2">
+          {FRENCH_RULES.map((item) => (
             <div key={item.title} className="rounded-xl border border-white/[0.06] bg-[#111114] px-5 py-4">
               <dt className="text-sm font-medium text-white/80">{item.title}</dt>
               <dd className="mt-1 text-xs leading-relaxed text-white/50">{item.rule}</dd>

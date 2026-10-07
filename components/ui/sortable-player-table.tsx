@@ -110,7 +110,7 @@ export function SortablePlayerTable({
 
   function thClass(key: ColKey, align: "left" | "right" = "right") {
     const base = `py-3 font-medium cursor-pointer select-none transition-colors group`;
-    const padding = align === "left" ? "px-3" : "px-3";
+    const padding = "px-1.5 sm:px-3";
     const active =
       key === sortKey ? "text-white" : "text-white/40 hover:text-white/70";
     return `${base} ${padding} text-${align} ${active}`;
@@ -118,7 +118,7 @@ export function SortablePlayerTable({
 
   function SortIcon({ colKey }: { colKey: ColKey }) {
     if (colKey !== sortKey)
-      return <span className="text-white/20 group-hover:text-white/40">↕</span>;
+      return <span className="hidden sm:inline text-white/20 group-hover:text-white/40">↕</span>;
     return sortDir === "asc" ? (
       <span className="text-orange-400">↑</span>
     ) : (
@@ -132,16 +132,16 @@ export function SortablePlayerTable({
     <div>
       <div className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[580px]">
+          <table className="w-full text-sm sm:min-w-[580px]">
             <thead>
               <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-wider">
-                <th className="text-left px-5 py-3 font-medium text-white/40 w-10">
+                <th className="text-left pl-3 pr-1 sm:px-5 py-3 font-medium text-white/40 w-8 sm:w-10">
                   #
                 </th>
-                <th className="text-left px-3 py-3 font-medium text-white/40">
+                <th className="text-left px-2 sm:px-3 py-3 font-medium text-white/40">
                   Joueur
                 </th>
-                <th className="text-left px-3 py-3 font-medium text-white/40">
+                <th className="hidden sm:table-cell text-left px-3 py-3 font-medium text-white/40">
                   Équipe
                 </th>
                 {columns.map((col) => (
@@ -152,7 +152,7 @@ export function SortablePlayerTable({
                       showCol(col) === "sm" ? "hidden sm:table-cell" : ""
                     }`}
                   >
-                    <span className="inline-flex items-center gap-1 justify-end">
+                    <span className="inline-flex items-center gap-0.5 sm:gap-1 justify-end">
                       {col.label} <SortIcon colKey={col.key} />
                     </span>
                   </th>
@@ -165,12 +165,13 @@ export function SortablePlayerTable({
                   key={row.id}
                   className="border-b border-white/[0.04] hover:bg-white/[0.02] transition group"
                 >
-                  <td className="px-5 py-2.5 text-white/30 text-xs">{i + 1}</td>
-                  <td className="px-3 py-2.5">
+                  <td className="pl-3 pr-1 sm:px-5 py-2.5 text-white/30 text-xs">{i + 1}</td>
+                  <td className="px-2 sm:px-3 py-2.5">
                     <Link
                       href={playerSeasonHref(locale, row.playerSlug, season, liveSeason)}
                       className="flex items-center gap-3"
                     >
+                      <span className="hidden sm:block">
                       <PlayerAvatar
                         firstName={row.firstName}
                         lastName={row.lastName}
@@ -180,12 +181,14 @@ export function SortablePlayerTable({
                         size="sm"
                         showNum={false}
                       />
-                      <div>
+                      </span>
+                      <div className="min-w-0 [overflow-wrap:anywhere]">
                         <div className="text-sm font-sans font-medium text-white leading-tight group-hover:text-orange-300 transition">
                           {row.firstName} {row.lastName}
                         </div>
                         <div className="text-[11px] text-white/40 font-sans">
                           {row.position ?? "—"}
+                          <span className="sm:hidden"> · {row.teamAbbr}</span>
                           {showCollege && row.college
                             ? ` · ${row.college}`
                             : ""}
@@ -193,7 +196,7 @@ export function SortablePlayerTable({
                       </div>
                     </Link>
                   </td>
-                  <td className="px-3 py-2.5">
+                  <td className="hidden sm:table-cell px-3 py-2.5">
                     <Link
                       href={teamSeasonHref(locale, row.teamSlug, season, liveSeason)}
                       className="text-xs text-white/50 hover:text-white/90 transition font-sans"
@@ -204,7 +207,7 @@ export function SortablePlayerTable({
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`px-3 py-2.5 text-right ${
+                      className={`px-1.5 sm:px-3 py-2.5 text-right ${
                         sortKey === col.key ? "text-white" : "text-white/60"
                       } ${showCol(col) === "sm" ? "hidden sm:table-cell" : ""}`}
                     >

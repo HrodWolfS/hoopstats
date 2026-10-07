@@ -265,7 +265,7 @@ export const NIGHT_RULES: { title: string; rule: string }[] = [
   },
   {
     title: "Joueurs français",
-    rule: "Tous les joueurs dont la fiche indique la France (pays publié par NBA.com, via balldontlie) entrés en jeu cette nuit, classés au Game Score.",
+    rule: "Tous les joueurs français entrés en jeu cette nuit, classés au Game Score. Est français un joueur dont la fiche NBA.com indique la France, ou un international français que NBA.com rattache à un autre pays (voir les règles du hub Français en NBA).",
   },
   {
     title: "Progression",

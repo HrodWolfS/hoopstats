@@ -136,7 +136,7 @@ function PerformanceCard({
   );
 }
 
-function FrenchRow({ performance, locale }: { performance: NightPerformance; locale: string }) {
+export function FrenchRow({ performance, locale }: { performance: NightPerformance; locale: string }) {
   const name = performance.player
     ? `${performance.player.firstName} ${performance.player.lastName}`
     : performance.playerName;
@@ -303,7 +303,14 @@ export function NightRecap({ data, locale }: { data: NightData; locale: string }
 
       {data.hasBoxScores && (
         <div>
-          <SectionTitle title="Les Français" />
+          <SectionTitle
+            title="Les Français"
+            aside={
+              <Link href={`/${locale}/francais`} className={asideLink}>
+                Français en NBA →
+              </Link>
+            }
+          />
           <div className="rounded-2xl border border-white/[0.06] bg-[#111114]">
             {data.french.length > 0 ? (
               <ul className="divide-y divide-white/[0.04]">

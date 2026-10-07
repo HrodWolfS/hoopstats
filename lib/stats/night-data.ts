@@ -4,6 +4,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { isFrench } from "@/lib/french";
 import { currentSeason, previousSeason, referenceDate, SEASON_OPENERS, UPCOMING_SEASON } from "@/lib/nba";
 import { COMPETITIVE_PHASES, REGULAR_SEASON_PHASE, type GamePhase } from "@/lib/season-phase";
 import {
@@ -163,7 +164,7 @@ export type NightData = {
 /** Phases publiées sur l'accueil : présaison comprise, matchs d'exhibition exclus. */
 const NIGHT_PHASES: GamePhase[] = ["preseason", ...COMPETITIVE_PHASES];
 
-async function loadNight(today: string) {
+export async function loadNight(today: string) {
   const latest = await prisma.game.findFirst({
     where: { status: "final", phase: { in: NIGHT_PHASES } },
     orderBy: { gameDate: "desc" },
@@ -220,7 +221,7 @@ async function loadNight(today: string) {
       gameId: game.id,
       playerKey: playerId ?? espnAthleteId ?? line.playerName,
       player: player ? { id: player.id, slug: player.slug, firstName: player.firstName, lastName: player.lastName, photoUrl: player.photoUrl } : null,
-      country: player?.country ?? null,
+      french: player ? isFrench(player) : false,
       opponentAbbr: line.teamAbbr === game.homeTeam.abbr ? game.awayTeam.abbr : game.homeTeam.abbr,
     })),
   );
@@ -230,7 +231,7 @@ async function loadNight(today: string) {
   });
   const performances = topPerformances(lines, 3).map(toPerformance);
   const french = lines
-    .filter((line) => line.country === "France" && played(line))
+    .filter((line) => line.french && played(line))
     .map(toPerformance)
     .sort((a, b) => b.gameScore - a.gameScore);
 

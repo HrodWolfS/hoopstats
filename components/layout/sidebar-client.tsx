@@ -86,6 +86,21 @@ function IconTrends() {
   );
 }
 
+function IconFrench() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M4 21V4M4 4h16v10H4M10 4v10M15 4v10" />
+    </svg>
+  );
+}
+
 function IconSeasons() {
   return (
     <svg
@@ -253,6 +268,12 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     label: "Tendances",
     icon: <IconTrends />,
     href: "/fr/tendances",
+  },
+  {
+    id: "french",
+    label: "Français en NBA",
+    icon: <IconFrench />,
+    href: "/fr/francais",
   },
   {
     id: "guides",
