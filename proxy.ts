@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  isPilotageAuthorized,
+  isPilotagePath,
+  PILOTAGE_CHALLENGE,
+} from "@/lib/pilotage-auth";
 import { queryRouteRewrite } from "@/lib/query-routes";
 
 const LOCALES = ["fr"];
@@ -7,6 +12,16 @@ const DEFAULT_LOCALE = "fr";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (
+    isPilotagePath(pathname) &&
+    !isPilotageAuthorized(request.headers.get("authorization"))
+  ) {
+    return new NextResponse("Authentification requise", {
+      status: 401,
+      headers: { "WWW-Authenticate": PILOTAGE_CHALLENGE, "Cache-Control": "no-store" },
+    });
+  }
 
   const hasLocale = LOCALES.some(
     (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`,

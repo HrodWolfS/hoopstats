@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { currentSeason } from "@/lib/nba";
+import { isPilotageAuthorized } from "@/lib/pilotage-auth";
 
 export const metadata: Metadata = {
   title: "Pilotage mensuel | hoopstats",
@@ -24,6 +27,9 @@ export default async function PilotagePage({
 }: {
   searchParams: Promise<{ mois?: string }>;
 }) {
+  // Le proxy demande déjà le mot de passe ; ce second contrôle, au plus près
+  // des données, garde la page fermée si le matcher du proxy change.
+  if (!isPilotageAuthorized((await headers()).get("authorization"))) notFound();
   const { month, start, end } = parseMonth((await searchParams).mois);
   const [events, failedSyncs, games, players, teams, boxScoreMissing, unresolved] =
     await Promise.all([
