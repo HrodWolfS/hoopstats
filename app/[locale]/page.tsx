@@ -2,9 +2,10 @@ import { type Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import { scaledMinimumGames } from "@/lib/stats/leaders";
+import { isQualified, minimumGamesFor, qualificationSummary } from "@/lib/stats/leaders";
 import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
 import { consolidateSeasonRows } from "@/lib/stats/season-totals";
+import { getPlayerMetric } from "@/lib/stats/metrics";
 import {
   SEASON_OPENERS,
   currentSeason,
@@ -75,17 +76,9 @@ type FinalsSpotlightRow = {
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
-/**
- * Sans seuil de volume, le TS% sacre des pivots à 3 tirs par match (Sims,
- * Kalkbrenner) ou un vétéran qui tire à peine. 20 minutes et 10 points par
- * match réservent ce classement aux joueurs dont l'efficacité porte une attaque.
- */
-const TS_MIN_MINUTES = 20;
-const TS_MIN_POINTS = 10;
-
-/** Matchs minimum une fois la saison bien lancée. */
-const LEADER_MIN_GAMES = 10;
-const TS_MIN_GAMES = 20;
+/** Seuils du catalogue : les mêmes que les pages de classement. */
+const LEADER_QUALIFICATION = getPlayerMetric("pointsPerGame").qualification;
+const TS_QUALIFICATION = getPlayerMetric("trueShooting").qualification;
 
 type SeasonLeaders = {
   points: LeaderRow[];
@@ -151,16 +144,14 @@ async function getSeasonLeaders(
       }));
   }
 
-  const qualified = (row: (typeof rows)[number]) => row.gamesPlayed >= minGames;
+  const qualified = (row: (typeof rows)[number]) =>
+    isQualified(row, LEADER_QUALIFICATION, minGames);
   return {
     points: top(qualified, (row) => row.pointsPerGame),
     rebounds: top(qualified, (row) => row.reboundsPerGame),
     assists: top(qualified, (row) => row.assistsPerGame),
     trueShooting: top(
-      (row) =>
-        row.gamesPlayed >= tsMinGames &&
-        row.minutesPerGame >= TS_MIN_MINUTES &&
-        row.pointsPerGame >= TS_MIN_POINTS,
+      (row) => isQualified(row, TS_QUALIFICATION, tsMinGames),
       (row) => row.trueShooting,
     ),
   };
@@ -671,8 +662,8 @@ export default async function HomePage({
   const counts = await getCounts(season);
   // Chaque match compte pour deux équipes : moyenne de matchs joués par équipe.
   const teamGames = (counts.gamesCount * 2) / 30;
-  const leaderMinGames = scaledMinimumGames(teamGames, LEADER_MIN_GAMES);
-  const tsMinGames = scaledMinimumGames(teamGames, TS_MIN_GAMES);
+  const leaderMinGames = minimumGamesFor(LEADER_QUALIFICATION, teamGames);
+  const tsMinGames = minimumGamesFor(TS_QUALIFICATION, teamGames);
 
   const [
     leaders,
@@ -890,7 +881,7 @@ export default async function HomePage({
               />
               <LeadersPanel
                 title="True Shooting"
-                unit={`TS% · min. ${tsMinGames}MJ, ${TS_MIN_MINUTES} min, ${TS_MIN_POINTS} pts`}
+                unit={`TS% · ${qualificationSummary(TS_QUALIFICATION, tsMinGames)}`}
                 rows={tsLeaders}
                 format={(v) => `${pct(v)}%`}
                 locale={locale}

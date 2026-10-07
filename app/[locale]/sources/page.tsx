@@ -1,6 +1,7 @@
 import { type Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { qualificationRule } from "@/lib/stats/leaders";
 import { PLAYER_METRICS } from "@/lib/stats/metrics";
 
 export const revalidate = 21600;
@@ -270,10 +271,16 @@ export default async function SourcesPage() {
       </section>
 
       {/* Glossaire */}
-      <section className="space-y-4">
+      <section id="metriques" className="scroll-mt-20 space-y-4">
         <h2 className="text-lg font-display font-semibold text-white">
           Glossaire des statistiques
         </h2>
+        <p className="text-xs leading-relaxed text-white/40">
+          Pour figurer dans un classement, un joueur doit avoir disputé 70 % des
+          matchs de son équipe, comme sur NBA.com : 58 sur une saison complète,
+          moins en cours de saison. Quand la règle NBA ne peut pas s’appliquer à
+          nos données, la règle hoopstats retenue est indiquée.
+        </p>
         <div className="space-y-2">
           {STATS.map((s) => (
             <div
@@ -303,9 +310,14 @@ export default async function SourcesPage() {
                   {s.description}
                 </p>
                 <div className="text-[10px] text-white/25 font-mono">
-                  Source : {s.source} · Qualification : {s.minimumGames > 0 ? `min. ${s.minimumGames} MJ` : "aucun seuil"}
+                  Source : {s.source} · Qualification : {qualificationRule(s.qualification)}
                   {s.higherIsBetter ? " · valeur haute favorisée" : " · valeur basse favorisée"}
                 </div>
+                {s.limits && (
+                  <p className="text-[11px] leading-relaxed text-amber-200/50">
+                    Limite : {s.limits}
+                  </p>
+                )}
               </div>
             </div>
           ))}

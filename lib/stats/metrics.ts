@@ -18,6 +18,37 @@ export type PlayerMetricKey =
 
 export type MetricMode = "count" | "perGame" | "percentage" | "per100";
 
+/**
+ * Conditions pour figurer dans un classement de la métrique.
+ *
+ * `gamesShare` est la part des matchs de l'équipe à disputer, appliquée à
+ * l'avancement de la saison (0 = aucun seuil). `rule` dit d'où vient le
+ * seuil : la règle officielle NBA.com, ou un choix hoopstats documenté
+ * quand la NBA n'en publie pas d'applicable à nos données.
+ */
+export type MetricQualification = {
+  rule: "nba" | "hoopstats" | "none";
+  gamesShare: number;
+  minMinutesPerGame?: number;
+  minPointsPerGame?: number;
+};
+
+/** Règle NBA.com des leaders : 70 % des matchs de l'équipe (58 sur 82). */
+const NBA_GAMES: MetricQualification = { rule: "nba", gamesShare: 0.7 };
+
+/**
+ * Pourcentages : la NBA exige un volume de paniers réussis (300 tirs, 82
+ * paniers à trois points, 125 lancers francs). Ces volumes ne sont pas
+ * stockés : on garde la seule condition de matchs, plus un temps de jeu.
+ */
+const SHOOTING: MetricQualification = { rule: "hoopstats", gamesShare: 0.7, minMinutesPerGame: 20 };
+
+/**
+ * Métriques « sur le terrain » : sans temps de jeu minimum, un remplaçant
+ * de fin de match aux 5 minutes par soir domine le classement par le bruit.
+ */
+const ON_COURT: MetricQualification = { rule: "hoopstats", gamesShare: 0.7, minMinutesPerGame: 20 };
+
 export type PlayerMetricDefinition = {
   key: PlayerMetricKey;
   label: string;
@@ -29,7 +60,9 @@ export type PlayerMetricDefinition = {
   availableSince: string;
   higherIsBetter: boolean;
   mode: MetricMode;
-  minimumGames: number;
+  qualification: MetricQualification;
+  /** Ce que la valeur ne dit pas, ou ce que nos données ne permettent pas. */
+  limits?: string;
   showInGlossary: boolean;
 };
 
@@ -43,7 +76,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "1980-81",
     higherIsBetter: true,
     mode: "count",
-    minimumGames: 0,
+    qualification: { rule: "none", gamesShare: 0 },
     showInGlossary: true,
   },
   {
@@ -55,7 +88,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "1980-81",
     higherIsBetter: true,
     mode: "perGame",
-    minimumGames: 10,
+    qualification: NBA_GAMES,
     showInGlossary: true,
   },
   {
@@ -67,7 +100,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "1980-81",
     higherIsBetter: true,
     mode: "perGame",
-    minimumGames: 10,
+    qualification: NBA_GAMES,
     showInGlossary: true,
   },
   {
@@ -79,7 +112,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "1980-81",
     higherIsBetter: true,
     mode: "perGame",
-    minimumGames: 10,
+    qualification: NBA_GAMES,
     showInGlossary: true,
   },
   {
@@ -91,7 +124,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "1980-81",
     higherIsBetter: true,
     mode: "perGame",
-    minimumGames: 10,
+    qualification: NBA_GAMES,
     showInGlossary: true,
   },
   {
@@ -103,7 +136,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "1980-81",
     higherIsBetter: true,
     mode: "perGame",
-    minimumGames: 10,
+    qualification: NBA_GAMES,
     showInGlossary: true,
   },
   {
@@ -115,7 +148,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "1980-81",
     higherIsBetter: true,
     mode: "perGame",
-    minimumGames: 10,
+    qualification: NBA_GAMES,
     showInGlossary: true,
   },
   {
@@ -129,7 +162,9 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "1980-81",
     higherIsBetter: true,
     mode: "percentage",
-    minimumGames: 10,
+    qualification: SHOOTING,
+    limits:
+      "La NBA qualifie au volume de paniers réussis, que nos données ne stockent pas : un joueur sous ce volume peut apparaître ici.",
     showInGlossary: true,
   },
   {
@@ -143,7 +178,9 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "1980-81",
     higherIsBetter: true,
     mode: "percentage",
-    minimumGames: 10,
+    qualification: SHOOTING,
+    limits:
+      "La NBA qualifie au volume de paniers réussis, que nos données ne stockent pas : un joueur sous ce volume peut apparaître ici.",
     showInGlossary: true,
   },
   {
@@ -157,7 +194,9 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "1980-81",
     higherIsBetter: true,
     mode: "percentage",
-    minimumGames: 10,
+    qualification: SHOOTING,
+    limits:
+      "La NBA qualifie au volume de paniers réussis, que nos données ne stockent pas : un joueur sous ce volume peut apparaître ici.",
     showInGlossary: true,
   },
   {
@@ -172,7 +211,9 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "2015-16",
     higherIsBetter: true,
     mode: "percentage",
-    minimumGames: 20,
+    qualification: { rule: "hoopstats", gamesShare: 0.7, minMinutesPerGame: 20, minPointsPerGame: 10 },
+    limits:
+      "Sans seuil de volume, des pivots à trois tirs par match dominent : 20 minutes et 10 points par match réservent le classement aux joueurs dont l’efficacité porte une attaque.",
     showInGlossary: true,
   },
   {
@@ -187,7 +228,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "2015-16",
     higherIsBetter: true,
     mode: "percentage",
-    minimumGames: 10,
+    qualification: ON_COURT,
     showInGlossary: true,
   },
   {
@@ -201,7 +242,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "2015-16",
     higherIsBetter: true,
     mode: "percentage",
-    minimumGames: 10,
+    qualification: ON_COURT,
     showInGlossary: true,
   },
   {
@@ -215,7 +256,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "2015-16",
     higherIsBetter: true,
     mode: "per100",
-    minimumGames: 10,
+    qualification: ON_COURT,
     showInGlossary: true,
   },
   {
@@ -229,7 +270,7 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "2015-16",
     higherIsBetter: false,
     mode: "per100",
-    minimumGames: 10,
+    qualification: ON_COURT,
     showInGlossary: true,
   },
   {
@@ -243,7 +284,9 @@ export const PLAYER_METRICS: readonly PlayerMetricDefinition[] = [
     availableSince: "2015-16",
     higherIsBetter: true,
     mode: "per100",
-    minimumGames: 10,
+    qualification: ON_COURT,
+    limits:
+      "Dépend fortement des coéquipiers et des adversaires présents sur le terrain : ce n’est pas une mesure individuelle isolée.",
     showInGlossary: true,
   },
 ];
@@ -293,8 +336,12 @@ export function validatePlayerMetricRegistry(): string[] {
     if (shortLabels.has(metric.shortLabel)) {
       errors.push(`abréviation dupliquée : ${metric.shortLabel}`);
     }
-    if (metric.minimumGames < 0) {
-      errors.push(`minimum de matchs négatif : ${metric.key}`);
+    const { rule, gamesShare } = metric.qualification;
+    if (gamesShare < 0 || gamesShare > 1) {
+      errors.push(`part de matchs hors de [0, 1] : ${metric.key}`);
+    }
+    if ((rule === "none") !== (gamesShare === 0)) {
+      errors.push(`règle de qualification incohérente : ${metric.key}`);
     }
     if (metric.mode === "percentage" && metric.unit !== "%" && metric.key !== "per") {
       errors.push(`unité pourcentage manquante : ${metric.key}`);

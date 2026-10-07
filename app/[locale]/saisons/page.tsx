@@ -5,7 +5,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { currentSeason } from "@/lib/nba";
 import { stat } from "@/lib/format";
-import { scaledMinimumGames } from "@/lib/stats/leaders";
+import { isQualified, minimumGamesFor, seasonTeamGames } from "@/lib/stats/leaders";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import { consolidateSeasonRows } from "@/lib/stats/season-totals";
 import { hasSeriesStarted, seriesWinnerTeamId } from "@/lib/playoff-series";
@@ -191,15 +191,9 @@ export default async function SaisonsPage({
   // seuil de matchs que les classements, pour qu'un joueur à deux matchs ne
   // passe pas devant un titulaire.
   const leaderRows = await consolidateSeasonRows(season, playerSeasons);
-  const teamGames = leaderRows.reduce(
-    (most, row) => Math.max(most, row.gamesPlayed),
-    0,
-  );
-  const minimumGames = scaledMinimumGames(
-    teamGames,
-    getPlayerMetric("pointsPerGame").minimumGames,
-  );
-  const qualified = leaderRows.filter((row) => row.gamesPlayed >= minimumGames);
+  const { qualification } = getPlayerMetric("pointsPerGame");
+  const minimumGames = minimumGamesFor(qualification, seasonTeamGames(leaderRows));
+  const qualified = leaderRows.filter((row) => isQualified(row, qualification, minimumGames));
   const leaderBy = (key: "pointsPerGame" | "reboundsPerGame" | "assistsPerGame") =>
     qualified.reduce<(typeof qualified)[number] | null>(
       (best, row) => (best === null || row[key] > best[key] ? row : best),

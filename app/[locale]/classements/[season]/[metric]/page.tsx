@@ -10,7 +10,10 @@ import {
   getLeaderboard,
   leaderboardValue,
   LEADERBOARDS,
-  scaledMinimumGames,
+  isQualified,
+  minimumGamesFor,
+  qualificationSummary,
+  seasonTeamGames,
 } from "@/lib/stats/leaders";
 import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
 import { consolidateSeasonRows } from "@/lib/stats/season-totals";
@@ -63,16 +66,17 @@ export default async function LeaderboardPage({
       team: { select: { abbr: true, slug: true } },
     },
   });
-  const ranked = (await consolidateSeasonRows(season, rows)).map((row) => ({
-    row,
-    gamesPlayed: row.gamesPlayed,
-    value: leaderboardValue(row, leaderboard.metric),
-  }));
-  // Le joueur le plus utilisé donne l'avancement de la saison en matchs.
-  const teamGames = ranked.reduce((most, entry) => Math.max(most, entry.gamesPlayed), 0);
-  const minimumGames = scaledMinimumGames(teamGames, definition.minimumGames);
-  const leaders = ranked
-    .filter((entry) => entry.gamesPlayed >= minimumGames)
+  const consolidated = await consolidateSeasonRows(season, rows);
+  const teamGames = seasonTeamGames(consolidated);
+  const { qualification } = definition;
+  const minimumGames = minimumGamesFor(qualification, teamGames);
+  const leaders = consolidated
+    .filter((row) => isQualified(row, qualification, minimumGames))
+    .map((row) => ({
+      row,
+      gamesPlayed: row.gamesPlayed,
+      value: leaderboardValue(row, leaderboard.metric),
+    }))
     .filter((entry): entry is typeof entry & { value: number } => entry.value != null)
     .sort(
       (left, right) =>
@@ -105,7 +109,7 @@ export default async function LeaderboardPage({
         <div>
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-orange-400/70">Saison {season}</p>
         <h1 className="mt-2 font-display text-4xl font-semibold">Leaders — {leaderboard.label}</h1>
-        <p className="mt-2 text-sm text-white/35">50 premiers · qualification ≥ {minimumGames} {minimumGames > 1 ? "matchs" : "match"}</p>
+        <p className="mt-2 text-sm text-white/35">50 premiers · qualification {qualificationSummary(qualification, minimumGames)}{" "}<Link href={`/${locale}/sources#metriques`} className="underline decoration-white/15 underline-offset-2 hover:text-white">({qualification.rule === "nba" ? "règle NBA" : "règle hoopstats"})</Link></p>
         </div>
         <ShareButton dimension="leaderboard" />
       </div>

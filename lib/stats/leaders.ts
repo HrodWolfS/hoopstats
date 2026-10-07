@@ -1,5 +1,5 @@
 import type { PlayerSeason } from "@prisma/client";
-import type { PlayerMetricKey } from "@/lib/stats/metrics";
+import type { MetricQualification, PlayerMetricKey } from "@/lib/stats/metrics";
 
 export const LEADERBOARDS = [
   { slug: "points", metric: "pointsPerGame", label: "Points par match" },
@@ -28,13 +28,65 @@ export function leaderboardValue(
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/** Matchs d'une saison régulière complète. */
+export const REGULAR_SEASON_GAMES = 82;
+
 /**
- * Seuil de matchs adapté à l'avancement de la saison. Un seuil fixe de 10
- * matchs viderait les classements pendant les trois premières semaines : on
- * exige 70 % des matchs déjà joués par une équipe, plafonné au seuil normal.
+ * Avancement de la saison en matchs d'équipe, d'après le joueur le plus
+ * utilisé. Un joueur transféré peut dépasser 82 matchs (son ancienne équipe
+ * avait joué moins que la nouvelle) : on plafonne pour ne pas exiger 59
+ * matchs au lieu de 58.
  */
-export function scaledMinimumGames(teamGames: number, cap: number): number {
-  return Math.min(cap, Math.max(1, Math.ceil(teamGames * 0.7)));
+export function seasonTeamGames(rows: readonly { gamesPlayed: number }[]): number {
+  const most = rows.reduce((max, row) => Math.max(max, row.gamesPlayed), 0);
+  return Math.min(REGULAR_SEASON_GAMES, most);
+}
+
+/**
+ * Matchs exigés pour une métrique, proportionnels aux matchs déjà joués :
+ * 70 % donne 58 sur une saison complète, comme NBA.com, et 4 après 5 matchs,
+ * pour que les classements ne restent pas vides en début de saison.
+ */
+export function minimumGamesFor(qualification: MetricQualification, teamGames: number): number {
+  if (qualification.gamesShare === 0) return 0;
+  const played = Math.min(REGULAR_SEASON_GAMES, teamGames);
+  return Math.max(1, Math.ceil(played * qualification.gamesShare));
+}
+
+export function isQualified(
+  row: { gamesPlayed: number; minutesPerGame: number; pointsPerGame: number },
+  qualification: MetricQualification,
+  minimumGames: number,
+): boolean {
+  return (
+    row.gamesPlayed >= minimumGames &&
+    row.minutesPerGame >= (qualification.minMinutesPerGame ?? 0) &&
+    row.pointsPerGame >= (qualification.minPointsPerGame ?? 0)
+  );
+}
+
+/** Seuil appliqué, en clair : « ≥ 58 matchs · 20 min · 10 pts ». */
+export function qualificationSummary(
+  qualification: MetricQualification,
+  minimumGames: number,
+): string {
+  const parts = [`≥ ${minimumGames} ${minimumGames > 1 ? "matchs" : "match"}`];
+  if (qualification.minMinutesPerGame) parts.push(`${qualification.minMinutesPerGame} min`);
+  if (qualification.minPointsPerGame) parts.push(`${qualification.minPointsPerGame} pts`);
+  return parts.join(" · ");
+}
+
+/** Règle générale, pour le glossaire : part des matchs et son origine. */
+export function qualificationRule(qualification: MetricQualification): string {
+  if (qualification.rule === "none") return "aucun seuil";
+  const share = Math.round(qualification.gamesShare * 100);
+  const full = minimumGamesFor(qualification, REGULAR_SEASON_GAMES);
+  const extras = [
+    qualification.minMinutesPerGame && `${qualification.minMinutesPerGame} min/match`,
+    qualification.minPointsPerGame && `${qualification.minPointsPerGame} pts/match`,
+  ].filter(Boolean);
+  const origin = qualification.rule === "nba" ? "règle NBA" : "règle hoopstats";
+  return `${share} % des matchs de l'équipe (${full} sur ${REGULAR_SEASON_GAMES})${extras.length ? ` + ${extras.join(" + ")}` : ""} · ${origin}`;
 }
 
 /**

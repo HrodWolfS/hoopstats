@@ -10,7 +10,14 @@ import { seriesWinnerTeamId, seriesWinsRequired } from "@/lib/playoff-series";
 import { gamePhaseFromEspn, REGULAR_SEASON_PHASE } from "@/lib/season-phase";
 import { computeCareerAverages, type SeasonStint } from "@/lib/stats/career";
 import { calculateMetricContext } from "@/lib/stats/context";
-import { competitionRanks, scaledMinimumGames } from "@/lib/stats/leaders";
+import {
+  competitionRanks,
+  isQualified,
+  minimumGamesFor,
+  qualificationRule,
+  seasonTeamGames,
+} from "@/lib/stats/leaders";
+import { getPlayerMetric } from "@/lib/stats/metrics";
 import {
   deriveSeasonFromBoxScores,
   parseMinutes,
@@ -206,10 +213,38 @@ describe("égalité dans un classement", () => {
 });
 
 describe("seuil minimum de matchs", () => {
-  it("suit l'avancement de la saison sans dépasser le seuil normal", () => {
-    expect(scaledMinimumGames(0, 58)).toBe(1);
-    expect(scaledMinimumGames(5, 58)).toBe(4);
-    expect(scaledMinimumGames(82, 58)).toBe(58);
+  const nba = getPlayerMetric("assistsPerGame").qualification;
+  const ts = getPlayerMetric("trueShooting").qualification;
+
+  it("applique la règle NBA : 70 % des matchs, 58 sur une saison complète", () => {
+    expect(nba.rule).toBe("nba");
+    expect(minimumGamesFor(nba, 82)).toBe(58);
+    expect(minimumGamesFor(nba, 20)).toBe(14);
+  });
+
+  it("suit l'avancement de la saison sans vider les classements", () => {
+    expect(minimumGamesFor(nba, 0)).toBe(1);
+    expect(minimumGamesFor(nba, 5)).toBe(4);
+  });
+
+  it("n'exige jamais plus de 58 matchs, même pour un joueur transféré à 84 matchs", () => {
+    expect(seasonTeamGames([{ gamesPlayed: 84 }, { gamesPlayed: 70 }])).toBe(82);
+    expect(minimumGamesFor(nba, 84)).toBe(58);
+  });
+
+  it("écarte un joueur à 14 matchs d'un classement de saison complète", () => {
+    // Cas réel : Dejounte Murray, 14 matchs en 2025-26, était dans le top 25 des passes.
+    const murray = { gamesPlayed: 14, minutesPerGame: 32, pointsPerGame: 17 };
+    expect(isQualified(murray, nba, minimumGamesFor(nba, 82))).toBe(false);
+    expect(isQualified({ ...murray, gamesPlayed: 58 }, nba, 58)).toBe(true);
+  });
+
+  it("exige aussi le volume de jeu pour le True Shooting", () => {
+    const minGames = minimumGamesFor(ts, 82);
+    const rotation = { gamesPlayed: 70, minutesPerGame: 30, pointsPerGame: 15 };
+    expect(isQualified(rotation, ts, minGames)).toBe(true);
+    expect(isQualified({ ...rotation, minutesPerGame: 15 }, ts, minGames)).toBe(false);
+    expect(isQualified({ ...rotation, pointsPerGame: 6 }, ts, minGames)).toBe(false);
   });
 
   it("s'applique après regroupement des passages en équipe", () => {
@@ -218,7 +253,14 @@ describe("seuil minimum de matchs", () => {
       row({ teamAbbr: "BKN", gamesPlayed: 35 }),
     ]);
     // Aucun passage n'atteint 58 matchs, la saison entière si.
-    expect(traded.gamesPlayed).toBeGreaterThanOrEqual(scaledMinimumGames(82, 58));
+    expect(traded.gamesPlayed).toBeGreaterThanOrEqual(minimumGamesFor(nba, 82));
+  });
+
+  it("documente l'origine de chaque seuil dans le catalogue", () => {
+    expect(qualificationRule(nba)).toBe("70 % des matchs de l'équipe (58 sur 82) · règle NBA");
+    expect(qualificationRule(ts)).toBe(
+      "70 % des matchs de l'équipe (58 sur 82) + 20 min/match + 10 pts/match · règle hoopstats",
+    );
   });
 });
 
