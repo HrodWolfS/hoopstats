@@ -25,7 +25,8 @@
     "import:photos": "tsx scripts/import-photos.ts",
     "generate:summaries": "tsx scripts/generate-summaries.ts",
     "seed:logos": "tsx scripts/seed-team-logos.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:mobile": "tsx scripts/check-mobile-layout.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
@@ -43,6 +44,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "playwright": "1.63.0",
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",

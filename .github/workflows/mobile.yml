@@ -1,0 +1,55 @@
+name: Mobile
+
+# Vérifie le site réellement servi : la CI n'a pas accès à la base, elle ne
+# peut donc pas rendre les pages elle-même. Les URL de déploiement Vercel sont
+# protégées par authentification : on contrôle le domaine de production.
+on:
+  # Après chaque mise en production réussie.
+  deployment_status:
+  # Chaque matin après la synchro de 05:00 UTC : de nouvelles données (noms
+  # longs, gros scores) peuvent casser une mise en page sans aucun commit.
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Site à contrôler"
+        default: "https://hoopstats-kappa.vercel.app"
+
+concurrency:
+  group: mobile
+  cancel-in-progress: true
+
+jobs:
+  overflow:
+    name: Débordement mobile (320 et 390 px)
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Check mobile layout
+        env:
+          SITE_URL: ${{ inputs.url || 'https://hoopstats-kappa.vercel.app' }}
+        run: pnpm check:mobile "$SITE_URL"
