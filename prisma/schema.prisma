@@ -310,3 +310,15 @@ model AnalyticsDaily {
   @@unique([day, event, dimension])
   @@index([day, event])
 }
+
+/// Réponses au formulaire « Quelle statistique cherchez-vous ? ».
+/// Catégorie dans une liste fermée, texte libre facultatif, effacé après 12 mois.
+model StatRequest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  category  String
+  text      String?  @db.VarChar(280)
+  page      String
+
+  @@index([createdAt])
+}

@@ -76,6 +76,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "meilleurs-5",
     "sources",
     "guides",
+    "demande",
   ].map((route) => ({
     url: `${BASE_URL}/fr/${route}`,
     lastModified: contentUpdatedAt,

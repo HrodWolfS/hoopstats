@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { Footer } from "@/components/layout/footer";
 import { CommandPalette } from "@/components/ui/command-palette";
+import { VisitTracker } from "@/components/analytics/visit-tracker";
 import { PageTransition } from "@/components/ui/page-transition";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
 import { MainWrapper } from "@/components/layout/main-wrapper";
@@ -42,6 +43,7 @@ export default function LocaleLayout({
         </MainWrapper>
 
         <CommandPalette />
+        <VisitTracker />
       </div>
       </SeasonScopeProvider>
     </SidebarProvider>

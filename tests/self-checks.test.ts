@@ -13,7 +13,9 @@ import { validateGameStatus } from "@/lib/game-status";
 import { validatePlayoffCorrections } from "@/lib/playoff-corrections";
 import { validatePlayoffOutcome } from "@/lib/playoff-outcome";
 import { validatePlayoffSeriesWinner } from "@/lib/playoff-series";
+import { validateRetention } from "@/lib/retention";
 import { validateSeasonPhase } from "@/lib/season-phase";
+import { validateStatRequests } from "@/lib/stat-requests";
 import { validateCareerAggregation } from "@/lib/stats/career";
 import { validateStatisticalContext } from "@/lib/stats/context";
 import { validatePlayerMetricRegistry } from "@/lib/stats/metrics";
@@ -27,6 +29,8 @@ import { validateTeamRatings } from "@/lib/stats/team-ratings";
 const SELF_CHECKS: Record<string, () => string[]> = {
   "couleurs d'accent": validateAccentOnDark,
   "mesure d'audience": validateAnalyticsPayload,
+  "retour des visiteurs": validateRetention,
+  "demandes de statistiques": validateStatRequests,
   "profils ESPN": validateEspnAthleteParsing,
   "découpage du scoreboard ESPN": validateScoreboardMonths,
   "statuts de match": validateGameStatus,

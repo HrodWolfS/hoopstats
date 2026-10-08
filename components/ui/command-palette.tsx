@@ -305,6 +305,17 @@ export function CommandPalette() {
               </Link>
               .
             </p>
+            <p className="text-[12px] leading-relaxed">
+              Vous cherchiez une statistique ?{" "}
+              <Link
+                href={`/${locale}/demande?depuis=${encodeURIComponent(pathname ?? "")}`}
+                className="underline underline-offset-2 hover:text-white/80"
+                onClick={() => close()}
+              >
+                Dites-nous laquelle
+              </Link>
+              .
+            </p>
           </div>
         )}
 

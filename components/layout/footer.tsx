@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StatRequestLink } from "@/components/layout/stat-request-link";
 
 export function Footer() {
   return (
@@ -30,6 +31,9 @@ export function Footer() {
           >
             Confidentialité
           </Link>
+          <StatRequestLink className="hover:text-white/60 transition">
+            Proposer une statistique
+          </StatRequestLink>
           <a
             href="mailto:contact@hoopstats.fr"
             className="hover:text-white/60 transition"

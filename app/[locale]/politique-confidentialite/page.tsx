@@ -1,4 +1,6 @@
 import { type Metadata } from "next";
+import Link from "next/link";
+import { MeasureToggle } from "@/components/analytics/measure-toggle";
 
 export const revalidate = false;
 
@@ -32,21 +34,49 @@ export default function PolitiqueConfidentialitePage() {
         </p>
       </section>
 
-      <section className="space-y-2">
+      <section id="mesure" className="space-y-2 scroll-mt-20">
         <h2 className="text-white font-semibold">Mesure d&apos;audience</h2>
         <p className="text-white/70 text-sm leading-relaxed">
           hoopstats mesure uniquement des actions produit agrégées par jour :
           recherches avec ou sans résultat, utilisation des filtres,
-          comparaisons et partages. Aucun terme recherché, identifiant
+          comparaisons, partages et exports. Aucun terme recherché, identifiant
           utilisateur, cookie, adresse IP ou empreinte du navigateur
           n&apos;est enregistré dans la base analytics.
+        </p>
+        <p className="text-white/70 text-sm leading-relaxed">
+          Pour savoir si les lecteurs reviennent, votre navigateur garde dans
+          son stockage local (localStorage, jamais envoyé au serveur) trois
+          informations : le jour de votre première visite, celui de la dernière,
+          et si un retour à 7 ou 28 jours a déjà été compté. Le serveur reçoit
+          seulement « nouvelle visite », « visite de retour » ou « retour dans
+          les 7 / 28 jours d&apos;une première visite du JJ/MM », ajoutés à un
+          compteur du jour. Ces dates sont oubliées au bout de 13 mois.
+        </p>
+        <p className="text-white/70 text-sm leading-relaxed">
+          Si votre navigateur envoie le signal Global Privacy Control, rien
+          n&apos;est mesuré. Vous pouvez aussi désactiver la mesure ici ; les
+          dates déjà stockées sont alors effacées.
+        </p>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+          <MeasureToggle />
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-white font-semibold">Formulaire « Quelle statistique cherchez-vous ? »</h2>
+        <p className="text-white/70 text-sm leading-relaxed">
+          Le <Link href="/fr/demande" className="underline hover:text-white transition-colors">formulaire de demande</Link>{" "}
+          enregistre une catégorie, un texte libre facultatif (280 caractères
+          au plus) et la page d&apos;où vous venez, avec la date. Il ne demande
+          ni nom ni e-mail et refuse les textes contenant une adresse e-mail.
+          Les demandes sont effacées au bout de 12 mois.
         </p>
       </section>
 
       <section className="space-y-2">
         <h2 className="text-white font-semibold">Hébergement des données</h2>
         <p className="text-white/70 text-sm leading-relaxed">
-          Les compteurs agrégés sont hébergés dans la même base de données que
+          Les compteurs agrégés et les demandes sont hébergés dans la même base de données que
           les statistiques du site. Les pages sont servies via Vercel.
         </p>
       </section>
@@ -77,7 +107,7 @@ export default function PolitiqueConfidentialitePage() {
           Cette politique peut être mise à jour à tout moment. La date de
           dernière modification sera indiquée en bas de page.
         </p>
-        <p className="text-white/40 text-xs">Dernière mise à jour : juillet 2026</p>
+        <p className="text-white/40 text-xs">Dernière mise à jour : octobre 2026</p>
       </section>
     </div>
   );

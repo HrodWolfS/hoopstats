@@ -18,6 +18,8 @@ import { validateScoreboardMonths } from "../lib/espn-scoreboard";
 import { validateAccentOnDark } from "../lib/color";
 import { validatePlayerAliases } from "../lib/stats/player-aliases";
 import { validateAnalyticsPayload } from "../lib/analytics";
+import { validateRetention } from "../lib/retention";
+import { validateStatRequests } from "../lib/stat-requests";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
 import { validateCareerAggregation } from "../lib/stats/career";
 import {
@@ -200,6 +202,8 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   ];
   const aliasErrors = validatePlayerAliases();
   const analyticsErrors = validateAnalyticsPayload();
+  const retentionErrors = validateRetention();
+  const statRequestErrors = validateStatRequests();
   const similarityErrors = validatePlayerSimilarity();
   const accentErrors = validateAccentOnDark();
   const careerErrors = validateCareerAggregation();
@@ -645,6 +649,20 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       analyticsErrors.length === 0
         ? "événements agrégés et dimensions sans texte libre"
         : analyticsErrors.join("; "),
+    ),
+    check(
+      "Retour des visiteurs J7/J28",
+      retentionErrors.length === 0,
+      retentionErrors.length === 0
+        ? "un retour par cohorte, fenêtres 1-7 et 8-28 jours, seules les cohortes closes comptées"
+        : retentionErrors.join("; "),
+    ),
+    check(
+      "Demandes de statistiques",
+      statRequestErrors.length === 0,
+      statRequestErrors.length === 0
+        ? "catégorie fermée, 280 caractères, sans e-mail, page interne seulement"
+        : statRequestErrors.join("; "),
     ),
     check(
       "Similarité joueurs",

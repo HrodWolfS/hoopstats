@@ -6,6 +6,9 @@ export const ANALYTICS_EVENTS = [
   "share",
   "copy_link",
   "export",
+  // Mesure du retour (lib/retention.ts) : nouveaux, revenus, cohortes J7/J28.
+  "visit",
+  "return",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];
@@ -26,6 +29,8 @@ export function validateAnalyticsPayload(): string[] {
     !isAnalyticsEvent("share") ||
     !isAnalyticsEvent("copy_link") ||
     !isAnalyticsEvent("export") ||
+    !isAnalyticsEvent("visit") ||
+    !isAnalyticsEvent("return") ||
     isAnalyticsEvent("page_view")
   ) {
     errors.push("liste blanche des événements invalide");
@@ -35,6 +40,9 @@ export function validateAnalyticsPayload(): string[] {
   }
   if (sanitizeAnalyticsDimension("Nikola Jokić") !== null) {
     errors.push("texte libre accepté comme dimension");
+  }
+  if (sanitizeAnalyticsDimension("j28-20261008") !== "j28-20261008") {
+    errors.push("dimension de cohorte rejetée");
   }
   return errors;
 }
