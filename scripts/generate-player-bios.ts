@@ -42,9 +42,17 @@ function sleep(ms: number) {
 // ─── Tronque aux N premières phrases ─────────────────────────────────────────
 
 function firstSentences(text: string, n = 3): string {
-  // Découpe sur ". " ou ".\n" en évitant les abréviations courantes
-  const parts = text.split(/(?<=(?<!\b(?:M|Mme|Dr|Jr|Sr|St|No|vol|p))\.) /);
-  return parts.slice(0, n).join(". ").trim();
+  // Découpe sur ". " en évitant les abréviations courantes et les initiales (« C. J. »)
+  // Le point reste dans chaque morceau : on rejoint par une espace, pas « . ».
+  const parts = text.split(/(?<=(?<!\b(?:[A-ZÀ-Ý]|Mme|Dr|Jr|Sr|St|No|vol|p))\.) /);
+  return parts.slice(0, n).join(" ").trim();
+}
+
+/** Titre Wikipédia : « P.J. Tucker » s'écrit « P._J._Tucker ». */
+function wikiTitle(firstName: string, lastName: string): string {
+  return encodeURIComponent(
+    `${firstName.replace(/\.(?=\S)/g, ". ")} ${lastName}`.replace(/ /g, "_"),
+  );
 }
 
 // ─── Fetch extrait Wikipedia ──────────────────────────────────────────────────
@@ -79,8 +87,8 @@ async function fetchBioFr(
   firstName: string,
   lastName: string,
 ): Promise<{ text: string; source: string; pageUrl: string | null } | null> {
-  const frName = encodeURIComponent(`${firstName}_${lastName}`);
-  const enName = encodeURIComponent(`${firstName}_${lastName}`);
+  const frName = wikiTitle(firstName, lastName);
+  const enName = frName;
 
   // 1. Wikipedia FR — disambiguation basketteur
   const fr1 = await wikiSummary(
