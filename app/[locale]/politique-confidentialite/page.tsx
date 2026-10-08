@@ -42,8 +42,10 @@ export default function PolitiqueConfidentialitePage() {
           comparaisons, partages et exports, pages vues par type de page et
           format d&apos;écran (mobile ou ordinateur), page d&apos;entrée et
           page suivante, changements de saison, définitions de colonnes
-          ouvertes, alertes de données en retard et pages d&apos;erreur (type
-          de page seulement, sans message). Aucune adresse complète, aucun
+          ouvertes, alertes de données en retard, pages d&apos;erreur (type
+          de page seulement, sans message) et première réponse obtenue dans
+          l&apos;onglet (type de réponse et tranche de temps, comme « moins de
+          30 s »). Aucune adresse complète, aucun
           joueur consulté, aucun terme recherché, identifiant
           utilisateur, cookie, adresse IP ou empreinte du navigateur
           n&apos;est enregistré dans la base analytics.
@@ -57,8 +59,9 @@ export default function PolitiqueConfidentialitePage() {
           les 7 / 28 jours d&apos;une première visite du JJ/MM », ajoutés à un
           compteur du jour. Ces dates sont oubliées au bout de 13 mois. Le
           stockage de session de l&apos;onglet, effacé à sa fermeture, retient
-          le type de la page d&apos;entrée pour ne compter la page suivante
-          qu&apos;une fois.
+          le type de la page d&apos;entrée et l&apos;heure d&apos;arrivée pour ne
+          compter la page suivante et la première réponse qu&apos;une fois ;
+          l&apos;heure elle-même n&apos;est jamais envoyée.
         </p>
         <p className="text-white/70 text-sm leading-relaxed">
           Si votre navigateur envoie le signal Global Privacy Control, rien

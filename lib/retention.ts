@@ -198,6 +198,10 @@ export const MEASURE_RULES = [
     rule: "Sont aussi comptés : l’ouverture d’une définition de colonne (par code, comme TS%), le changement de saison (barre du haut ou comparateur, avec la saison choisie), l’affichage de l’alerte « données en retard » (plus de 36 heures sans mise à jour réussie) et l’affichage d’une page d’erreur, par type de page et origine (serveur ou navigateur), sans message ni détail technique.",
   },
   {
+    title: "Activation et temps de réponse",
+    rule: "Un onglet est « activé » la première fois qu’il obtient une réponse : fiche joueur, équipe ou match, tableau de statistiques (catégorie de classement, tendances, Français, rookies, matchs du jour), résultat de recherche choisi, comparaison complète, définition ouverte, partage ou export. Une seule fois par onglet, avec le type de réponse et une tranche de temps depuis l’arrivée : dès la page d’arrivée, moins de 30 s, 30 s à 1 min, 1 à 3 min, plus de 3 min. L’heure d’arrivée reste dans l’onglet.",
+  },
+  {
     title: "Retour à 7 jours (J7)",
     rule: "Part des nouveaux visiteurs d’un jour revenus un autre jour dans les 7 jours suivants. Calculé sur les cohortes de quatre semaines dont la fenêtre est close (première visite il y a 8 à 35 jours). Objectif : 25 % ou plus.",
   },

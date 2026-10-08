@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { activationDimension, eventAnswerKind, timeBucket, type ActivationKind } from "@/lib/activation";
 import type { AnalyticsEventName } from "@/lib/analytics";
 import { OPT_OUT_STORAGE_KEY } from "@/lib/retention";
 
@@ -14,8 +15,31 @@ export function isMeasureDisabled(): boolean {
   }
 }
 
+export const SESSION_START_KEY = "hoopstats:start";
+const ACTIVATED_KEY = "hoopstats:activated";
+
+/**
+ * Première réponse obtenue dans l'onglet, comptée une fois avec une tranche
+ * de temps depuis l'arrivée. `direct` : la page d'arrivée était la réponse.
+ */
+export function markActivation(kind: ActivationKind, direct = false) {
+  if (isMeasureDisabled()) return;
+  try {
+    if (sessionStorage.getItem(ACTIVATED_KEY)) return;
+    sessionStorage.setItem(ACTIVATED_KEY, "1");
+    // Sans heure d'arrivée, l'action a lieu avant que la page d'entrée soit comptée.
+    const start = Number(sessionStorage.getItem(SESSION_START_KEY));
+    const bucket = direct ? "direct" : start ? timeBucket(Date.now() - start) : "lt30";
+    sendAnalyticsEvent("activation", activationDimension(kind, bucket));
+  } catch {
+    // Stockage de session bloqué : pas d'activation mesurable.
+  }
+}
+
 export function sendAnalyticsEvent(event: AnalyticsEventName, dimension: string) {
   if (isMeasureDisabled()) return;
+  const answer = eventAnswerKind(event, dimension);
+  if (answer) markActivation(answer);
   const body = JSON.stringify({ event, dimension });
   if (navigator.sendBeacon) {
     navigator.sendBeacon("/api/analytics", new Blob([body], { type: "application/json" }));

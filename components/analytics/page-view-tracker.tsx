@@ -2,7 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { isMeasureDisabled, sendAnalyticsEvent } from "@/components/analytics/analytics-event";
+import {
+  isMeasureDisabled,
+  markActivation,
+  sendAnalyticsEvent,
+  SESSION_START_KEY,
+} from "@/components/analytics/analytics-event";
+import { pageAnswerKind } from "@/lib/activation";
 import {
   deviceClass,
   isNextPage,
@@ -37,11 +43,18 @@ export function PageViewTracker() {
     try {
       const stored = sessionStorage.getItem(ENTRY_KEY);
       const entry = stored && stored in PAGE_TYPES ? (stored as PageType) : null;
+      const answer = pageAnswerKind(pathname);
       if (!entry) {
         sessionStorage.setItem(ENTRY_KEY, type);
         sessionStorage.setItem(ENTRY_PATH_KEY, pathname);
+        // Heure d'arrivée, gardée dans l'onglet : seule une tranche part au serveur.
+        if (!sessionStorage.getItem(SESSION_START_KEY)) sessionStorage.setItem(SESSION_START_KEY, String(Date.now()));
         sendAnalyticsEvent("entry", type);
-      } else if (
+        if (answer) markActivation(answer, true);
+        return;
+      }
+      if (answer) markActivation(answer);
+      if (
         !sessionStorage.getItem(NEXT_KEY) &&
         sessionStorage.getItem(ENTRY_PATH_KEY) !== pathname &&
         isNextPage(entry, type)

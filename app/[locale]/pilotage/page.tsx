@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { currentSeason } from "@/lib/nba";
 import { isPilotageAuthorized } from "@/lib/pilotage-auth";
+import { ACTIVATION_KINDS, summarizeActivation, TIME_BUCKETS } from "@/lib/activation";
 import { PAGE_TYPES, summarizeProductEvents } from "@/lib/page-tracking";
 import { addDays, retentionRate, utcDayKey } from "@/lib/retention";
 import { statRequestCategoryLabel } from "@/lib/stat-requests";
@@ -93,9 +94,9 @@ export default async function PilotagePage({
       .reduce((sum, row) => sum + row.count, 0);
   const requestTotal = requestsByCategory.reduce((sum, row) => sum + row._count._all, 0);
   const shortDate = (day: string) => day.slice(8, 10) + "/" + day.slice(5, 7);
-  const product = summarizeProductEvents(
-    events.map((row) => ({ event: row.event, dimension: row.dimension, count: row._sum.count ?? 0 })),
-  );
+  const eventCounts = events.map((row) => ({ event: row.event, dimension: row.dimension, count: row._sum.count ?? 0 }));
+  const product = summarizeProductEvents(eventCounts);
+  const activation = summarizeActivation(eventCounts);
   const sitemapEstimate = 3 + 8 + teams + players + games + 66;
 
   return (
@@ -188,6 +189,26 @@ export default async function PilotagePage({
             <Row key={`${row.from}-${row.to}`} label={`${PAGE_TYPES[row.from]} → ${PAGE_TYPES[row.to]}`} value={row.count} />
           ))}
         </Panel>
+        <Panel title={`Activation · ${activation.activated.toLocaleString("fr-FR")} onglets`}>
+          <Row
+            label="Onglets ayant obtenu une réponse"
+            value={activation.activationRate === null ? "—" : `${activation.activationRate} %`}
+          />
+          <Row label="Réponse dès la page d’arrivée" value={activation.direct} />
+          <Row
+            label="Sinon, réponse en moins d’1 min (objectif ≥ 70 %)"
+            value={activation.underMinuteRate === null ? "—" : `${activation.underMinuteRate} %`}
+            alert={activation.underMinuteRate !== null && activation.underMinuteRate < 70}
+          />
+          <p className="pt-3 text-[10px] font-mono uppercase text-white/25">Temps jusqu’à la réponse</p>
+          {activation.buckets.map((row) => (
+            <Row key={row.bucket} label={TIME_BUCKETS[row.bucket]} value={row.count} />
+          ))}
+          <p className="pt-3 text-[10px] font-mono uppercase text-white/25">Première réponse</p>
+          {activation.kinds.map((row) => (
+            <Row key={row.kind} label={ACTIVATION_KINDS[row.kind]} value={row.count} />
+          ))}
+        </Panel>
         <Panel title="Aide, saisons et fiabilité">
           <Row label="Changements de saison (barre)" value={product.seasonChanges.barre} />
           <Row label="Changements de saison (comparateur)" value={product.seasonChanges.comparer} />
@@ -234,5 +255,5 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   return <div className="rounded-2xl border border-white/[0.06] bg-[#111114] p-5"><h2 className="mb-4 font-display text-lg">{title}</h2><div className="space-y-2">{children}</div></div>;
 }
 function Row({ label, value, alert = false }: { label: string; value: number | string; alert?: boolean }) {
-  return <div className="flex justify-between gap-4 border-b border-white/[0.04] py-2 text-sm"><span className="text-white/40">{label}</span><span className={alert ? "font-mono text-amber-300" : "font-mono text-white/70"}>{typeof value === "number" ? value.toLocaleString("fr-FR") : value}</span></div>;
+  return <div className="flex justify-between gap-4 border-b border-white/[0.04] py-2 text-sm"><span className="text-white/40">{label}</span><span className={`shrink-0 whitespace-nowrap font-mono ${alert ? "text-amber-300" : "text-white/70"}`}>{typeof value === "number" ? value.toLocaleString("fr-FR") : value}</span></div>;
 }

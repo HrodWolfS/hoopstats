@@ -21,6 +21,7 @@ import { validateAnalyticsPayload } from "../lib/analytics";
 import { validateRetention } from "../lib/retention";
 import { validateStatRequests } from "../lib/stat-requests";
 import { validatePageTracking } from "../lib/page-tracking";
+import { validateActivation } from "../lib/activation";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
 import { validateCareerAggregation } from "../lib/stats/career";
 import {
@@ -206,6 +207,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const retentionErrors = validateRetention();
   const statRequestErrors = validateStatRequests();
   const pageTrackingErrors = validatePageTracking();
+  const activationErrors = validateActivation();
   const similarityErrors = validatePlayerSimilarity();
   const accentErrors = validateAccentOnDark();
   const careerErrors = validateCareerAggregation();
@@ -672,6 +674,13 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       pageTrackingErrors.length === 0
         ? "types de page fermés, appareil par largeur, parcours d'entrée, retard au-delà de 36 h"
         : pageTrackingErrors.join("; "),
+    ),
+    check(
+      "Activation",
+      activationErrors.length === 0,
+      activationErrors.length === 0
+        ? "réponse reconnue par type de page ou d'action, une fois par onglet, tranche de temps seulement"
+        : activationErrors.join("; "),
     ),
     check(
       "Similarité joueurs",

@@ -17,6 +17,8 @@ export const ANALYTICS_EVENTS = [
   "metric_definition",
   "freshness_warning",
   "client_error",
+  // Première réponse obtenue dans l'onglet (lib/activation.ts).
+  "activation",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];
@@ -41,6 +43,7 @@ export function validateAnalyticsPayload(): string[] {
     !isAnalyticsEvent("return") ||
     !isAnalyticsEvent("page_view") ||
     !isAnalyticsEvent("client_error") ||
+    !isAnalyticsEvent("activation") ||
     isAnalyticsEvent("page_url")
   ) {
     errors.push("liste blanche des événements invalide");
