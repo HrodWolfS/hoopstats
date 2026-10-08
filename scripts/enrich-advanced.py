@@ -60,7 +60,7 @@ def fetch_advanced_season(season: str) -> list[dict]:
                 "player_name": str(row.get("PLAYER_NAME", "")),
                 "season": season,
                 "gp": int(row.get("GP", 0)),
-                "per": _safe_float(row.get("PIE")),       # PIE ≈ PER proxy (nba_api)
+                "per": _safe_float(row.get("PIE")),       # PIE NBA.com, pas le PER de Hollinger (nba_api)
                 "ts_pct": _safe_float(row.get("TS_PCT")),
                 "usg_pct": _safe_float(row.get("USG_PCT")),
                 "off_rating": _safe_float(row.get("OFF_RATING")),

@@ -114,7 +114,7 @@ def fetch_season(season: str) -> list[dict]:
             # Advanced stats (peuvent être absents sur certaines saisons)
             "ts_pct": safe_float(adv.get("TS_PCT")),
             "usg_pct": safe_float(adv.get("USG_PCT")),
-            "per": safe_float(adv.get("PIE")),       # PIE ≈ proxy PER
+            "per": safe_float(adv.get("PIE")),       # PIE NBA.com, pas le PER de Hollinger
             "off_rating": safe_float(adv.get("OFF_RATING")),
             "def_rating": safe_float(adv.get("DEF_RATING")),
             "net_rating": safe_float(adv.get("NET_RATING")),
