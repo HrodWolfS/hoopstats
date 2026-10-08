@@ -39,7 +39,12 @@ export default function PolitiqueConfidentialitePage() {
         <p className="text-white/70 text-sm leading-relaxed">
           hoopstats mesure uniquement des actions produit agrégées par jour :
           recherches avec ou sans résultat, utilisation des filtres,
-          comparaisons, partages et exports. Aucun terme recherché, identifiant
+          comparaisons, partages et exports, pages vues par type de page et
+          format d&apos;écran (mobile ou ordinateur), page d&apos;entrée et
+          page suivante, changements de saison, définitions de colonnes
+          ouvertes, alertes de données en retard et pages d&apos;erreur (type
+          de page seulement, sans message). Aucune adresse complète, aucun
+          joueur consulté, aucun terme recherché, identifiant
           utilisateur, cookie, adresse IP ou empreinte du navigateur
           n&apos;est enregistré dans la base analytics.
         </p>
@@ -50,7 +55,10 @@ export default function PolitiqueConfidentialitePage() {
           et si un retour à 7 ou 28 jours a déjà été compté. Le serveur reçoit
           seulement « nouvelle visite », « visite de retour » ou « retour dans
           les 7 / 28 jours d&apos;une première visite du JJ/MM », ajoutés à un
-          compteur du jour. Ces dates sont oubliées au bout de 13 mois.
+          compteur du jour. Ces dates sont oubliées au bout de 13 mois. Le
+          stockage de session de l&apos;onglet, effacé à sa fermeture, retient
+          le type de la page d&apos;entrée pour ne compter la page suivante
+          qu&apos;une fois.
         </p>
         <p className="text-white/70 text-sm leading-relaxed">
           Si votre navigateur envoie le signal Global Privacy Control, rien

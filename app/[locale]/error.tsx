@@ -1,14 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
+import { sendAnalyticsEvent } from "@/components/analytics/analytics-event";
+import { errorDimension } from "@/lib/page-tracking";
 
 export default function Error({
   error,
   reset,
 }: {
-  error: Error;
+  error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const pathname = usePathname();
+  // Seuls le type de page et l'origine (serveur ou navigateur) partent :
+  // ni message, ni pile, ni adresse.
+  const fromServer = Boolean(error.digest);
+  const sent = useRef(false);
+  useEffect(() => {
+    if (sent.current) return;
+    sent.current = true;
+    sendAnalyticsEvent("client_error", errorDimension(pathname, fromServer));
+  }, [pathname, fromServer]);
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4 text-center"

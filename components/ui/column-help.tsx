@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
 import { columnDefinition } from "@/lib/stats/column-definitions";
+import { sendAnalyticsEvent } from "@/components/analytics/analytics-event";
+import { metricDimension } from "@/lib/page-tracking";
 
 /**
  * Définitions accessibles depuis les en-têtes de colonnes. Un survol ne
@@ -41,7 +43,11 @@ export function ColumnHeader({ code }: { code: string }) {
       aria-expanded={open}
       aria-controls={help.panelId}
       aria-label={`${code} : ${definition.label}, afficher la définition`}
-      onClick={() => help.toggle(code)}
+      onClick={() => {
+        const dimension = open ? null : metricDimension(code);
+        if (dimension) sendAnalyticsEvent("metric_definition", dimension);
+        help.toggle(code);
+      }}
       className={`uppercase underline decoration-dotted underline-offset-4 transition ${open ? "text-white decoration-white/60" : "decoration-white/20 hover:text-white/75"}`}
     >
       {code}

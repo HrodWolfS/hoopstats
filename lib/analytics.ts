@@ -9,6 +9,14 @@ export const ANALYTICS_EVENTS = [
   // Mesure du retour (lib/retention.ts) : nouveaux, revenus, cohortes J7/J28.
   "visit",
   "return",
+  // Instrumentation produit (lib/page-tracking.ts).
+  "page_view",
+  "entry",
+  "next_page",
+  "season_change",
+  "metric_definition",
+  "freshness_warning",
+  "client_error",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];
@@ -31,7 +39,9 @@ export function validateAnalyticsPayload(): string[] {
     !isAnalyticsEvent("export") ||
     !isAnalyticsEvent("visit") ||
     !isAnalyticsEvent("return") ||
-    isAnalyticsEvent("page_view")
+    !isAnalyticsEvent("page_view") ||
+    !isAnalyticsEvent("client_error") ||
+    isAnalyticsEvent("page_url")
   ) {
     errors.push("liste blanche des événements invalide");
   }

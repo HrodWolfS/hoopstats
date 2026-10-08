@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { DATA_ORIGINS, latestUpdate, type DataOriginKey } from "@/lib/data-sources";
 
@@ -22,3 +23,13 @@ export async function tableUpdatedAt(origins: readonly DataOriginKey[]): Promise
   const oldest = (dates as Date[]).reduce((left, right) => (left <= right ? left : right));
   return oldest.toISOString();
 }
+
+/** Dernière synchronisation quotidienne réussie ; partagée par la barre latérale et l'alerte de fraîcheur. */
+export const lastDailySync = cache(async (): Promise<Date | null> => {
+  const log = await prisma.syncLog.findFirst({
+    where: { source: "sync-daily", status: { in: ["success", "partial"] } },
+    orderBy: { completedAt: "desc" },
+    select: { completedAt: true },
+  });
+  return log?.completedAt ?? null;
+});

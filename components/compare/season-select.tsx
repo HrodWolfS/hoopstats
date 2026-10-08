@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { sendAnalyticsEvent } from "@/components/analytics/analytics-event";
+import { seasonChangeDimension } from "@/lib/page-tracking";
 
 type SeasonSelectProps = {
   slot: "j1" | "j2";
@@ -34,6 +36,8 @@ export function SeasonSelect({
   const other = slot === "j1" ? "s2" : "s1";
 
   function select(season: string) {
+    const dimension = season === value ? null : seasonChangeDimension("comparer", season);
+    if (dimension) sendAnalyticsEvent("season_change", dimension);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("saison");
     params.set(own, season);

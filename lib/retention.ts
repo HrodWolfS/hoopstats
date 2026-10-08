@@ -190,6 +190,14 @@ export const MEASURE_RULES = [
     rule: "Des compteurs par jour (UTC) : recherches, filtres, comparaisons, partages, exports, nouvelles visites et visites de retour. Ni cookie, ni identifiant, ni adresse IP, ni terme recherché.",
   },
   {
+    title: "Pages et parcours",
+    rule: "Chaque page vue est comptée par type (fiche joueur, classements, matchs…) et par format d’écran : mobile sous 768 px de large, ordinateur au-delà. La première page d’un onglet est comptée comme page d’entrée, puis la deuxième page ouverte, une seule fois. Jamais l’adresse complète ni le joueur consulté.",
+  },
+  {
+    title: "Aide, saisons, fraîcheur et erreurs",
+    rule: "Sont aussi comptés : l’ouverture d’une définition de colonne (par code, comme TS%), le changement de saison (barre du haut ou comparateur, avec la saison choisie), l’affichage de l’alerte « données en retard » (plus de 36 heures sans mise à jour réussie) et l’affichage d’une page d’erreur, par type de page et origine (serveur ou navigateur), sans message ni détail technique.",
+  },
+  {
     title: "Retour à 7 jours (J7)",
     rule: "Part des nouveaux visiteurs d’un jour revenus un autre jour dans les 7 jours suivants. Calculé sur les cohortes de quatre semaines dont la fenêtre est close (première visite il y a 8 à 35 jours). Objectif : 25 % ou plus.",
   },

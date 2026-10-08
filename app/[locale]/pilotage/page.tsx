@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { currentSeason } from "@/lib/nba";
 import { isPilotageAuthorized } from "@/lib/pilotage-auth";
+import { PAGE_TYPES, summarizeProductEvents } from "@/lib/page-tracking";
 import { addDays, retentionRate, utcDayKey } from "@/lib/retention";
 import { statRequestCategoryLabel } from "@/lib/stat-requests";
 
@@ -92,6 +93,9 @@ export default async function PilotagePage({
       .reduce((sum, row) => sum + row.count, 0);
   const requestTotal = requestsByCategory.reduce((sum, row) => sum + row._count._all, 0);
   const shortDate = (day: string) => day.slice(8, 10) + "/" + day.slice(5, 7);
+  const product = summarizeProductEvents(
+    events.map((row) => ({ event: row.event, dimension: row.dimension, count: row._sum.count ?? 0 })),
+  );
   const sitemapEstimate = 3 + 8 + teams + players + games + 66;
 
   return (
@@ -157,6 +161,47 @@ export default async function PilotagePage({
             requestsByCategory.map((row) => (
               <Row key={row.category} label={statRequestCategoryLabel(row.category)} value={row._count._all} />
             ))
+          )}
+        </Panel>
+      </section>
+      <section className="grid gap-5 lg:grid-cols-2">
+        <Panel title={`Pages vues · ${product.pageViews.toLocaleString("fr-FR")}`}>
+          <Row label="Part mobile (largeur < 768 px)" value={product.mobileShare === null ? "—" : `${product.mobileShare} %`} />
+          {product.topPages.map((row) => (
+            <Row key={row.type} label={PAGE_TYPES[row.type]} value={row.count} />
+          ))}
+        </Panel>
+        <Panel title="Pages d’entrée (part suivie d’une 2e page)">
+          {product.topEntries.length === 0 ? (
+            <p className="text-sm text-white/30">Aucune entrée pour ce mois.</p>
+          ) : (
+            product.topEntries.map((row) => (
+              <Row
+                key={row.type}
+                label={PAGE_TYPES[row.type]}
+                value={`${row.count.toLocaleString("fr-FR")} · ${row.continuedRate === null ? "—" : `${row.continuedRate} %`}`}
+              />
+            ))
+          )}
+          {product.topPaths.length > 0 && <p className="pt-3 text-[10px] font-mono uppercase text-white/25">Parcours les plus fréquents</p>}
+          {product.topPaths.map((row) => (
+            <Row key={`${row.from}-${row.to}`} label={`${PAGE_TYPES[row.from]} → ${PAGE_TYPES[row.to]}`} value={row.count} />
+          ))}
+        </Panel>
+        <Panel title="Aide, saisons et fiabilité">
+          <Row label="Changements de saison (barre)" value={product.seasonChanges.barre} />
+          <Row label="Changements de saison (comparateur)" value={product.seasonChanges.comparer} />
+          <Row label="Alertes « données en retard » vues" value={product.freshnessWarnings} alert={product.freshnessWarnings > 0} />
+          <Row label="Erreurs affichées" value={product.errorTotal} alert={product.errorTotal > 0} />
+          {product.errors.map((row) => (
+            <Row key={row.dimension} label={`· ${row.dimension.replace("_", " · ")}`} value={row.count} alert />
+          ))}
+        </Panel>
+        <Panel title="Définitions ouvertes">
+          {product.topDefinitions.length === 0 ? (
+            <p className="text-sm text-white/30">Aucune définition ouverte ce mois.</p>
+          ) : (
+            product.topDefinitions.map((row) => <Row key={row.code} label={row.code} value={row.count} />)
           )}
         </Panel>
       </section>

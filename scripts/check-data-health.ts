@@ -20,6 +20,7 @@ import { validatePlayerAliases } from "../lib/stats/player-aliases";
 import { validateAnalyticsPayload } from "../lib/analytics";
 import { validateRetention } from "../lib/retention";
 import { validateStatRequests } from "../lib/stat-requests";
+import { validatePageTracking } from "../lib/page-tracking";
 import { validatePlayerSimilarity } from "../lib/stats/player-similarity";
 import { validateCareerAggregation } from "../lib/stats/career";
 import {
@@ -204,6 +205,7 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
   const analyticsErrors = validateAnalyticsPayload();
   const retentionErrors = validateRetention();
   const statRequestErrors = validateStatRequests();
+  const pageTrackingErrors = validatePageTracking();
   const similarityErrors = validatePlayerSimilarity();
   const accentErrors = validateAccentOnDark();
   const careerErrors = validateCareerAggregation();
@@ -663,6 +665,13 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       statRequestErrors.length === 0
         ? "catégorie fermée, 280 caractères, sans e-mail, page interne seulement"
         : statRequestErrors.join("; "),
+    ),
+    check(
+      "Instrumentation produit",
+      pageTrackingErrors.length === 0,
+      pageTrackingErrors.length === 0
+        ? "types de page fermés, appareil par largeur, parcours d'entrée, retard au-delà de 36 h"
+        : pageTrackingErrors.join("; "),
     ),
     check(
       "Similarité joueurs",

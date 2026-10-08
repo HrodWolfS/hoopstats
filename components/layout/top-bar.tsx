@@ -6,6 +6,8 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ALL_NAV_ITEMS, isItemActive } from "./sidebar-client";
 import { useSeasonScope } from "./season-scope";
 import { neighbourSeasons, pageHasSeason, seasonScopeHref } from "@/lib/season-scope";
+import { sendAnalyticsEvent } from "@/components/analytics/analytics-event";
+import { seasonChangeDimension } from "@/lib/page-tracking";
 
 // ─── Season Selector ─────────────────────────────────────────────────────────
 
@@ -31,6 +33,8 @@ function SeasonSelector() {
   const { older, newer } = neighbourSeasons(scope);
 
   function navigate(s: string) {
+    const dimension = s === season ? null : seasonChangeDimension("barre", s);
+    if (dimension) sendAnalyticsEvent("season_change", dimension);
     router.push(seasonScopeHref(scope!, pathname, searchParams.toString(), s));
   }
 

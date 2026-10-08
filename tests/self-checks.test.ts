@@ -16,6 +16,7 @@ import { validatePlayoffSeriesWinner } from "@/lib/playoff-series";
 import { validateRetention } from "@/lib/retention";
 import { validateSeasonPhase } from "@/lib/season-phase";
 import { validateStatRequests } from "@/lib/stat-requests";
+import { validatePageTracking } from "@/lib/page-tracking";
 import { validateCareerAggregation } from "@/lib/stats/career";
 import { validateStatisticalContext } from "@/lib/stats/context";
 import { validatePlayerMetricRegistry } from "@/lib/stats/metrics";
@@ -31,6 +32,7 @@ const SELF_CHECKS: Record<string, () => string[]> = {
   "mesure d'audience": validateAnalyticsPayload,
   "retour des visiteurs": validateRetention,
   "demandes de statistiques": validateStatRequests,
+  "instrumentation produit": validatePageTracking,
   "profils ESPN": validateEspnAthleteParsing,
   "découpage du scoreboard ESPN": validateScoreboardMonths,
   "statuts de match": validateGameStatus,

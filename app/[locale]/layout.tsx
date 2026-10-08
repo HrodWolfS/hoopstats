@@ -4,6 +4,8 @@ import { TopBar } from "@/components/layout/top-bar";
 import { Footer } from "@/components/layout/footer";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { VisitTracker } from "@/components/analytics/visit-tracker";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
+import { FreshnessBanner } from "@/components/layout/freshness-banner";
 import { PageTransition } from "@/components/ui/page-transition";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
 import { MainWrapper } from "@/components/layout/main-wrapper";
@@ -37,6 +39,9 @@ export default function LocaleLayout({
             <TopBar />
           </Suspense>
           <div className="px-4 md:px-8 lg:px-12 py-6 md:py-8 max-w-[1400px] mx-auto w-full flex-1">
+            <Suspense fallback={null}>
+              <FreshnessBanner />
+            </Suspense>
             <PageTransition>{children}</PageTransition>
           </div>
           <Footer />
@@ -44,6 +49,7 @@ export default function LocaleLayout({
 
         <CommandPalette />
         <VisitTracker />
+        <PageViewTracker />
       </div>
       </SeasonScopeProvider>
     </SidebarProvider>
