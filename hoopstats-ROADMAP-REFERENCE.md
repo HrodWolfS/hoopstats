@@ -180,7 +180,7 @@ Une fonctionnalité est terminée lorsque :
 | Phase 1 | Tenir la promesse centrale | Recherche, saisons et comparaisons cohérentes | 2 à 4 semaines |
 | Phase 2 | Créer l'usage quotidien | Accueil de la nuit, tendances, Français et partage | 3 à 5 semaines |
 | Phase 3 | Construire la profondeur | Recherche historique, splits et analyses avancées | Selon données et validation |
-| Phase 4 | Valider et faire connaître | Bêta mesurée, boucle d'apprentissage et acquisition maîtrisée | Transverse puis continue |
+| Phase 4 | Valider et faire connaître | Mesure d'audience, boucle d'apprentissage et acquisition maîtrisée | Transverse puis continue |
 
 Les estimations supposent un développement individuel à temps partiel. Elles servent à ordonner le travail, pas à imposer une date de sortie.
 
@@ -390,7 +390,7 @@ Trouver n'importe quel joueur ou équipe de l'historique en quelques secondes.
 - les stars actuelles et légendes historiques sont trouvables ;
 - les noms accentués sont trouvables sans accent ;
 - la recherche mobile est utilisable au clavier ;
-- moins de 10 % de recherches sans résultat pendant la bêta, hors requêtes hors périmètre.
+- moins de 10 % de recherches sans résultat, hors requêtes hors périmètre.
 
 ---
 
@@ -561,7 +561,7 @@ HoopStats devient utile au réveil, suit naturellement les joueurs français et 
 - [ ] hub français complet ;
 - [ ] calendrier navigable ;
 - [ ] partage et export conformes aux droits des données ;
-- [ ] amélioration mesurable du retour à J7 dans la bêta.
+- [ ] amélioration mesurable du retour à J7 dans le pilotage.
 
 ---
 
@@ -570,7 +570,7 @@ HoopStats devient utile au réveil, suit naturellement les joueurs français et 
 Cette phase est conditionnelle. Chaque chantier doit passer deux portes :
 
 1. la donnée nécessaire est disponible avec des droits compatibles ;
-2. le besoin a été observé dans les entretiens, recherches ou usages.
+2. le besoin a été observé dans les recherches, les demandes ou les usages.
 
 ## 3.1 Splits déterministes
 
@@ -688,82 +688,20 @@ La validation commence pendant la phase 0 et accompagne toutes les phases suivan
 
 ---
 
-## 4.2 Entretiens de problème
+## 4.2 à 4.4 Entretiens, tests de tâches et bêta — abandonnés
 
-### Échantillon recommandé
+Décision du 8 octobre 2026 : hoopstats est un projet gratuit, tenu par un fan, pensé comme un MVP jusqu'à la fin de la saison. Pas de recrutement, d'entretiens, de tests encadrés ni de bêta à cohorte.
 
-15 à 20 participants :
+L'utilité se juge sur les signaux passifs déjà en place (pilotage) :
 
-- 5 fans réguliers ;
-- 3 fans récents ou attirés par les Français en NBA ;
-- 3 utilisateurs TTFL/fantasy ;
-- 3 passionnés de statistiques ;
-- 3 créateurs ou journalistes.
+- activation et temps jusqu'à la réponse (objectif : 70 % en moins d'une minute) ;
+- recherches sans résultat (objectif : moins de 10 %, hors requêtes hors périmètre) ;
+- retour à J7 et J28 ;
+- usage de la comparaison, du partage et de l'export ;
+- demandes reçues sur « Quelle statistique cherchez-vous ? » ;
+- anomalies détectées par `health:data`.
 
-### Questions
-
-1. « Montre-moi la dernière statistique NBA que tu as cherchée. »
-2. « Où l'as-tu trouvée et pourquoi cette source ? »
-3. « Qu'est-ce qui t'a ralenti ou fait douter ? »
-4. « À quel moment recherches-tu des statistiques ? »
-5. « Qu'utilises-tu sur mobile et sur ordinateur ? »
-6. « Que fais-tu du résultat : lecture, débat, publication ou fantasy ? »
-
-Ne pas demander directement quelle fonctionnalité construire. Observer les comportements passés et les outils réellement utilisés.
-
-### Livrable
-
-Une synthèse par besoin, fréquence, outil actuel, difficulté, niveau de confiance et volonté de revenir.
-
----
-
-## 4.3 Tests comparatifs de tâches
-
-Faire réaliser les mêmes tâches sur HoopStats, NBA Stats, Basketball Reference et TrashTalk :
-
-1. retrouver la performance d'un joueur la nuit précédente ;
-2. comparer deux joueurs sur une saison ;
-3. identifier le meilleur joueur selon une métrique ;
-4. retrouver une performance historique ;
-5. comprendre le TS%.
-
-### Mesures
-
-- taux de réussite ;
-- temps jusqu'à la réponse ;
-- nombre d'erreurs ou retours arrière ;
-- confiance déclarée ;
-- compréhension du résultat ;
-- préférence finale ;
-- différences mobile/ordinateur.
-
-### Seuils internes initiaux
-
-- au moins 70 % des tâches réussies en moins d'une minute ;
-- confiance moyenne d'au moins 4/5 ;
-- avantage net de HoopStats sur rapidité ou compréhension dans au moins trois tâches.
-
----
-
-## 4.4 Bêta instrumentée
-
-### Format
-
-- 40 à 60 utilisateurs ;
-- quatre semaines ;
-- segmentation connue ;
-- questionnaire court au début et à la fin ;
-- point qualitatif hebdomadaire avec un sous-groupe.
-
-### Critères de décision proposés
-
-- moins de 10 % de recherches sans résultat ;
-- retour à J7 d'au moins 25 % chez les fans réguliers recrutés ;
-- au moins 20 % des bêta-testeurs utilisent comparaison, partage ou export ;
-- confiance moyenne dans les données supérieure ou égale à 4/5 ;
-- aucune anomalie statistique critique non détectée automatiquement.
-
-Ces seuils sont des objectifs internes, pas des références universelles. Ils devront être ajustés après la première cohorte.
+Bilan à la fin de la saison : selon la fréquentation, décider de la suite (dont d'éventuels revenus).
 
 ---
 
@@ -910,7 +848,7 @@ Les visites brutes ne doivent jamais être l'unique mesure de réussite.
 - revue des métriques produit ;
 - revue des coûts fournisseurs et infrastructure ;
 - mise à jour du registre des risques ;
-- entretien avec deux ou trois utilisateurs ;
+- lecture des demandes reçues et des recherches sans résultat ;
 - décision explicite sur le prochain chantier ;
 - suppression ou report des fonctionnalités sans usage.
 
@@ -951,7 +889,7 @@ Les visites brutes ne doivent jamais être l'unique mesure de réussite.
 2. [ ] Repenser l'accueil quotidien.
 3. [ ] Ajouter les tendances 5/10/20 matchs.
 4. [ ] Construire le hub des Français.
-5. [ ] Lancer les tests comparatifs puis la bêta.
+5. [x] ~~Lancer les tests comparatifs puis la bêta.~~ Abandonné (voir 4.2 à 4.4).
 
 ---
 
