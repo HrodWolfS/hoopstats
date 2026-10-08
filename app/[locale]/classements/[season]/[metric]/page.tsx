@@ -1,24 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { ALL_SEASONS, currentSeason, seasonsThrough } from "@/lib/nba";
 import { frDecimal, pct, stat } from "@/lib/format";
 import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
-import { getPlayerMetric } from "@/lib/stats/metrics";
-import {
-  competitionRanks,
-  getLeaderboard,
-  leaderboardValue,
-  LEADERBOARDS,
-  isQualified,
-  minimumGamesFor,
-  qualificationSummary,
-  seasonTeamGames,
-} from "@/lib/stats/leaders";
+import { getLeaderboard, LEADERBOARDS, qualificationSummary } from "@/lib/stats/leaders";
+import { loadLeaderboard } from "@/lib/stats/leaderboard-data";
 import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
-import { consolidateSeasonRows } from "@/lib/stats/season-totals";
 import { ShareButton } from "@/components/analytics/share-button";
+import { CsvExportButton } from "@/components/analytics/csv-export-button";
+import { tableUpdatedAt } from "@/lib/data-updates";
+import { csvFilename, isExportable } from "@/lib/export";
 import { SourceNote } from "@/components/ui/source-note";
 import { playerStatsOrigin } from "@/lib/data-sources";
 import { SeasonScope } from "@/components/layout/season-scope";
@@ -59,38 +51,27 @@ export default async function LeaderboardPage({
   const { locale, season, metric } = await params;
   const leaderboard = getLeaderboard(metric);
   if (!leaderboard || !ALL_SEASONS.includes(season)) notFound();
-  const definition = getPlayerMetric(leaderboard.metric);
+  const data = await loadLeaderboard(season, metric);
+  if (!data) notFound();
+  const { definition, qualification, minimumGames, teamGames, leaders, ranks } = data;
   const liveSeason = currentSeason();
-  // Le seuil de qualification s'applique après regroupement : un joueur
-  // transféré ne doit pas être écarté parce qu'aucune de ses deux lignes ne
-  // l'atteint séparément.
-  const rows = await prisma.playerSeason.findMany({
-    where: { season },
-    include: {
-      player: { select: { firstName: true, lastName: true, slug: true } },
-      team: { select: { abbr: true, slug: true } },
-    },
-  });
-  const consolidated = await consolidateSeasonRows(season, rows);
-  const teamGames = seasonTeamGames(consolidated);
-  const { qualification } = definition;
-  const minimumGames = minimumGamesFor(qualification, teamGames);
-  const leaders = consolidated
-    .filter((row) => isQualified(row, qualification, minimumGames))
-    .map((row) => ({
-      row,
-      gamesPlayed: row.gamesPlayed,
-      value: leaderboardValue(row, leaderboard.metric),
-    }))
-    .filter((entry): entry is typeof entry & { value: number } => entry.value != null)
-    .sort(
-      (left, right) =>
-        (definition.higherIsBetter ? right.value - left.value : left.value - right.value) ||
-        // Égalité : ordre alphabétique, stable d'un rendu à l'autre.
-        left.row.player.lastName.localeCompare(right.row.player.lastName, "fr"),
-    )
-    .slice(0, 50);
-  const ranks = competitionRanks(leaders.map((entry) => entry.value));
+  const origin = playerStatsOrigin(season, leaderboard.metric);
+  const formatValue = (value: number) =>
+    frDecimal(definition.mode === "percentage" ? `${pct(value)} %` : stat(value));
+  const csvTable = isExportable([origin])
+    ? {
+        title: `Leaders NBA ${season} · ${leaderboard.label} · qualification ${qualificationSummary(qualification, minimumGames)}`,
+        updatedAt: await tableUpdatedAt([origin]),
+        headers: ["Rang", "Joueur", "Équipe", "MJ", definition.mode === "percentage" ? `${definition.shortLabel} (%)` : definition.shortLabel],
+        rows: leaders.map(({ row, value, gamesPlayed }, index) => [
+          ranks[index],
+          `${row.player.firstName} ${row.player.lastName}`,
+          row.isMultiTeam ? `${MULTI_TEAM_ABBR} (${row.stints.map((stint) => stint.team.abbr).join(", ")})` : row.team.abbr,
+          gamesPlayed,
+          definition.mode === "percentage" ? pct(value) : stat(value),
+        ]),
+      }
+    : null;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -116,13 +97,18 @@ export default async function LeaderboardPage({
         <Link href={`/${locale}/classements`} className="hover:text-white">Classements</Link>
         <span className="mx-2">/</span>{season}<span className="mx-2">/</span>{leaderboard.label}
       </nav>
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-orange-400/70">Saison {season}</p>
         <h1 className="mt-2 font-display text-4xl font-semibold">Leaders — {leaderboard.label}</h1>
         <p className="mt-2 text-sm text-white/35">50 premiers · qualification {qualificationSummary(qualification, minimumGames)}{" "}<Link href={`/${locale}/sources#metriques`} className="underline decoration-white/15 underline-offset-2 hover:text-white">({qualification.rule === "nba" ? "règle NBA" : "règle hoopstats"})</Link></p>
         </div>
-        <ShareButton dimension="leaderboard" />
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <ShareButton dimension="leaderboard" />
+          {csvTable && (
+            <CsvExportButton dimension="leaderboard" filename={csvFilename(["leaders", season, leaderboard.slug])} table={csvTable} />
+          )}
+        </div>
       </div>
       <div className="flex flex-wrap gap-2">
         {LEADERBOARDS.map((item) => (
@@ -132,7 +118,7 @@ export default async function LeaderboardPage({
       <div className="overflow-x-auto rounded-2xl border border-white/[0.06] bg-[#111114]">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-white/[0.06] text-[10px] uppercase tracking-wider text-white/30"><th className="px-3 py-3 sm:px-5 text-left">#</th><th className="px-3 py-3 text-left">Joueur</th><th className="hidden px-3 py-3 text-left sm:table-cell">Équipe</th><th className="px-3 py-3 text-right">MJ</th><th className="px-3 py-3 sm:px-5 text-right text-orange-300">{definition.shortLabel}</th></tr></thead>
-          <tbody>{leaders.map(({ row, value, gamesPlayed }, index) => <tr key={row.id} className="border-b border-white/[0.04]"><td className="px-3 py-3 sm:px-5 font-mono text-white/25">{ranks[index]}</td><td className="px-3 py-3"><Link href={playerSeasonHref(locale, row.player.slug, season, liveSeason)} className="font-medium text-white/80 hover:text-orange-300">{row.player.firstName} {row.player.lastName}</Link><span className="mt-0.5 block font-mono text-[11px] text-white/35 sm:hidden">{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</span></td><td className="hidden px-3 py-3 sm:table-cell"><Link href={teamSeasonHref(locale, row.team.slug, season, liveSeason)} className="text-white/40 hover:text-white" title={row.isMultiTeam ? `Saison en ${row.stints.length} équipes : ${row.stints.map((stint) => stint.team.abbr).join(", ")}` : undefined}>{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</Link></td><td className="px-3 py-3 text-right font-mono text-white/35">{gamesPlayed}</td><td className="px-3 py-3 sm:px-5 text-right font-mono font-semibold">{frDecimal(definition.mode === "percentage" ? `${pct(value)} %` : stat(value))}</td></tr>)}</tbody>
+          <tbody>{leaders.map(({ row, value, gamesPlayed }, index) => <tr key={row.id} className="border-b border-white/[0.04]"><td className="px-3 py-3 sm:px-5 font-mono text-white/25">{ranks[index]}</td><td className="px-3 py-3"><Link href={playerSeasonHref(locale, row.player.slug, season, liveSeason)} className="font-medium text-white/80 hover:text-orange-300">{row.player.firstName} {row.player.lastName}</Link><span className="mt-0.5 block font-mono text-[11px] text-white/35 sm:hidden">{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</span></td><td className="hidden px-3 py-3 sm:table-cell"><Link href={teamSeasonHref(locale, row.team.slug, season, liveSeason)} className="text-white/40 hover:text-white" title={row.isMultiTeam ? `Saison en ${row.stints.length} équipes : ${row.stints.map((stint) => stint.team.abbr).join(", ")}` : undefined}>{row.isMultiTeam ? MULTI_TEAM_ABBR : row.team.abbr}</Link></td><td className="px-3 py-3 text-right font-mono text-white/35">{gamesPlayed}</td><td className="px-3 py-3 sm:px-5 text-right font-mono font-semibold">{formatValue(value)}</td></tr>)}</tbody>
         </table>
         {leaders.length === 0 && (
           <p className="px-5 py-12 text-center text-sm text-white/35">
@@ -143,7 +129,7 @@ export default async function LeaderboardPage({
         )}
       </div>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <SourceNote origins={[playerStatsOrigin(season, leaderboard.metric)]} locale={locale} />
+      <SourceNote origins={[origin]} locale={locale} />
     </div>
   );
 }

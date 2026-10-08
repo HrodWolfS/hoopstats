@@ -8,6 +8,8 @@ import { loadTrends, trendSeasons } from "@/lib/stats/trends-data";
 import { SeasonScope } from "@/components/layout/season-scope";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
+import { ShareButton } from "@/components/analytics/share-button";
+import { tableUpdatedAt } from "@/lib/data-updates";
 import { DEFAULT_TRENDS_STATE, TrendsView, TrendsViewFromUrl } from "@/components/trends/trends-view";
 
 export const revalidate = 21600;
@@ -39,7 +41,7 @@ export default async function TrendsPage({ params }: { params: Promise<{ locale:
   const defaultSeason = seasons[0];
   if (!defaultSeason || (saison !== undefined && !seasons.includes(saison))) notFound();
   const season = saison ?? defaultSeason;
-  const data = await loadTrends(season);
+  const [data, updatedAt] = await Promise.all([loadTrends(season), tableUpdatedAt(["trends"])]);
   const liveSeason = currentSeason();
   const lastDate = data.lastGameDate
     ? new Date(data.lastGameDate).toLocaleDateString("fr-FR", {
@@ -49,13 +51,16 @@ export default async function TrendsPage({ params }: { params: Promise<{ locale:
         timeZone: "America/New_York",
       })
     : null;
-  const viewProps = { data, locale, liveSeason };
+  const viewProps = { data, locale, liveSeason, updatedAt };
 
   return (
     <div className="space-y-6">
       <SeasonScope seasons={seasons} season={season} defaultSeason={defaultSeason} />
       <FadeIn>
-        <Crumbs items={[{ label: "Accueil", href: `/${locale}` }, { label: "Tendances" }]} />
+        <div className="flex items-center justify-between gap-3">
+          <Crumbs items={[{ label: "Accueil", href: `/${locale}` }, { label: "Tendances" }]} />
+          <ShareButton dimension="trends" />
+        </div>
         <div className="mt-4 space-y-2">
           <h1 className="font-display text-4xl font-semibold tracking-[-0.03em] md:text-5xl">
             Tendances

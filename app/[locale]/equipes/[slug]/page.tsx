@@ -6,6 +6,7 @@ import { currentSeason, confFr, divFr } from "@/lib/nba";
 import { winPct } from "@/lib/format";
 import { TeamMono } from "@/components/ui/team-mono";
 import { Crumbs } from "@/components/ui/crumbs";
+import { ShareButton } from "@/components/analytics/share-button";
 import { TeamTabs } from "@/components/team/team-tabs";
 import { TeamInsights } from "@/components/team/team-insights";
 import { getTeamInsights } from "@/lib/insights";
@@ -389,13 +390,16 @@ export default async function TeamPage({
         season={season}
         defaultSeason={liveSeason}
       />
-      <Crumbs
-        items={[
-          { label: "Accueil", href: `/${locale}` },
-          { label: "Équipes", href: `/${locale}/equipes` },
-          { label: `${team.city} ${team.name}` },
-        ]}
-      />
+      <div className="flex items-center justify-between gap-3">
+        <Crumbs
+          items={[
+            { label: "Accueil", href: `/${locale}` },
+            { label: "Équipes", href: `/${locale}/equipes` },
+            { label: `${team.city} ${team.name}` },
+          ]}
+        />
+        <ShareButton dimension="team" />
+      </div>
 
       {/* Header */}
       <section className="grid grid-cols-12 gap-y-8 md:gap-x-8 items-start">

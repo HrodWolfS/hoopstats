@@ -1,6 +1,7 @@
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { ShareButton } from "@/components/analytics/share-button";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { periodLabel } from "@/lib/game-status";
@@ -1045,6 +1046,7 @@ export default async function MatchPage({
   return (
     <div className="space-y-8 max-w-4xl">
       {/* Breadcrumb */}
+      <div className="flex items-center justify-between gap-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/30">
         <Link
           href={`/${locale}/matchs`}
@@ -1063,6 +1065,8 @@ export default async function MatchPage({
         <span className="text-white/50">
           {game.awayTeam.abbr} @ {game.homeTeam.abbr}
         </span>
+      </div>
+      <ShareButton dimension="game" />
       </div>
 
       {/* Titre de la page pour les lecteurs d'écran et les moteurs : le

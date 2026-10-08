@@ -14,6 +14,8 @@ import {
   TeamPicker,
 } from "@/components/matchs/schedule-views";
 
+import { ShareButton } from "@/components/analytics/share-button";
+
 export const metadata: Metadata = {
   title: "Matchs NBA | hoopstats",
   description: "Résultats, programme et calendrier NBA journée par journée, heures de Paris, meilleurs marqueurs de chaque match.",
@@ -26,9 +28,12 @@ type Params = { locale: string; date?: string; equipe?: string };
 
 function Header({ title, subtitle }: { title: string; subtitle: React.ReactNode }) {
   return (
-    <div>
-      <h1 className="font-display font-semibold text-2xl tracking-tight mb-1">{title}</h1>
-      <p className="text-white/45 text-sm">{subtitle}</p>
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="font-display font-semibold text-2xl tracking-tight mb-1">{title}</h1>
+        <p className="text-white/45 text-sm">{subtitle}</p>
+      </div>
+      <ShareButton dimension="schedule" />
     </div>
   );
 }

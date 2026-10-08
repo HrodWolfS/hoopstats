@@ -13,6 +13,10 @@ import { FadeIn } from "@/components/ui/fade-in";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { FrenchRow } from "@/components/home/night-recap";
 import { SortablePlayerTable, type SortableRow } from "@/components/ui/sortable-player-table";
+import { ShareButton } from "@/components/analytics/share-button";
+import { playerStatsOrigin } from "@/lib/data-sources";
+import { tableUpdatedAt } from "@/lib/data-updates";
+import { csvFilename, isExportable } from "@/lib/export";
 
 export const revalidate = 21600;
 
@@ -61,7 +65,10 @@ export default async function FrenchHubPage({ params }: { params: Promise<{ loca
   return (
     <div className="space-y-8">
       <FadeIn>
-        <Crumbs items={[{ label: "Accueil", href: `/${locale}` }, { label: "Français en NBA" }]} />
+        <div className="flex items-center justify-between gap-3">
+          <Crumbs items={[{ label: "Accueil", href: `/${locale}` }, { label: "Français en NBA" }]} />
+          <ShareButton dimension="french_hub" />
+        </div>
         <div className="mt-4 space-y-2">
           <h1 className="font-display text-4xl font-semibold tracking-[-0.03em] md:text-5xl">Français en NBA</h1>
           <p className="max-w-2xl text-sm text-white/45">
@@ -168,7 +175,18 @@ function ScheduleSection({ data, locale }: { data: FrenchHubData; locale: string
   );
 }
 
-function SeasonSection({ data, locale, liveSeason }: { data: FrenchHubData; locale: string; liveSeason: string }) {
+async function SeasonSection({ data, locale, liveSeason }: { data: FrenchHubData; locale: string; liveSeason: string }) {
+  // Saison en cours : moyennes recalculées par hoopstats, exportables. Saisons
+  // passées : chiffres officiels NBA, consultables mais pas exportés.
+  const origin = playerStatsOrigin(data.season);
+  const csv = isExportable([origin])
+    ? {
+        title: `Français en NBA · saison ${data.season} · saison régulière, par match`,
+        filename: csvFilename(["francais", data.season]),
+        dimension: "french_season",
+        updatedAt: await tableUpdatedAt([origin]),
+      }
+    : undefined;
   const rows: SortableRow[] = data.seasonRows.map((row) => ({
     id: row.player.id,
     playerSlug: row.player.slug,
@@ -204,6 +222,7 @@ function SeasonSection({ data, locale, liveSeason }: { data: FrenchHubData; loca
           locale={locale}
           season={data.season}
           liveSeason={liveSeason}
+          csv={csv}
           footerNote={`${rows.length} Français en ${data.season} · TOT : plusieurs équipes · Cliquer sur une colonne pour trier`}
         />
       ) : (

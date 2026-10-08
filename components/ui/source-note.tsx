@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { syncLogsFor } from "@/lib/data-updates";
 import {
   DATA_KIND_LABEL,
   DATA_ORIGINS,
@@ -32,15 +32,7 @@ type SourceNoteProps = {
  */
 export async function SourceNote({ origins, locale }: SourceNoteProps) {
   const unique = [...new Set(origins)];
-  const logSources = [...new Set(unique.flatMap((key) => DATA_ORIGINS[key].logSources))];
-  const grouped = await prisma.syncLog.groupBy({
-    by: ["source"],
-    where: { source: { in: logSources }, status: { in: ["success", "partial"] } },
-    _max: { completedAt: true },
-  });
-  const logs = grouped.flatMap((log) =>
-    log._max.completedAt ? [{ source: log.source, completedAt: log._max.completedAt }] : [],
-  );
+  const logs = await syncLogsFor(unique);
 
   return (
     <aside

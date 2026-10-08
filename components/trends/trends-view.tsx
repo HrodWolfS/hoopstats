@@ -6,6 +6,8 @@ import { useMemo, useState } from "react";
 import { pct, stat } from "@/lib/format";
 import { playerSeasonHref } from "@/lib/team-links";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
+import { CsvExportButton } from "@/components/analytics/csv-export-button";
+import { csvFilename, type CsvCell } from "@/lib/export";
 import type { TrendRow, TrendsData } from "@/lib/stats/trends-data";
 import {
   parseTrendDirection,
@@ -26,7 +28,13 @@ const PAGE_SIZE = 25;
 
 type State = { window: TrendWindow; sort: TrendSort; direction: TrendDirection };
 
-type Props = { data: TrendsData; locale: string; liveSeason: string };
+type Props = {
+  data: TrendsData;
+  locale: string;
+  liveSeason: string;
+  /** Dernière mise à jour des box scores, ISO : datée dans l'export. */
+  updatedAt: string | null;
+};
 
 /** Lit fenêtre, tri et sens dans l'adresse : une vue partagée s'ouvre telle quelle. */
 export function TrendsViewFromUrl(props: Props) {
@@ -41,7 +49,7 @@ export function TrendsViewFromUrl(props: Props) {
 
 export const DEFAULT_TRENDS_STATE: State = { window: DEFAULT_TREND_WINDOW, sort: "pts", direction: "hausse" };
 
-export function TrendsView({ data, locale, liveSeason, initial }: Props & { initial: State }) {
+export function TrendsView({ data, locale, liveSeason, updatedAt, initial }: Props & { initial: State }) {
   const [state, setState] = useState<State>(initial);
   const [visible, setVisible] = useState(PAGE_SIZE);
 
@@ -68,6 +76,7 @@ export function TrendsView({ data, locale, liveSeason, initial }: Props & { init
   }
 
   const label = TREND_SORT_LABELS[state.sort];
+  const shown = rows.slice(0, visible);
 
   return (
     <div className="space-y-4">
@@ -95,11 +104,23 @@ export function TrendsView({ data, locale, liveSeason, initial }: Props & { init
         />
       </div>
 
-      <p className="text-xs text-white/40">
-        {label.family} · {label.long} : {state.window} derniers matchs joués contre la moyenne de saison,{" "}
-        {state.direction === "hausse" ? "plus forte hausse" : "plus forte baisse"} en tête. {rows.length} joueurs
-        comparables.
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs text-white/40">
+          {label.family} · {label.long} : {state.window} derniers matchs joués contre la moyenne de saison,{" "}
+          {state.direction === "hausse" ? "plus forte hausse" : "plus forte baisse"} en tête. {rows.length} joueurs
+          comparables.
+        </p>
+        <CsvExportButton
+          dimension="trends"
+          filename={csvFilename(["tendances", data.season, `${state.window}-matchs`, state.sort, state.direction])}
+          table={{
+            title: `Tendances NBA ${data.season} · ${state.window} derniers matchs · ${label.long} · ${state.direction === "hausse" ? "en hausse" : "en baisse"}`,
+            updatedAt,
+            headers: trendCsvHeaders(state.window),
+            rows: shown.map((row, index) => trendCsvRow(row, index + 1, data)),
+          }}
+        />
+      </div>
 
       {rows.length === 0 ? (
         <p className="rounded-2xl border border-white/[0.06] bg-[#111114] px-4 py-8 text-center text-sm text-white/40">
@@ -107,7 +128,7 @@ export function TrendsView({ data, locale, liveSeason, initial }: Props & { init
         </p>
       ) : (
         <ol className="divide-y divide-white/[0.04] rounded-2xl border border-white/[0.06] bg-[#111114]">
-          {rows.slice(0, visible).map((row, index) => (
+          {shown.map((row, index) => (
             <TrendItem
               key={row.playerId}
               row={row}
@@ -170,6 +191,43 @@ function Segmented<T extends string | number>({
 }
 
 const NBA_DATE = { day: "numeric", month: "short", timeZone: "America/New_York" } as const;
+
+const ISO_NBA_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" });
+
+function trendCsvHeaders(window: TrendWindow): string[] {
+  return [
+    "Rang",
+    "Joueur",
+    "Équipe",
+    "Premier match",
+    "Dernier match",
+    ...TREND_SORTS.flatMap((sort) => {
+      const name = TREND_SORT_LABELS[sort].short;
+      return [`${name} ${window} matchs`, `${name} saison`, `${name} écart`];
+    }),
+    `Titularisations sur ${window}`,
+  ];
+}
+
+/** Valeurs arrondies comme à l'écran ; TS% en pourcentage. */
+function trendCsvRow(row: TrendRow, rank: number, data: TrendsData): CsvCell[] {
+  const player = data.players[row.playerId];
+  const value = (sort: TrendSort, raw: number | null) =>
+    raw == null ? null : sort === "ts" ? pct(raw) : stat(raw);
+  return [
+    rank,
+    player ? `${player.firstName} ${player.lastName}` : "",
+    row.multiTeam ? `${row.teamAbbr} (2 éq.)` : row.teamAbbr,
+    ISO_NBA_DATE.format(new Date(row.from)),
+    ISO_NBA_DATE.format(new Date(row.to)),
+    ...TREND_SORTS.flatMap((sort) => [
+      value(sort, row.recent[sort]),
+      value(sort, row.season[sort]),
+      value(sort, trendDelta(row, sort)),
+    ]),
+    Math.round(row.recent.startRate * row.window),
+  ];
+}
 
 function formatValue(sort: TrendSort, value: number | null): string {
   return sort === "ts" ? (value == null ? "—" : `${pct(value)} %`) : stat(value);

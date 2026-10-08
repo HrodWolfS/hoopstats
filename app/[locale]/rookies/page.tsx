@@ -9,6 +9,10 @@ import { SeasonScope } from "@/components/layout/season-scope";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
+import { ShareButton } from "@/components/analytics/share-button";
+import { playerStatsOrigin } from "@/lib/data-sources";
+import { tableUpdatedAt } from "@/lib/data-updates";
+import { csvFilename, isExportable } from "@/lib/export";
 import {
   SortablePlayerTable,
   type SortableRow,
@@ -131,16 +135,29 @@ export default async function RookiesPage({
     },
   ];
 
+  const origin = playerStatsOrigin(season);
+  const csv = isExportable([origin])
+    ? {
+        title: `Rookies NBA ${season} · classe ${draftYear} · saison régulière, par match`,
+        filename: csvFilename(["rookies", season]),
+        dimension: "rookies",
+        updatedAt: await tableUpdatedAt([origin]),
+      }
+    : undefined;
+
   return (
     <div className="space-y-6">
       <SeasonScope seasons={seasonsThrough(currentSeason())} season={season} defaultSeason={defaultSeason} />
       <FadeIn>
-        <Crumbs
-          items={[
-            { label: "Accueil", href: `/${locale}` },
-            { label: "Rookies" },
-          ]}
-        />
+        <div className="flex items-center justify-between gap-3">
+          <Crumbs
+            items={[
+              { label: "Accueil", href: `/${locale}` },
+              { label: "Rookies" },
+            ]}
+          />
+          <ShareButton dimension="rookies" />
+        </div>
         <div className="mt-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300 text-[11px] font-medium uppercase tracking-wider mb-4">
             Classe {draftYear}
@@ -173,6 +190,7 @@ export default async function RookiesPage({
             season={season}
             liveSeason={currentSeason()}
             showCollege
+            csv={csv}
             footerNote={`Classe ${draftYear} · Cliquer sur une colonne pour trier`}
           />
         </FadeIn>

@@ -1,10 +1,13 @@
 "use client";
 
 import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
+import { CsvExportButton } from "@/components/analytics/csv-export-button";
 import { pct, stat } from "@/lib/format";
+import type { CsvCell } from "@/lib/export";
 
 export type SortableRow = {
   id: string;
@@ -44,6 +47,24 @@ type ColDef = {
 
 type SortDir = "asc" | "desc";
 
+/** Noms courts des colonnes dans l'adresse : « ?tri=pts&ordre=asc ». */
+const SORT_PARAM: Record<ColKey, string> = {
+  pick: "choix",
+  gamesPlayed: "mj",
+  pointsPerGame: "pts",
+  reboundsPerGame: "reb",
+  assistsPerGame: "pd",
+  trueShooting: "ts",
+  age: "age",
+};
+
+/** Ordre naturel d'une colonne : choix de draft et âge croissants, stats décroissantes. */
+function naturalDir(key: ColKey): SortDir {
+  return key === "pick" || key === "age" ? "asc" : "desc";
+}
+
+type SortState = { key: ColKey; dir: SortDir };
+
 type SortablePlayerTableProps = {
   rows: SortableRow[];
   columns: ColDef[];
@@ -56,9 +77,35 @@ type SortablePlayerTableProps = {
   liveSeason: string;
   showCollege?: boolean;
   footerNote?: string;
+  /** Export CSV des lignes affichées : réservé aux tableaux calculés par hoopstats. */
+  csv?: { title: string; filename: string; dimension: string; updatedAt: string | null };
 };
 
-export function SortablePlayerTable({
+/**
+ * Le tri vit dans l'adresse (?tri=, ?ordre=) : un lien partagé rouvre le
+ * tableau trié de la même façon. La page reste en cache (ISR) ; l'adresse
+ * est lue côté navigateur, le tri par défaut sert de premier rendu.
+ */
+export function SortablePlayerTable(props: SortablePlayerTableProps) {
+  const fallback: SortState = { key: props.defaultSort, dir: props.defaultDir ?? "desc" };
+  return (
+    <Suspense fallback={<SortableTable {...props} initial={fallback} />}>
+      <SortableTableFromUrl {...props} fallback={fallback} />
+    </Suspense>
+  );
+}
+
+function SortableTableFromUrl(props: SortablePlayerTableProps & { fallback: SortState }) {
+  const params = useSearchParams();
+  const allowed = props.columns.map((col) => col.key);
+  const key = allowed.find((col) => SORT_PARAM[col] === params.get("tri")) ?? props.fallback.key;
+  const ordre = params.get("ordre");
+  const dir: SortDir =
+    ordre === "asc" || ordre === "desc" ? ordre : key === props.fallback.key ? props.fallback.dir : naturalDir(key);
+  return <SortableTable {...props} initial={{ key, dir }} key={`${key}-${dir}`} />;
+}
+
+function SortableTable({
   rows,
   columns,
   defaultSort,
@@ -68,18 +115,26 @@ export function SortablePlayerTable({
   liveSeason,
   showCollege = false,
   footerNote,
-}: SortablePlayerTableProps) {
-  const [sortKey, setSortKey] = useState<ColKey>(defaultSort);
-  const [sortDir, setSortDir] = useState<SortDir>(defaultDir);
+  csv,
+  initial,
+}: SortablePlayerTableProps & { initial: SortState }) {
+  const [{ key: sortKey, dir: sortDir }, setSort] = useState<SortState>(initial);
 
   function handleSort(key: ColKey) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    const next: SortState =
+      key === sortKey ? { key, dir: sortDir === "asc" ? "desc" : "asc" } : { key, dir: naturalDir(key) };
+    setSort(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next.key === defaultSort && next.dir === defaultDir) {
+      params.delete("tri");
+      params.delete("ordre");
     } else {
-      setSortKey(key);
-      // Pick → asc par défaut, stats → desc par défaut
-      setSortDir(key === "pick" || key === "age" ? "asc" : "desc");
+      params.set("tri", SORT_PARAM[next.key]);
+      if (next.dir === naturalDir(next.key)) params.delete("ordre");
+      else params.set("ordre", next.dir);
     }
+    const query = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
   }
 
   function getValue(row: SortableRow, key: ColKey): number {
@@ -128,8 +183,51 @@ export function SortablePlayerTable({
 
   const showCol = (col: ColDef) => col.show ?? "always";
 
+  function cell(row: SortableRow, key: ColKey): CsvCell {
+    switch (key) {
+      case "pick":
+        return row.draftPick ?? null;
+      case "age":
+        return row.age ?? null;
+      case "gamesPlayed":
+        return row.gamesPlayed;
+      case "trueShooting":
+        return row.trueShooting == null ? null : pct(row.trueShooting);
+      default:
+        return stat(row[key]);
+    }
+  }
+
   return (
     <div>
+      {csv && (
+        <div className="mb-2 flex justify-end">
+          <CsvExportButton
+            dimension={csv.dimension}
+            filename={csv.filename}
+            table={{
+              title: csv.title,
+              updatedAt: csv.updatedAt,
+              headers: [
+                "Rang",
+                "Joueur",
+                "Poste",
+                "Équipe",
+                ...(showCollege ? ["Université"] : []),
+                ...columns.map((col) => (col.key === "trueShooting" ? `${col.label} (%)` : col.label)),
+              ],
+              rows: sorted.map((row, index) => [
+                index + 1,
+                `${row.firstName} ${row.lastName}`,
+                row.position,
+                row.teamAbbr,
+                ...(showCollege ? [row.college ?? null] : []),
+                ...columns.map((col) => cell(row, col.key)),
+              ]),
+            }}
+          />
+        </div>
+      )}
       <div className="rounded-2xl border border-white/[0.06] bg-[#111114] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm sm:min-w-[580px]">

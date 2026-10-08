@@ -4,6 +4,8 @@ export const ANALYTICS_EVENTS = [
   "filter_apply",
   "comparison",
   "share",
+  "copy_link",
+  "export",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];
@@ -20,7 +22,12 @@ export function sanitizeAnalyticsDimension(value: unknown): string | null {
 
 export function validateAnalyticsPayload(): string[] {
   const errors: string[] = [];
-  if (!isAnalyticsEvent("share") || isAnalyticsEvent("page_view")) {
+  if (
+    !isAnalyticsEvent("share") ||
+    !isAnalyticsEvent("copy_link") ||
+    !isAnalyticsEvent("export") ||
+    isAnalyticsEvent("page_view")
+  ) {
     errors.push("liste blanche des événements invalide");
   }
   if (sanitizeAnalyticsDimension("results_found") !== "results_found") {

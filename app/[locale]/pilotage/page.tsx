@@ -75,11 +75,12 @@ export default async function PilotagePage({
         </div>
         <form method="get"><input type="month" name="mois" defaultValue={month} className="rounded-lg border border-white/[0.08] bg-[#111114] px-3 py-2 text-sm" /><button className="ml-2 rounded-lg bg-orange-600 px-3 py-2 text-sm">Afficher</button></form>
       </div>
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi label="Recherches" value={total("player_search") + globalSearches} />
         <Kpi label="Filtres appliqués" value={total("filter_apply")} />
         <Kpi label="Comparaisons" value={total("comparison")} />
-        <Kpi label="Partages" value={total("share")} />
+        <Kpi label="Partages et liens copiés" value={total("share") + total("copy_link")} />
+        <Kpi label="Exports CSV" value={total("export")} />
       </section>
       <section className="grid gap-5 lg:grid-cols-2">
         <Panel title="Qualité des données">
