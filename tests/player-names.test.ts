@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { SOURCE_NAME_ALIASES, sourcePlayerSlug } from "@/lib/player-names";
+import { SOURCE_NAME_ALIASES, sourcePlayerSlug, titleNamesPlayer } from "@/lib/player-names";
+
+describe("titleNamesPlayer", () => {
+  it("accepte le joueur, à l'accent, au suffixe et à la précision près", () => {
+    expect(titleNamesPlayer("Luka Dončić", "Luka", "Doncic")).toBe(true);
+    expect(titleNamesPlayer("Tyler Kolek (basketball)", "Tyler", "Kolek")).toBe(true);
+    expect(titleNamesPlayer("Jimmy Butler", "Jimmy", "Butler III")).toBe(true);
+    expect(titleNamesPlayer("P. J. Tucker", "P.J.", "Tucker")).toBe(true);
+  });
+
+  it("refuse un homonyme de nom de famille ou une page qui n'est pas le joueur", () => {
+    expect(titleNamesPlayer("Ron Harper Jr.", "Dylan", "Harper")).toBe(false);
+    expect(titleNamesPlayer("Vince Carter", "Carter", "Bryant")).toBe(false);
+    expect(titleNamesPlayer("2023 NBA Finals", "Jamal", "Cain")).toBe(false);
+    expect(titleNamesPlayer("List of oldest and youngest NBA players", "Miles", "Kelly")).toBe(false);
+    expect(titleNamesPlayer("Anything", "", "")).toBe(false);
+  });
+
+  it("préfère pas de photo à une translittération devinée", () => {
+    expect(titleNamesPlayer("Jakob Pöltl", "Jakob", "Poeltl")).toBe(false);
+  });
+});
 
 describe("sourcePlayerSlug", () => {
   it("suit la table des surnoms et suffixes", () => {

@@ -601,6 +601,15 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
       : ((finalGameCount - finalGamesWithoutBoxScore - scoreMismatches.length) /
           finalGameCount) *
         100;
+  // Une photo portée par deux fiches est celle d'un homonyme : l'import par
+  // titre Wikipédia avait donné le visage de Vince Carter à Carter Bryant.
+  const sharedPhotos = await prisma.$queryRaw<{ slugs: string[] }[]>`
+    SELECT array_agg(slug ORDER BY slug) AS slugs
+    FROM "Player"
+    WHERE "photoUrl" IS NOT NULL
+    GROUP BY "photoUrl"
+    HAVING count(*) > 1
+  `;
   const identityResolutionRate =
     eligiblePlayerRows === 0
       ? 100
@@ -925,6 +934,16 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
         ? `dernier statut ${latestDailySync.status} le ${latestDailySync.completedAt.toISOString()}`
         : "aucune synchronisation quotidienne trouvée",
       "warn",
+    ),
+    check(
+      "Photos des joueurs",
+      sharedPhotos.length === 0,
+      sharedPhotos.length === 0
+        ? "chaque photo appartient à une seule fiche"
+        : `${sharedPhotos.length} photo(s) partagée(s) par plusieurs fiches : ${sharedPhotos
+            .slice(0, 5)
+            .map((photo) => photo.slugs.join(" / "))
+            .join(", ")}`,
     ),
   ];
 }

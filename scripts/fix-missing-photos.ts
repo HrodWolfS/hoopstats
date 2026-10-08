@@ -8,6 +8,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { titleNamesPlayer } from "@/lib/player-names";
 
 const HEADERS = {
   "User-Agent":
@@ -27,14 +28,6 @@ function isBasketballPage(data: Record<string, unknown>): boolean {
     ((data.description as string) ?? "")
   ).toLowerCase();
   return NBA_KEYWORDS.some((kw) => text.includes(kw));
-}
-
-function titleMatchesPlayer(
-  data: Record<string, unknown>,
-  lastName: string,
-): boolean {
-  const title = ((data.title as string) ?? "").toLowerCase();
-  return title.includes(lastName.toLowerCase());
 }
 
 async function fetchSummary(
@@ -60,7 +53,7 @@ async function getWikiPhoto(
   const data1 = await fetchSummary(
     `https://en.wikipedia.org/api/rest_v1/page/summary/${nameEncoded}_(basketball)`,
   );
-  if (data1) {
+  if (data1 && titleNamesPlayer((data1.title as string) ?? "", firstName, lastName)) {
     const img =
       (data1.originalimage as { source?: string }) ??
       (data1.thumbnail as { source?: string });
@@ -78,7 +71,12 @@ async function getWikiPhoto(
     const data = await fetchSummary(
       `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${nameEncoded}`,
     );
-    if (data && isBasketballPage(data)) {
+    // L'API suit les redirections : le titre final doit rester celui du joueur.
+    if (
+      data &&
+      isBasketballPage(data) &&
+      titleNamesPlayer((data.title as string) ?? "", firstName, lastName)
+    ) {
       const img =
         (data.originalimage as { source?: string }) ??
         (data.thumbnail as { source?: string });
@@ -109,7 +107,7 @@ async function getWikiPhoto(
         if (
           data &&
           isBasketballPage(data) &&
-          titleMatchesPlayer(data, lastName)
+          titleNamesPlayer((data.title as string) ?? "", firstName, lastName)
         ) {
           const img =
             (data.originalimage as { source?: string }) ??
@@ -144,6 +142,16 @@ async function main() {
 
   console.log(`🏀 ${players.length} joueurs actifs sans photo\n`);
 
+  // Une photo déjà portée par une autre fiche est celle d'un homonyme.
+  const usedPhotos = new Set(
+    (
+      await prisma.player.findMany({
+        where: { photoUrl: { not: null } },
+        select: { photoUrl: true },
+      })
+    ).map((p) => p.photoUrl),
+  );
+
   let found = 0;
   let notFound = 0;
 
@@ -154,7 +162,11 @@ async function main() {
 
     const result = await getWikiPhoto(player.firstName, player.lastName);
 
-    if (result) {
+    if (result && usedPhotos.has(result.url)) {
+      console.log(`—  déjà utilisée par une autre fiche (${result.attribution})`);
+      notFound++;
+    } else if (result) {
+      usedPhotos.add(result.url);
       await prisma.player.update({
         where: { id: player.id },
         data: { photoUrl: result.url, photoAttribution: result.attribution },

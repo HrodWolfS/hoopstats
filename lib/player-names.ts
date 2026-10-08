@@ -38,6 +38,27 @@ export const SOURCE_NAME_ALIASES: Record<string, string> = {
   "Yang Hansen": "hansen-yang",
 };
 
+function comparableName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\(.*?\)/g, " ")
+    .replace(/\b(jr|sr|ii|iii|iv)\b\.?/g, " ")
+    .replace(/[^a-z]/g, "");
+}
+
+/**
+ * Le titre d'une page Wikipédia désigne-t-il ce joueur ? Nom complet exigé,
+ * à l'accent, la ponctuation, le suffixe et la précision « (basketball) » près :
+ * un nom de famille seul a donné à Dylan Harper la photo de Ron Harper Jr.,
+ * et une redirection vers « 2023 NBA Finals » une photo d'équipe.
+ */
+export function titleNamesPlayer(title: string, firstName: string, lastName: string): boolean {
+  const expected = comparableName(`${firstName} ${lastName}`);
+  return expected.length > 0 && comparableName(title) === expected;
+}
+
 /** Slug de la fiche pour un nom du fichier source. */
 export function sourcePlayerSlug(name: string): string {
   const trimmed = name.trim();
