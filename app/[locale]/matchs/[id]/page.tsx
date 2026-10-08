@@ -1077,11 +1077,12 @@ export default async function MatchPage({
       </h1>
 
       {/* Score header */}
-      <div className="rounded-2xl border border-white/[0.06] bg-[#111114] px-3 py-6 sm:px-6 sm:py-8">
+      <div className="@container rounded-2xl border border-white/[0.06] bg-[#111114] px-3 py-6 sm:px-6 sm:py-8">
         <div className="flex items-center justify-between gap-2 sm:gap-6">
           {/* Away team */}
           <Link
             href={`/${locale}/equipes/${game.awayTeam.slug}`}
+            aria-label={`${game.awayTeam.city} ${game.awayTeam.name}`}
             className="flex flex-col items-center gap-3 flex-1 min-w-0 group"
           >
             <TeamLogo
@@ -1089,14 +1090,18 @@ export default async function MatchPage({
               abbr={game.awayTeam.abbr}
               size={64}
             />
-            <div className="text-center max-w-full break-words">
-              <div className="text-xs text-white/40 font-mono">
+            {/* Carte étroite (mobile, ou tablette avec la barre latérale) : le
+                score laisse trop peu de place pour « Timberwolves », d'où
+                l'abréviation, comme dans le fil d'Ariane. */}
+            <div className="text-center max-w-full">
+              <div className="hidden @xl:block text-xs text-white/40 font-mono">
                 {game.awayTeam.city}
               </div>
               <div
                 className={`font-display font-semibold text-sm sm:text-base break-words group-hover:opacity-80 transition ${awayWon ? "text-white" : "text-white/60"}`}
               >
-                {game.awayTeam.name}
+                <span className="@xl:hidden">{game.awayTeam.abbr}</span>
+                <span className="hidden @xl:inline">{game.awayTeam.name}</span>
               </div>
             </div>
           </Link>
@@ -1159,6 +1164,7 @@ export default async function MatchPage({
           {/* Home team */}
           <Link
             href={`/${locale}/equipes/${game.homeTeam.slug}`}
+            aria-label={`${game.homeTeam.city} ${game.homeTeam.name}`}
             className="flex flex-col items-center gap-3 flex-1 min-w-0 group"
           >
             <TeamLogo
@@ -1166,14 +1172,18 @@ export default async function MatchPage({
               abbr={game.homeTeam.abbr}
               size={64}
             />
-            <div className="text-center max-w-full break-words">
-              <div className="text-xs text-white/40 font-mono">
+            {/* Carte étroite (mobile, ou tablette avec la barre latérale) : le
+                score laisse trop peu de place pour « Timberwolves », d'où
+                l'abréviation, comme dans le fil d'Ariane. */}
+            <div className="text-center max-w-full">
+              <div className="hidden @xl:block text-xs text-white/40 font-mono">
                 {game.homeTeam.city}
               </div>
               <div
                 className={`font-display font-semibold text-sm sm:text-base break-words group-hover:opacity-80 transition ${homeWon ? "text-white" : "text-white/60"}`}
               >
-                {game.homeTeam.name}
+                <span className="@xl:hidden">{game.homeTeam.abbr}</span>
+                <span className="hidden @xl:inline">{game.homeTeam.name}</span>
               </div>
             </div>
           </Link>
