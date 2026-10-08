@@ -66,7 +66,7 @@ function wikiTitle(firstName: string, lastName: string): string {
  */
 async function wikiSummary(
   url: string,
-): Promise<{ extract: string; pageUrl: string | null } | null> {
+): Promise<{ extract: string; title: string; pageUrl: string | null } | null> {
   const res = await fetch(url, { headers: { "User-Agent": WIKI_UA } });
   if (!res.ok) return null;
   const d = (await res.json()) as {
@@ -79,8 +79,33 @@ async function wikiSummary(
     return null;
   return {
     extract: d.extract,
+    title: d.title ?? "",
     pageUrl: d.content_urls?.desktop?.page ?? null,
   };
+}
+
+/**
+ * Version française d'une page anglaise, par son lien interlangue : la base
+ * écrit « Sengun » ou « Poeltl » sans accent, et les homonymes français
+ * portent des précisions qu'on ne peut pas deviner (« (basket-ball, 1996) »).
+ */
+async function frenchVersion(
+  enTitle: string,
+): Promise<{ extract: string; title: string; pageUrl: string | null } | null> {
+  const res = await fetch(
+    `https://en.wikipedia.org/w/api.php?action=query&prop=langlinks&lllang=fr&format=json&formatversion=2&titles=${encodeURIComponent(enTitle)}`,
+    { headers: { "User-Agent": WIKI_UA } },
+  );
+  if (!res.ok) return null;
+  const d = (await res.json()) as {
+    query?: { pages?: Array<{ langlinks?: Array<{ title: string }> }> };
+  };
+  const frTitle = d.query?.pages?.[0]?.langlinks?.[0]?.title;
+  if (!frTitle) return null;
+  const fr = await wikiSummary(
+    `https://fr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(frTitle.replace(/ /g, "_"))}`,
+  );
+  return fr && fr.extract.toLowerCase().includes("basket") ? fr : null;
 }
 
 async function fetchBioFr(
@@ -97,6 +122,13 @@ async function fetchBioFr(
   if (fr1)
     return { text: firstSentences(fr1.extract), source: "fr-wiki", pageUrl: fr1.pageUrl };
 
+  // 1 bis. Wikipedia FR — précision d'usage « (basket-ball) »
+  const fr1b = await wikiSummary(
+    `https://fr.wikipedia.org/api/rest_v1/page/summary/${frName}_(basket-ball)`,
+  );
+  if (fr1b)
+    return { text: firstSentences(fr1b.extract), source: "fr-wiki", pageUrl: fr1b.pageUrl };
+
   // 2. Wikipedia FR — page directe
   const fr2 = await wikiSummary(
     `https://fr.wikipedia.org/api/rest_v1/page/summary/${frName}`,
@@ -107,24 +139,24 @@ async function fetchBioFr(
       return { text: firstSentences(fr2.extract), source: "fr-wiki", pageUrl: fr2.pageUrl };
   }
 
-  // 3. Wikipedia EN — disambiguation basketball
-  const en1 = await wikiSummary(
+  // 3. Wikipedia EN — disambiguation basketball, puis page directe
+  let en = await wikiSummary(
     `https://en.wikipedia.org/api/rest_v1/page/summary/${enName}_(basketball)`,
   );
-  if (en1)
-    return { text: firstSentences(en1.extract), source: "en-wiki", pageUrl: en1.pageUrl };
-
-  // 4. Wikipedia EN — page directe
-  const en2 = await wikiSummary(
-    `https://en.wikipedia.org/api/rest_v1/page/summary/${enName}`,
-  );
-  if (en2) {
-    const lower = en2.extract.toLowerCase();
-    if (lower.includes("basketball") || lower.includes("nba"))
-      return { text: firstSentences(en2.extract), source: "en-wiki", pageUrl: en2.pageUrl };
+  if (!en) {
+    const en2 = await wikiSummary(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${enName}`,
+    );
+    const lower = en2?.extract.toLowerCase() ?? "";
+    if (lower.includes("basketball") || lower.includes("nba")) en = en2;
   }
+  if (!en) return null;
 
-  return null;
+  // 4. Page française liée à la page anglaise, sinon le texte anglais
+  const fr3 = await frenchVersion(en.title);
+  if (fr3)
+    return { text: firstSentences(fr3.extract), source: "fr-wiki", pageUrl: fr3.pageUrl };
+  return { text: firstSentences(en.extract), source: "en-wiki", pageUrl: en.pageUrl };
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
