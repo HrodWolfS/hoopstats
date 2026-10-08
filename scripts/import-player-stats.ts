@@ -6,12 +6,15 @@
  *   - Joueurs déjà importés (npm run import:bdl)
  *
  * Run: npm run import:player-stats
+ *   --dry-run       n'écrit rien, liste ce qui serait fait
+ *   --only-missing  ne crée que les saisons absentes pour le joueur (laisse
+ *                   intactes les lignes existantes, dont celles de la synchro ESPN)
  */
 
 import { PrismaClient } from "@prisma/client";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { playerSlug } from "../lib/slugs";
+import { sourcePlayerSlug } from "../lib/player-names";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -37,6 +40,9 @@ type StatsRow = {
   net_rating: number | null;
 };
 
+const DRY_RUN = process.argv.includes("--dry-run");
+const ONLY_MISSING = process.argv.includes("--only-missing");
+
 async function main() {
   const filePath = join(__dirname, "data", "player-stats.json");
 
@@ -51,7 +57,9 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`📊 Import PlayerSeason — ${rows.length} lignes\n`);
+  console.log(
+    `📊 Import PlayerSeason — ${rows.length} lignes${DRY_RUN ? " (simulation)" : ""}${ONLY_MISSING ? " (saisons absentes seulement)" : ""}\n`,
+  );
 
   // ── Maps DB ───────────────────────────────────────────────────────────────
   const dbTeams = await prisma.team.findMany({
@@ -68,23 +76,45 @@ async function main() {
     `   ${dbTeams.length} équipes, ${dbPlayers.length} joueurs chargés depuis DB.\n`,
   );
 
+  // Saisons déjà présentes par joueur (toutes équipes confondues)
+  const existing = await prisma.playerSeason.findMany({
+    select: { playerId: true, season: true },
+  });
+  const hasSeason = new Set(existing.map((s) => `${s.playerId}|${s.season}`));
+
   const startedAt = new Date();
   let upserted = 0;
   let skipped = 0;
+  let alreadyThere = 0;
   const errors: string[] = [];
+  const unknownPlayers = new Map<string, string[]>();
+  const unknownTeams = new Set<string>();
+  const planned: string[] = [];
 
   for (const row of rows) {
-    // Reconstituer le slug du joueur
-    const parts = row.player_name.trim().split(" ");
-    const firstName = parts[0] ?? "";
-    const lastName = parts.slice(1).join(" ");
-    const slug = playerSlug(firstName, lastName);
-
+    const slug = sourcePlayerSlug(row.player_name);
     const playerId = playerById.get(slug);
     const teamId = teamByAbbr.get(row.team_abbr);
 
-    if (!playerId || !teamId) {
+    if (!playerId) {
+      const seasons = unknownPlayers.get(row.player_name) ?? [];
+      seasons.push(row.season);
+      unknownPlayers.set(row.player_name, seasons);
       skipped++;
+      continue;
+    }
+    if (!teamId) {
+      unknownTeams.add(row.team_abbr);
+      skipped++;
+      continue;
+    }
+    if (ONLY_MISSING && hasSeason.has(`${playerId}|${row.season}`)) {
+      alreadyThere++;
+      continue;
+    }
+    if (DRY_RUN) {
+      planned.push(`${row.season}  ${slug.padEnd(26)} ${row.team_abbr}  ${row.gp} m, ${row.pts ?? 0} pts`);
+      upserted++;
       continue;
     }
 
@@ -139,7 +169,24 @@ async function main() {
     }
   }
 
-  console.log(`\r  ${upserted} upsertés.   `);
+  console.log(`\r  ${upserted} ${DRY_RUN ? "à écrire" : "upsertés"}.   `);
+
+  if (unknownPlayers.size > 0) {
+    console.warn(`\n⚠️  ${unknownPlayers.size} noms sans fiche (à ajouter dans lib/player-names.ts s'il s'agit d'un joueur connu) :`);
+    for (const [name, seasons] of [...unknownPlayers].sort()) {
+      console.warn(`   ${name} — ${seasons.join(", ")}`);
+    }
+  }
+  if (unknownTeams.size > 0) {
+    console.warn(`⚠️  Équipes inconnues : ${[...unknownTeams].join(", ")}`);
+  }
+  if (ONLY_MISSING) console.log(`↩️  ${alreadyThere} lignes ignorées (saison déjà en base)`);
+
+  if (DRY_RUN) {
+    console.log(`\n🔎 Simulation — ${planned.length} lignes seraient écrites :`);
+    for (const line of planned.sort()) console.log(`   ${line}`);
+    return;
+  }
 
   await prisma.syncLog.create({
     data: {

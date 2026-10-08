@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import { prisma } from "@/lib/prisma";
 import { currentSeason } from "@/lib/nba";
 import { stat } from "@/lib/format";
+import { photoDataUrl } from "@/lib/og-photo";
 
 export const runtime = "nodejs";
 export const revalidate = 21600;
@@ -69,6 +70,7 @@ export default async function Image({
   const ppg = stat(season?.pointsPerGame);
   const rpg = stat(season?.reboundsPerGame);
   const apg = stat(season?.assistsPerGame);
+  const photo = await photoDataUrl(player.photoUrl);
 
   return new ImageResponse(
     <div
@@ -103,7 +105,7 @@ export default async function Image({
       />
 
       {/* Photo joueur */}
-      {player.photoUrl && (
+      {photo && (
         <div
           style={{
             position: "absolute",
@@ -116,7 +118,7 @@ export default async function Image({
         >
           { }
           <img
-            src={player.photoUrl}
+            src={photo}
             alt=""
             style={{
               width: "100%",

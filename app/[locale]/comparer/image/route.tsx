@@ -4,6 +4,7 @@ import { pct, stat } from "@/lib/format";
 import { SMALL_SAMPLE_GAMES } from "@/lib/stats/compare";
 import { loadComparison, type ComparedPlayer, type ComparedSeason } from "@/lib/stats/compare-data";
 import { MULTI_TEAM_ABBR } from "@/lib/stats/career";
+import { photoDataUrl } from "@/lib/og-photo";
 
 /**
  * Carte de partage du comparateur (1200 × 630) : image Open Graph de la page
@@ -15,7 +16,6 @@ export const runtime = "nodejs";
 
 const WIDTH = 1200;
 const HEIGHT = 630;
-const PHOTO_TIMEOUT_MS = 3000;
 
 type CardRow = {
   label: string;
@@ -32,26 +32,6 @@ const ROWS: CardRow[] = [
   { label: "TS%", value: (r) => r.trueShooting, format: (v) => pct(v), compare: true },
   { label: "Matchs", value: (r) => r.gamesPlayed, format: (v) => (v == null ? "—" : String(v)), compare: false },
 ];
-
-/**
- * Photo en data URL : une image distante qui échoue ferait échouer toute la
- * carte. Délai court, et initiales à défaut.
- */
-async function photoDataUrl(url: string | null): Promise<string | null> {
-  if (!url || url.toLowerCase().endsWith(".svg")) return null;
-  try {
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(PHOTO_TIMEOUT_MS),
-      headers: { "User-Agent": "hoopstats/1.0 (carte de comparaison)" },
-    });
-    const type = response.headers.get("content-type") ?? "";
-    if (!response.ok || !/^image\/(png|jpe?g|webp)/.test(type)) return null;
-    const buffer = Buffer.from(await response.arrayBuffer());
-    return `data:${type};base64,${buffer.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
 
 function fallbackCard(message: string) {
   return new ImageResponse(
