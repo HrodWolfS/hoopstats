@@ -67,3 +67,27 @@ export function sourcePlayerSlug(name: string): string {
   const parts = trimmed.split(" ");
   return playerSlug(parts[0] ?? "", parts.slice(1).join(" "));
 }
+
+/**
+ * Fiches en double supprimées (sans saison ni match), fusionnées dans la fiche
+ * qui porte le suffixe ou les initiales du fichier source. L'ancienne adresse
+ * reste valable pour les liens déjà partagés.
+ */
+export const MERGED_PLAYER_SLUGS: Record<string, string> = {
+  "cj-wilcox": "c-j-wilcox",
+  "jimmy-butler": "jimmy-butler-iii",
+  "marcus-morris": "marcus-morris-sr",
+  "pj-tucker": "p-j-tucker",
+  "reggie-bullock": "reggie-bullock-jr",
+  "trey-murphy": "trey-murphy-iii",
+};
+
+/** `/fr/joueurs/jimmy-butler…` → même adresse sur la fiche conservée (308). */
+export function mergedPlayerRedirect(url: URL): URL | null {
+  const match = /^\/fr\/joueurs\/([^/]+)(\/.*)?$/.exec(url.pathname);
+  const target = match && MERGED_PLAYER_SLUGS[match[1]];
+  if (!target) return null;
+  const next = new URL(url);
+  next.pathname = `/fr/joueurs/${target}${match[2] ?? ""}`;
+  return next;
+}

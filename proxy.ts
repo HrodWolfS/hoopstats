@@ -7,6 +7,7 @@ import {
 } from "@/lib/pilotage-auth";
 import { legacyMatchTabRedirect, legacySeasonRedirect, queryRouteRewrite } from "@/lib/query-routes";
 import { referenceDate } from "@/lib/nba";
+import { mergedPlayerRedirect } from "@/lib/player-names";
 
 const LOCALES = ["fr"];
 const DEFAULT_LOCALE = "fr";
@@ -31,6 +32,8 @@ export function proxy(request: NextRequest) {
   if (hasLocale) {
     const legacy = legacySeasonRedirect(request.nextUrl);
     if (legacy) return NextResponse.redirect(legacy, 308);
+    const merged = mergedPlayerRedirect(request.nextUrl);
+    if (merged) return NextResponse.redirect(merged, 308);
     const legacyTab = legacyMatchTabRedirect(request.nextUrl, referenceDate());
     if (legacyTab) return NextResponse.redirect(legacyTab, 307);
     const rewrite = queryRouteRewrite(request.nextUrl);

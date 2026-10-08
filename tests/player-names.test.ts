@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { SOURCE_NAME_ALIASES, sourcePlayerSlug, titleNamesPlayer } from "@/lib/player-names";
+import {
+  MERGED_PLAYER_SLUGS,
+  mergedPlayerRedirect,
+  SOURCE_NAME_ALIASES,
+  sourcePlayerSlug,
+  titleNamesPlayer,
+} from "@/lib/player-names";
 
 describe("titleNamesPlayer", () => {
   it("accepte le joueur, à l'accent, au suffixe et à la précision près", () => {
@@ -38,6 +44,25 @@ describe("sourcePlayerSlug", () => {
   it("n'a que des slugs bien formés", () => {
     for (const slug of Object.values(SOURCE_NAME_ALIASES)) {
       expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+    }
+  });
+});
+
+describe("mergedPlayerRedirect", () => {
+  it("renvoie l'ancienne fiche vers la fiche conservée, sous-chemin et paramètres compris", () => {
+    const target = mergedPlayerRedirect(new URL("https://hoopstats.fr/fr/joueurs/jimmy-butler/saison/2019-20?x=1"));
+    expect(target?.pathname).toBe("/fr/joueurs/jimmy-butler-iii/saison/2019-20");
+    expect(target?.search).toBe("?x=1");
+  });
+
+  it("laisse passer les autres fiches", () => {
+    expect(mergedPlayerRedirect(new URL("https://hoopstats.fr/fr/joueurs/jimmy-butler-iii"))).toBeNull();
+    expect(mergedPlayerRedirect(new URL("https://hoopstats.fr/fr/joueurs/jameer-nelson-jr"))).toBeNull();
+  });
+
+  it("ne renvoie jamais vers une fiche elle-même redirigée", () => {
+    for (const target of Object.values(MERGED_PLAYER_SLUGS)) {
+      expect(MERGED_PLAYER_SLUGS[target]).toBeUndefined();
     }
   });
 });
