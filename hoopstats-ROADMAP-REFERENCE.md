@@ -8,6 +8,22 @@
 
 ---
 
+## État d'avancement au 9 octobre 2026
+
+Les cases cochées ont été vérifiées une à une dans le code ou en base. Une case
+vide ne veut pas dire « pas fait » : l'audit du 9 octobre a constaté l'essentiel
+des phases 1 et 2 dans le code, sans cocher chaque ligne.
+
+| Phase | État |
+|---|---|
+| 0 — Fondations | Fait, sauf : droits des sources (0.1, décision du propriétaire), parcours end-to-end mobile (seul le débordement est contrôlé), invalidation ciblée des caches (tout le site est revalidé). |
+| 1 — Fiabilité de l'usage | Fait dans le code. |
+| 2 — Usages quotidiens | Fait dans le code. |
+| 3 — Profondeur statistique | Pas commencée, conformément à la décision 011. |
+| 4 — Valider et faire connaître | 4.1 en place ; 4.2 à 4.4 abandonnés ; 4.5 et 4.6 après la saison. |
+
+---
+
 ## 1. Vision
 
 HoopStats doit devenir le réflexe des fans francophones lorsqu'ils veulent **trouver, comprendre et partager une statistique NBA**.
@@ -223,8 +239,8 @@ Rendre la provenance, la période et la fraîcheur explicites dans le modèle et
 ### Actions
 
 - [ ] Créer un catalogue des métriques avec identifiant, libellé, unité, formule, source et limites.
-- [ ] Définir les notions de saison régulière, play-in, playoffs, NBA Cup et présaison.
-- [ ] Définir une politique unique pour les joueurs transférés et les lignes `TOT`.
+- [x] Définir les notions de saison régulière, play-in, playoffs, NBA Cup et présaison.
+- [x] Définir une politique unique pour les joueurs transférés et les lignes `TOT`.
 - [ ] Définir une politique d'arrondi commune aux cartes, tableaux, graphiques et exports.
 - [ ] Ajouter ou normaliser les champs de provenance et `updatedAt` nécessaires.
 - [ ] Distinguer visuellement les données officielles, importées, calculées et estimées.
@@ -247,9 +263,9 @@ Supprimer les erreurs susceptibles de faire perdre immédiatement la confiance.
 
 ### Actions
 
-- [ ] Produire une seule ligne consolidée `TOT` par joueur et par saison, sans double comptage des passages en équipe.
-- [ ] Recalculer les moyennes de carrière à partir des totaux et des matchs joués.
-- [ ] Ne jamais additionner naïvement des pourcentages ou des moyennes par match.
+- [x] Produire une seule ligne consolidée `TOT` par joueur et par saison, sans double comptage des passages en équipe.
+- [x] Recalculer les moyennes de carrière à partir des totaux et des matchs joués.
+- [x] Ne jamais additionner naïvement des pourcentages ou des moyennes par match.
 - [ ] Corriger la détermination des vainqueurs de séries de playoffs.
 - [ ] Empêcher le fallback silencieux vers une saison différente.
 - [ ] Forcer les comparaisons à utiliser la même saison par défaut.
@@ -288,7 +304,7 @@ Supprimer la synchronisation manuelle des statistiques joueurs et détecter les 
 
 ### Actions
 
-- [ ] Intégrer `PlayerSeason` au pipeline quotidien ou choisir une source exécutable depuis l'infrastructure de production.
+- [x] Intégrer `PlayerSeason` au pipeline quotidien ou choisir une source exécutable depuis l'infrastructure de production.
 - [ ] Séparer les étapes : matchs, box scores, agrégats joueurs, standings, équipes et dérivés.
 - [ ] Rendre chaque étape idempotente et relançable indépendamment.
 - [ ] Écrire un `SyncLog` précis pour chaque famille de données.
@@ -302,8 +318,8 @@ Supprimer la synchronisation manuelle des statistiques joueurs et détecter les 
 - [ ] Centraliser la saison NBA active dans une seule source de vérité.
 - [ ] Détecter et préparer la prochaine saison sans éditer plusieurs fichiers.
 - [ ] Gérer les périodes où la nouvelle saison existe mais ne contient pas encore de matchs.
-- [ ] Ajouter un script de contrôle de bascule de saison.
-- [ ] Écrire un guide opératoire de début et de fin de saison.
+- [x] Ajouter un script de contrôle de bascule de saison.
+- [x] Écrire un guide opératoire de début et de fin de saison.
 
 ### Critères de sortie
 
@@ -322,11 +338,11 @@ Supprimer la synchronisation manuelle des statistiques joueurs et détecter les 
 - [ ] Installer un socle de tests unitaires pour les calculs statistiques.
 - [ ] Ajouter des tests d'intégration pour recherche, classement, comparaison et changement de saison.
 - [ ] Ajouter un parcours end-to-end mobile sur les tâches principales.
-- [ ] Exécuter lint, tests, build et santé des données dans la CI.
+- [x] Exécuter lint, tests, build et santé des données dans la CI.
 - [ ] Centraliser les erreurs serveur et client utiles au diagnostic.
 - [ ] Ajouter un tableau interne de fraîcheur, volumes, erreurs et anomalies.
 - [ ] Protéger les pages de pilotage et les endpoints de réindexation/synchronisation.
-- [ ] Documenter la restauration et la correction d'une mauvaise importation.
+- [x] Documenter la restauration et la correction d'une mauvaise importation.
 
 ### Livrable de phase 0
 
@@ -351,8 +367,8 @@ Une plateforme dont les chiffres peuvent être défendus : source connue, derni�
 ### Actions
 
 - [ ] Créer un contexte ou contrat unique de saison utilisable par toutes les pages.
-- [ ] Utiliser un nom de paramètre unique dans les URLs.
-- [ ] Définir clairement la relation entre année de Draft et saison NBA.
+- [x] Utiliser un nom de paramètre unique dans les URLs.
+- [x] Définir clairement la relation entre année de Draft et saison NBA.
 - [ ] Aligner accueil, joueurs, équipes, classements, trophées, playoffs, Draft et comparateur.
 - [ ] Ajouter des URLs canoniques par saison lorsque le contenu change réellement.
 - [ ] Conserver le choix de saison pendant la navigation lorsque cela a du sens.
@@ -897,18 +913,18 @@ Les visites brutes ne doivent jamais être l'unique mesure de réussite.
 
 Chaque décision structurante doit être enregistrée brièvement avec : contexte, options, décision, conséquences et date.
 
-Décisions initiales nécessaires :
+Décisions initiales nécessaires (consignées dans `DECISIONS.md`, 002 à 011) :
 
-- [ ] source de données principale et source de secours ;
-- [ ] définition et stockage des lignes `TOT` ;
-- [ ] règle de calcul des carrières ;
-- [ ] modèle saison régulière/playoffs ;
-- [ ] convention des paramètres de saison ;
-- [ ] définition d'un joueur français ;
-- [ ] seuils de qualification par métrique ;
-- [ ] stratégie d'analytics et durée de conservation ;
-- [ ] politique d'export et d'attribution ;
-- [ ] critères autorisant le démarrage de la phase 3.
+- [ ] source de données principale et source de secours ; — **en attente** (DECISIONS.md, 010)
+- [x] définition et stockage des lignes `TOT` ;
+- [x] règle de calcul des carrières ;
+- [x] modèle saison régulière/playoffs ;
+- [x] convention des paramètres de saison ;
+- [x] définition d'un joueur français ;
+- [x] seuils de qualification par métrique ;
+- [x] stratégie d'analytics et durée de conservation ;
+- [x] politique d'export et d'attribution ;
+- [x] critères autorisant le démarrage de la phase 3.
 
 ---
 

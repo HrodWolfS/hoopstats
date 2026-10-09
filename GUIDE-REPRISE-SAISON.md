@@ -63,3 +63,4 @@ Ensuite, déclencher `POST /api/revalidate` avec l'en-tête `Authorization: Bear
 - **Box score manquant :** la synchro le retente seule pendant 7 jours. Pour forcer : `npx tsx --env-file=.env scripts/sync-box-scores.ts`.
 - **Site resté sur 2025-26 après la synchro :** la revalidation a échoué. Relancer la synchro à la main, ou appeler `/api/revalidate` avec `CRON_SECRET`.
 - **Rookie sans fiche alors qu'il a joué un match officiel :** vérifier son nom dans `lib/stats/player-aliases.ts`, puis lancer `pnpm resolve:players`. Cette commande écrit en base, donc sauvegarder avant.
+- **Import qui a abîmé des données :** suivre `GUIDE-RESTAURATION.md`.

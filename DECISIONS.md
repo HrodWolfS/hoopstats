@@ -76,3 +76,261 @@ qu'elle est la seule **vérifiable** :
 - BALLDONTLIE devient accessible sur un palier ouvrant `/season_averages` ;
 - stats.nba.com redevient joignable depuis une infrastructure de production ;
 - le taux de réconciliation des box scores ESPN passe durablement sous 99 %.
+
+---
+
+> Les décisions 002 à 010 consignent des règles **déjà appliquées dans le
+> code**, écrites le 9 octobre 2026 pour compléter la liste du § 12. Chacune
+> renvoie au fichier qui fait foi : en cas d'écart, c'est le code qui dit ce que
+> le site affiche, et ce registre qui doit être corrigé.
+
+## 002 — Ligne `TOT` d'un joueur transféré en cours de saison
+
+**Date** : 9 octobre 2026 (règle en place depuis la phase 1)
+**Statut** : appliquée — `lib/stats/season-consolidation.ts`
+**Feuille de route** : § 1.1 (cohérence des agrégats)
+
+### Contexte
+
+Un joueur transféré a une ligne par équipe. Les classements et la fiche joueur
+ont besoin d'une seule ligne par saison, sans quoi il apparaît deux fois ou est
+jugé sur une demi-saison.
+
+### Options évaluées
+
+- Afficher chaque ligne d'équipe séparément : doublons dans les classements.
+- Garder la ligne de la dernière équipe : fausse la saison.
+- **Consolider en une ligne `TOT`**, en ne calculant que ce qui se calcule
+  exactement.
+
+### Décision
+
+- Statistiques de comptage : moyenne pondérée par les matchs joués.
+- Pourcentages de tir : recalculés sur les tentatives des box scores ; à
+  défaut, **vides** plutôt qu'une moyenne de pourcentages.
+- Cumuls (WS, VORP) : additionnés.
+- Taux avancés (PIE, USG%, ORtg, DRtg, NRtg, BPM) : **vides**. Ils dépendent du
+  contexte d'équipe et ne se combinent pas.
+
+### Conséquences
+
+Une case vide sur `TOT` est voulue, pas une donnée manquante. Les matchs joués
+sont plafonnés dans les classements (`lib/stats/leaders.ts`) pour qu'un
+transfert ne gonfle pas le seuil de qualification.
+
+### À revoir si
+
+Une source fournit des taux avancés déjà consolidés pour les joueurs transférés.
+
+## 003 — Moyennes de carrière
+
+**Date** : 9 octobre 2026
+**Statut** : appliquée — `lib/stats/career.ts`
+**Feuille de route** : § 1.1
+
+### Décision
+
+Les moyennes de carrière sont pondérées par les matchs joués de chaque saison.
+Les pourcentages sont calculés sur les tentatives totales ; si une saison n'en a
+pas, le pourcentage de carrière reste **vide** au lieu d'être approché.
+
+### Conséquences
+
+Certaines carrières anciennes n'ont pas de pourcentage de carrière : c'est
+plus honnête qu'un chiffre plausible et faux.
+
+### À revoir si
+
+Les tentatives des saisons anciennes sont importées.
+
+## 004 — Découpage d'une saison : saison régulière, play-in, playoffs
+
+**Date** : 9 octobre 2026
+**Statut** : appliquée — `lib/season-phase.ts`
+**Feuille de route** : § 1.1, § 2 (pages playoffs)
+
+### Décision
+
+La phase d'un match vient de l'année de saison et du type d'événement fournis
+par ESPN, pas de sa date. Présaison, play-in, playoffs et finale de la NBA Cup
+sont **exclus des moyennes de saison régulière** et affichés séparément.
+
+### Conséquences
+
+La finale de la NBA Cup ne compte pas dans les moyennes, conformément à la
+règle de la NBA. Un match mal typé par ESPN tombe dans la mauvaise phase : le
+contrôle `health:data` le signale.
+
+### À revoir si
+
+La NBA change le statut statistique d'une de ces phases.
+
+## 005 — Paramètre de saison et année de draft
+
+**Date** : 9 octobre 2026
+**Statut** : appliquée — `lib/season-scope.ts`, `lib/nba.ts`
+**Feuille de route** : § 2 (navigation par saison)
+
+### Décision
+
+- Un seul paramètre d'adresse, `?saison=AAAA-AA` (ex. `2026-27`), sur toutes
+  les pages qui changent de saison. `lib/season-scope.ts` déclare les saisons
+  disponibles page par page.
+- L'année de draft d'une saison est sa première année :
+  `draftYearOf("2026-27") = 2026`.
+
+### Conséquences
+
+Une adresse partagée garde la saison choisie. Une saison absente du périmètre
+d'une page renvoie à la saison par défaut au lieu d'afficher une page vide.
+
+### À revoir si
+
+Jamais sans redirection des anciennes adresses.
+
+## 006 — Définition d'un joueur français
+
+**Date** : 9 octobre 2026
+**Statut** : appliquée — `lib/french.ts`, publiée sur `/sources`
+**Feuille de route** : § 2 (page Français)
+
+### Décision
+
+Nationalité **sportive** : un joueur est français si NBA.com (via BALLDONTLIE)
+le déclare de France, **ou** s'il a porté le maillot de l'équipe de France A.
+Chaque ajout manuel est nommé et sourcé dans `lib/french.ts`.
+
+### Conséquences
+
+Les binationaux qui ont choisi la France sont inclus, ceux qui n'ont que la
+nationalité administrative ne le sont pas. La règle est affichée sur `/sources`.
+
+### À revoir si
+
+Un lecteur conteste un cas : on corrige la liste sourcée, pas la règle.
+
+## 007 — Seuils de qualification des classements
+
+**Date** : 9 octobre 2026
+**Statut** : appliquée — `lib/stats/metrics.ts`, `lib/stats/leaders.ts`
+**Feuille de route** : § 1.3 (classements)
+
+### Décision
+
+| Règle | Seuil | Métriques |
+|---|---|---|
+| `nba` | 70 % des matchs de l'équipe (58 sur 82) | moyennes par match |
+| `hoopstats` | 70 % des matchs **et** 20 min par match | pourcentages de tir, métriques sur le terrain |
+| `hoopstats` + volume | idem **et** 10 points par match | true shooting |
+| `none` | aucun | totaux (matchs joués…) |
+
+En cours de saison, la part s'applique aux matchs déjà joués par l'équipe.
+
+### Conséquences
+
+Un joueur à 5 tirs sur la saison ne mène pas un classement de pourcentage. Le
+seuil appliqué est affiché avec chaque classement.
+
+### À revoir si
+
+La NBA modifie ses propres seuils, ou un classement observé reste trompeur.
+
+## 008 — Mesure d'audience et conservation
+
+**Date** : 9 octobre 2026
+**Statut** : appliquée — `lib/analytics.ts`, `lib/retention.ts`, `lib/stat-requests.ts`
+**Feuille de route** : § 4.1 (instrumentation)
+
+### Décision
+
+- **Aucun cookie ni identifiant.** Le navigateur garde trois dates en
+  `localStorage` (première visite, dernière visite, retours déjà comptés).
+- Le serveur ne reçoit que des **compteurs quotidiens agrégés** : visite
+  nouvelle ou revenue, retour à 7 jours (1 à 7 jours après la première visite),
+  à 28 jours (8 à 28 jours).
+- Le refus de mesure est respecté (signal GPC ou réglage du site).
+- Les demandes de statistiques (`StatRequest`) ne stockent pas d'e-mail et sont
+  supprimées après **365 jours**.
+- Les compteurs quotidiens (`AnalyticsDaily`) ne contiennent aucune donnée
+  personnelle et sont **conservés sans limite** : ils servent au bilan de fin de
+  saison.
+
+### Conséquences
+
+Pas de bandeau de consentement nécessaire. Les chiffres sont des tendances, pas
+des personnes : impossible de suivre un parcours individuel.
+
+### À revoir si
+
+Un outil tiers de mesure est ajouté, ou un compteur devient assez fin pour
+isoler une personne.
+
+## 009 — Export CSV et attribution
+
+**Date** : 9 octobre 2026
+**Statut** : appliquée — `lib/export.ts`
+**Feuille de route** : § 3 (export), § 0.1 (droits)
+
+### Décision
+
+Seuls les tableaux que hoopstats **calcule lui-même** depuis les box scores
+ESPN sont exportables : tendances, classements de la saison en cours, Français
+et rookies de la saison en cours. Ne le sont pas : saisons passées issues de
+NBA Stats, métriques avancées importées, box scores bruts. Chaque fichier
+commence par la source et la date de mise à jour.
+
+### Conséquences
+
+On ne redistribue pas en masse des données dont les droits ne sont pas
+établis. `isExportable()` refuse tout tableau dont une colonne a une autre
+origine.
+
+### À revoir si
+
+Les droits des sources sont clarifiés (décision 010).
+
+## 010 — Source principale et source de secours
+
+**Date** : 9 octobre 2026
+**Statut** : **en attente** — décision du propriétaire du projet
+**Feuille de route** : § 0.1
+
+### Contexte
+
+La décision 001 fait d'ESPN la source principale de fait. Mais
+`REGISTRE-SOURCES.md` marque toujours ESPN, NBA Stats et le CDN NBA « à
+confirmer » sur les conditions d'utilisation, et aucune source de secours n'est
+branchée : les statistiques BALLDONTLIE exigent un palier payant (401).
+
+### Ce qui reste à décider
+
+Voir `REGISTRE-SOURCES.md` § 6 : lecture des conditions d'utilisation, risque
+acceptable pour un site gratuit, palier BALLDONTLIE ou non, avis juridique ou
+non.
+
+### En attendant
+
+Si ESPN tombe, la synchro échoue, le contrôle de fraîcheur le signale et le
+site affiche « Données en retard » (§ 4.1). Le plan manuel est décrit au § 5 du
+registre.
+
+## 011 — Critères de démarrage de la phase 3
+
+**Date** : 9 octobre 2026
+**Statut** : décidée
+**Feuille de route** : § 3, § 4.5
+
+### Décision
+
+La phase 3 ne démarre que si les **deux** portes sont franchies :
+
+1. les droits des données concernées sont compatibles (décision 010) ;
+2. le besoin est **observé**, pas supposé : demandes reçues, recherches internes,
+   usage mesuré.
+
+Et on ne construit que les **deux catégories de demandes les plus fréquentes**
+(§ 4.5), sans études utilisateurs : signaux passifs seulement.
+
+### À revoir si
+
+Fin de saison : le bilan décide de la suite.

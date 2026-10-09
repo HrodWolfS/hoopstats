@@ -43,3 +43,40 @@ jobs:
 
       - name: Tests
         run: pnpm test
+
+  # Définition de « terminé » de la feuille de route : le site compile et
+  # health:data passe. Les deux lisent la base (pages générées à la
+  # compilation), d'où les secrets : ils ne sont pas transmis aux PR venues
+  # d'un fork, le job est alors sauté. Aucune écriture en base.
+  build-health:
+    name: Build et santé des données
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      NEXT_PUBLIC_BASE_URL: ${{ secrets.NEXT_PUBLIC_BASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Neon peut être en veille : premier essai réveille, les suivants passent.
+      - name: Data health
+        run: .github/scripts/retry.sh pnpm health:data --strict
+
+      - name: Build
+        run: pnpm build

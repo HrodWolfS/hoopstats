@@ -12,9 +12,9 @@
  * (`teamSeasonSummary`). L'ancien gabarit lisait le code de qualification
  * ESPN comme un résultat de playoffs.
  *
- * Note : les stats joueurs (PlayerSeason) ne sont pas syncées ici car
- * stats.nba.com et BDL bulk sont bloqués depuis les IPs CI.
- * Sync manuelle : pnpm tsx scripts/sync-player-stats.ts (en local).
+ * Les agrégats joueurs (PlayerSeason) sont dérivés des box scores ESPN par
+ * `syncPlayerSeasons` (DECISIONS.md, 001). Les métriques avancées importées de
+ * NBA Stats ne sont pas touchées : stats.nba.com ne répond pas depuis la CI.
  *
  * Run manuel: pnpm tsx scripts/sync-daily.ts
  */
