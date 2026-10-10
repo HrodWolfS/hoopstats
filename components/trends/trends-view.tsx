@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { pct, stat } from "@/lib/format";
+import { pct, signed as signedValue, stat } from "@/lib/format";
 import { playerSeasonHref } from "@/lib/team-links";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { CsvExportButton } from "@/components/analytics/csv-export-button";
@@ -235,8 +235,7 @@ function formatValue(sort: TrendSort, value: number | null): string {
 
 function signed(sort: TrendSort, delta: number | null): string {
   if (delta == null) return "—";
-  const text = sort === "ts" ? pct(delta) : stat(delta);
-  return delta > 0 ? `+${text}` : text;
+  return signedValue(sort === "ts" ? delta * 100 : delta);
 }
 
 function TrendItem({

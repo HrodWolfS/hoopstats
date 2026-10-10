@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ColumnHeader, ColumnHelpPanel } from "@/components/ui/column-help";
 import { LineChart } from "@/components/ui/line-chart";
-import { stat, pct } from "@/lib/format";
+import { count, stat, pct } from "@/lib/format";
 import {
   computeCareerAverages,
   consolidateSeasons,
@@ -37,10 +37,6 @@ const MODES: { id: Mode; label: string }[] = [
   { id: "totals", label: "Totaux" },
 ];
 
-/** Entier en notation française (1 234), ou tiret. */
-function count(value: number | null | undefined): string {
-  return value == null ? "—" : Math.round(value).toLocaleString("fr-FR");
-}
 
 function ratio(made: number, attempted: number): number | null {
   return attempted === 0 ? null : made / attempted;

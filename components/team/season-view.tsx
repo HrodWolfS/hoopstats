@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { winPct } from "@/lib/format";
+import { signed, stat, winPct } from "@/lib/format";
 import { TEAM_BOX_SCORES_SINCE } from "@/lib/data-sources";
 import type { TeamRatingKey, TeamRatings } from "@/lib/stats/team-ratings";
 import type { PlayoffOutcome } from "@/lib/playoff-outcome";
@@ -26,8 +26,7 @@ const RATING_CARDS: { key: TeamRatingKey; code: string; label: string; hint: str
 ];
 
 function formatRating(key: TeamRatingKey, value: number): string {
-  const fixed = value.toFixed(1).replace(".", ",");
-  return key === "netRating" && value > 0 ? `+${fixed}` : fixed.replace("-", "−");
+  return key === "netRating" ? signed(value) : stat(value);
 }
 
 function TeamRatingsBlock({ season, ratings }: { season: string; ratings: TeamRatings | null }) {
@@ -134,7 +133,7 @@ export function SeasonView({
   const gb = (row: ConferenceRow) => {
     if (row.conferenceRank === 1) return "—";
     const diff = (leaderW - row.wins + (row.losses - leaderL)) / 2;
-    return diff % 1 === 0 ? String(diff) : diff.toFixed(1).replace(".", ",");
+    return stat(diff, diff % 1 === 0 ? 0 : 1);
   };
 
   return (

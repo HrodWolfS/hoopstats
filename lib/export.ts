@@ -36,10 +36,14 @@ const UPDATE_FORMAT = new Intl.DateTimeFormat("fr-FR", {
   timeZone: "Europe/Paris",
 });
 
-/** Cellule CSV : point-virgule (Excel français), guillemets doublés si besoin. */
+/**
+ * Cellule CSV : point-virgule (Excel français), guillemets doublés si besoin.
+ * Le vrai signe moins de l'affichage redevient un trait d'union, sans quoi
+ * le tableur lirait « −1,2 » comme du texte.
+ */
 export function csvCell(value: CsvCell): string {
   if (value == null) return "";
-  const text = typeof value === "number" ? String(value).replace(".", ",") : value;
+  const text = typeof value === "number" ? String(value).replace(".", ",") : value.replace(/^−/, "-");
   return /[";\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 

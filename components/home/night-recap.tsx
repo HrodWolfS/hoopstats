@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { stat, record } from "@/lib/format";
+import { record, signed, stat } from "@/lib/format";
 import { previousSeason } from "@/lib/nba";
 import { GAME_PHASE_LABELS, type GamePhase } from "@/lib/season-phase";
 import { nightLabel, statLine, BIG_GAME_HORIZON_DAYS, RECENT_GAMES, SEASON_PROGRESSION_MIN_GAMES } from "@/lib/stats/night";
@@ -18,10 +18,6 @@ function parisDateTime(date: Date): string {
 
 function phaseSummary(phases: GamePhase[]): string {
   return phases.map((phase) => GAME_PHASE_LABELS[phase] ?? phase).join(" · ");
-}
-
-function signed(value: number): string {
-  return `${value > 0 ? "+" : ""}${stat(value)}`;
 }
 
 function Kicker({ children }: { children: React.ReactNode }) {

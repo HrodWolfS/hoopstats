@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
-import { stat, pct } from "@/lib/format";
+import { count, stat, pct } from "@/lib/format";
 import { currentSeason } from "@/lib/nba";
 import { playerSeasonHref, teamSeasonHref } from "@/lib/team-links";
 import { getPlayerMetric } from "@/lib/stats/metrics";
@@ -37,7 +37,7 @@ function formatMetric(
   mode: PlayerExplorerParams["mode"],
 ) {
   if (value == null) return "—";
-  if (mode === "total") return Math.round(value).toLocaleString("fr-FR");
+  if (mode === "total") return count(value);
   return getPlayerMetric(metric).mode === "percentage" ? pct(value) : stat(value);
 }
 

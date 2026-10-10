@@ -1,5 +1,5 @@
 import { ColumnHeader, ColumnHelpPanel } from "@/components/ui/column-help";
-import { stat, pct } from "@/lib/format";
+import { pct, signed, stat } from "@/lib/format";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 
 export type AdvancedSeason = {
@@ -77,8 +77,7 @@ export function AdvancedView({ seasons, primaryColor }: AdvancedViewProps) {
             <tbody className="font-mono tabular-nums">
               {[...chrono].reverse().map((row) => {
                 const net = row.netRating;
-                const netStr =
-                  net == null ? "—" : net >= 0 ? `+${stat(net)}` : stat(net);
+                const netStr = signed(net);
                 return (
                   <tr
                     key={`${row.season}-${row.teamAbbr}`}

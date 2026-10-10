@@ -4,7 +4,7 @@ import Link from "next/link";
 import { teamSeasonHref } from "@/lib/team-links";
 import { useState } from "react";
 import { ColumnHeader, ColumnHelpPanel } from "@/components/ui/column-help";
-import { stat } from "@/lib/format";
+import { signed, stat } from "@/lib/format";
 import { parseMinutes } from "@/lib/stats/season-aggregation";
 
 /** Première saison couverte par les box scores en base. */
@@ -170,7 +170,7 @@ export function GameLogView({ logs, season, liveSeason, locale }: GameLogViewPro
                   <td className="px-3 py-3 text-right text-white/45">{shots(log.threePm, log.threePa)}</td>
                   <td className="px-3 py-3 text-right text-white/45">{shots(log.ftm, log.fta)}</td>
                   <td className="px-4 py-3 text-right text-white/35">
-                    {log.plusMinus != null && log.plusMinus > 0 ? "+" : ""}{log.plusMinus ?? "—"}
+                    {signed(log.plusMinus, 0)}
                   </td>
                 </tr>
               ))}
@@ -261,7 +261,7 @@ function RecentForm({ logs, season }: { logs: PlayerGameLog[]; season: string })
                     <span className="text-white/80">{stat(value)}</span>
                     {delta != null && Math.abs(delta) >= 0.05 && (
                       <span className={`ml-1 text-[10px] ${delta > 0 ? "text-emerald-400/80" : "text-rose-400/80"}`}>
-                        {delta > 0 ? "+" : ""}{stat(delta)}
+                        {signed(delta)}
                       </span>
                     )}
                   </div>

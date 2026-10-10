@@ -379,3 +379,41 @@ site** (`revalidatePath("/", "layout")`). On n'invalide pas page par page.
 
 La date de fraîcheur est lue côté client au lieu d'être figée dans la page, ou
 la synchro passe à plusieurs fois par jour.
+
+## 013 — Règle d'arrondi commune
+
+**Date** : 10 octobre 2026
+**Statut** : appliquée — `lib/format.ts`
+**Feuille de route** : § 0.2
+
+### Décision
+
+Cartes, tableaux, graphiques, images de partage et exports passent par les
+fonctions de `lib/format.ts` :
+
+| Valeur | Règle | Exemple | Fonction |
+|---|---|---|---|
+| Moyenne par match, note (ORtg, PIE…) | 1 décimale | 25,4 | `stat` |
+| Pourcentage | sur 100, 1 décimale | 58,4 | `pct` |
+| Écart, net rating, +/- | 1 décimale, signe explicite, zéro sans signe | +3,2 · −1,0 · 0,0 | `signed` |
+| Total, compteur | entier, milliers séparés | 1 234 | `count` |
+| Axe de graphique | entier, 1 décimale si l'échelle est serrée | 110 | `stat(v, 0)` |
+| Valeur absente | tiret cadratin | — | toutes |
+
+- On calcule sur les valeurs brutes et on n'arrondit qu'à l'affichage : une
+  moyenne de moyennes arrondies n'est jamais affichée.
+- Arrondi au plus proche (`toFixed`), virgule décimale, vrai signe moins (−).
+  Une valeur qui s'arrondit à zéro perd son signe : ni « −0,0 » ni « +0,0 ».
+- L'export CSV reprend le texte affiché, sauf le signe moins, qui redevient un
+  trait d'union pour que le tableur lise un nombre.
+- Hors règle : les coordonnées SVG (sparkline, radar), qui ne s'affichent pas.
+
+### Conséquences
+
+Un même chiffre s'écrit pareil sur la carte, dans le tableau, sur l'image de
+partage et dans le CSV. Les tests `tests/format.test.ts` fixent la règle.
+
+### À revoir si
+
+Une métrique demande plus de précision (deux décimales pour un ratio proche
+de zéro, par exemple) : on l'ajoute au tableau plutôt qu'un arrondi local.

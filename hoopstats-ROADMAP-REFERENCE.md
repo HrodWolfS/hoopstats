@@ -21,7 +21,7 @@ Cases revues une à une dans le code le 10 octobre. Conventions :
 
 | Phase | État |
 |---|---|
-| 0 — Fondations | Fait, sauf la règle d'arrondi (0.2). |
+| 0 — Fondations | Fait. |
 | 1 — Fiabilité de l'usage | Fait. |
 | 2 — Usages quotidiens | Fait. |
 | 3 — Profondeur statistique | Reportée après la saison (décision 011) ; les 5, 10 et 20 derniers matchs existent déjà (Tendances). |
@@ -29,12 +29,10 @@ Cases revues une à une dans le code le 10 octobre. Conventions :
 
 ### Reste à faire pour le MVP
 
-Deux cases. Une fois faites, le MVP est terminé : la suite est de
-l'exploitation pendant la saison, pas du développement.
+Une case. Une fois faite, le MVP est terminé : la suite est de l'exploitation
+pendant la saison, pas du développement.
 
-1. **Règle d'arrondi commune** (0.2, 1 case) : l'écrire et faire passer les
-   derniers graphiques par `lib/format.ts`.
-2. **Relecture CNIL** (4.1, 1 case) : confronter la décision 008 à la
+1. **Relecture CNIL** (4.1, 1 case) : confronter la décision 008 à la
    recommandation CNIL sur l'exemption de consentement.
 
 Et un rendez-vous : **la reprise réelle du 20 octobre**. Relire la synchro du
@@ -51,6 +49,9 @@ les classements une fois les premiers matchs importés. La répétition locale d
   relevés par `check:rollover` : sans effet sur la reprise.
 - Le tri par défaut du tableau des joueurs est compté comme `filter_apply` dès
   l'ouverture de la page : compteur gonflé, correction laissée de côté.
+- Colonne NET de la page Saisons toujours vide : `netRating` absent en base
+  pour les 30 équipes de 2023-24 à 2025-26 (constaté le 10 oct., antérieur à
+  la règle d'arrondi).
 
 ### Journal
 
@@ -62,6 +63,7 @@ les classements une fois les premiers matchs importés. La répétition locale d
 | 10 oct. | Répétition de la bascule (date simulée 20 oct. 05:00 UTC, build local) : pages en 2026-27, saison vide annoncée, fiches joueurs sur 2025-26. Corrigé : l'« affiche à venir » se choisit sur les bilans 2025-26 tant que personne n'a joué ; `check:mobile` remonte au dernier jour de matchs ; `check:journeys` accepte un classement vide annoncé. |
 | 10 oct. | Feuille de route revue case par case : 154 cases cochées après vérification dans le code, 48 reportées après la saison ou écartées, 9 restantes pour le MVP. |
 | 10 oct. | Droits des sources (0.1) : conditions ESPN, NBA.com, BALLDONTLIE et Wikimedia relues ; registre complété (fiche par source, procédure de remplacement) ; décision 010 : ESPN principale, risque accepté jusqu'au bilan ; sources des statistiques citées en pied de page. Liste du § 11, déjà faite, cochée. Reste 2 cases. |
+| 10 oct. | Règle d'arrondi commune (0.2, décision 013) : moyennes et notes à 1 décimale, pourcentages sur 100, écarts signés avec vrai signe moins, totaux entiers ; graphiques, analyses d'équipe, tendances, carrière et images de partage passent par `lib/format.ts` ; le CSV garde un nombre lisible par le tableur ; 7 tests. Reste 1 case. |
 
 ---
 
@@ -282,7 +284,7 @@ Rendre la provenance, la période et la fraîcheur explicites dans le modèle et
 - [x] Créer un catalogue des métriques avec identifiant, libellé, unité, formule, source et limites (`lib/stats/metrics.ts`).
 - [x] Définir les notions de saison régulière, play-in, playoffs, NBA Cup et présaison.
 - [x] Définir une politique unique pour les joueurs transférés et les lignes `TOT`.
-- [ ] Définir une politique d'arrondi commune aux cartes, tableaux, graphiques et exports.
+- [x] Définir une politique d'arrondi commune aux cartes, tableaux, graphiques et exports. (décision 013, `lib/format.ts`, `tests/format.test.ts`)
 - [x] Ajouter ou normaliser les champs de provenance et `updatedAt` nécessaires (`DATA_ORIGINS` et `SyncLog`).
 - [x] Distinguer visuellement les données officielles, importées, calculées et estimées (Officielle, importée, calculée).
 - [x] Ajouter un composant réutilisable « Source et mise à jour » (`SourceNote`, 7 pages).
@@ -956,7 +958,7 @@ Liste d'origine, entièrement traitée : le détail et les preuves sont dans les
 
 Chaque décision structurante doit être enregistrée brièvement avec : contexte, options, décision, conséquences et date.
 
-Décisions initiales nécessaires (consignées dans `DECISIONS.md`, 002 à 012) :
+Décisions initiales nécessaires (consignées dans `DECISIONS.md`, 002 à 013) :
 
 - [x] source de données principale et source de secours ; (DECISIONS.md, 010)
 - [x] définition et stockage des lignes `TOT` ;

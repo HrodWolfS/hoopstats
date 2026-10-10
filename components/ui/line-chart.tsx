@@ -1,3 +1,5 @@
+import { stat } from "@/lib/format";
+
 type DataPoint = {
   s: string; // label axe X (ex: "OCT", "2023-24")
   [key: string]: number | string;
@@ -67,7 +69,7 @@ export function LineChart({
               textAnchor="end"
               fontFamily="ui-monospace, monospace"
             >
-              {v.toFixed(range < yticks ? 1 : 0).replace(".", ",")}
+              {stat(v, range < yticks ? 1 : 0)}
             </text>
           </g>
         );

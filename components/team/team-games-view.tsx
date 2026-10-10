@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { GameResultItem, gameResult, type GameRow } from "@/components/team/recent-games";
 import { UpcomingGames } from "@/components/team/upcoming-games";
+import { signed, stat } from "@/lib/format";
 import { teamSeasonHref } from "@/lib/team-links";
 
 /** Première saison couverte par les résultats match par match en base. */
@@ -27,12 +28,6 @@ function summarize(games: GameRow[]): Summary {
   return summary;
 }
 
-const decimal = (value: number) => value.toFixed(1).replace(".", ",");
-const signed = (value: number) => {
-  const rounded = Math.round(value * 10) / 10;
-  if (rounded === 0) return "0,0";
-  return `${rounded > 0 ? "+" : "−"}${decimal(Math.abs(rounded))}`;
-};
 
 function formatShortDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Paris" });
@@ -180,11 +175,11 @@ function RecentTrend({ games, season }: { games: GameRow[]; season: string }) {
               <dl className="mt-1 space-y-0.5 text-[11px] font-mono text-white/50">
                 <div className="flex justify-between gap-1">
                   <dt>Pour</dt>
-                  <dd className="tabular-nums">{decimal(summary.ptsFor / summary.games)}</dd>
+                  <dd className="tabular-nums">{stat(summary.ptsFor / summary.games)}</dd>
                 </div>
                 <div className="flex justify-between gap-1">
                   <dt>Contre</dt>
-                  <dd className="tabular-nums">{decimal(summary.ptsAgainst / summary.games)}</dd>
+                  <dd className="tabular-nums">{stat(summary.ptsAgainst / summary.games)}</dd>
                 </div>
                 <div className="flex justify-between gap-1 text-white/70">
                   <dt>Écart</dt>

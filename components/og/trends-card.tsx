@@ -1,4 +1,4 @@
-import { stat } from "@/lib/format";
+import { signed, stat } from "@/lib/format";
 import { loadTrends, trendSeasons } from "@/lib/stats/trends-data";
 import { DEFAULT_TREND_WINDOW, sortTrends, trendDelta } from "@/lib/stats/trends";
 import { ogDate, statCard } from "@/components/og/stat-card";
@@ -26,7 +26,7 @@ export async function trendsCard(saison?: string) {
       return {
         label: row.name,
         sub: `${stat(row.recent.pts)} pts (saison ${stat(row.season.pts)})`,
-        value: `${delta > 0 ? "+" : ""}${stat(delta)}`,
+        value: signed(delta),
         tone: delta >= 0.05 ? "up" : delta <= -0.05 ? "down" : "plain",
       };
     }),

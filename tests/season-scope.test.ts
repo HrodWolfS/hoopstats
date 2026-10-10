@@ -99,7 +99,7 @@ describe("décimale à la française", () => {
 
   it("stat, pct et winPct affichent la virgule", () => {
     expect(stat(19.6)).toBe("19,6");
-    expect(stat(-3.25, 2)).toBe("-3,25");
+    expect(stat(-3.25, 2)).toBe("−3,25");
     expect(stat(null)).toBe("—");
     expect(pct(0.584)).toBe("58,4");
     expect(winPct(41, 41)).toBe("50,0");

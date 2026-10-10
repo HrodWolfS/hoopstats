@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
+import { stat } from "@/lib/format";
 
 export type HistoryPoint = {
   season: string;
@@ -199,7 +200,7 @@ export function HistoryChart({
               textAnchor="end"
               fontFamily="ui-monospace, monospace"
             >
-              {Math.round(v)}
+              {stat(v, 0)}
             </text>
           ))}
         </svg>
