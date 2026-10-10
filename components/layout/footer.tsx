@@ -6,6 +6,10 @@ export function Footer() {
     <footer className="border-t border-white/[0.06] mt-auto py-6 px-4 md:px-8 lg:px-12">
       <div className="max-w-[1400px] mx-auto space-y-3 text-[11px] text-white/30 leading-relaxed">
         <p>
+          Statistiques : ESPN pour les matchs, box scores et classements,
+          NBA.com pour les saisons révolues et les statistiques avancées.
+        </p>
+        <p>
           Logos et marques NBA sont la propriété de leurs détenteurs respectifs.
           hoopstats les utilise dans un contexte éditorial et de référence.
         </p>

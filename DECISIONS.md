@@ -291,28 +291,47 @@ Les droits des sources sont clarifiés (décision 010).
 
 ## 010 — Source principale et source de secours
 
-**Date** : 9 octobre 2026
-**Statut** : **en attente** — décision du propriétaire du projet
+**Date** : 10 octobre 2026
+**Statut** : décidée — risque accepté par le propriétaire jusqu'au bilan de fin de saison
 **Feuille de route** : § 0.1
 
 ### Contexte
 
-La décision 001 fait d'ESPN la source principale de fait. Mais
-`REGISTRE-SOURCES.md` marque toujours ESPN, NBA Stats et le CDN NBA « à
-confirmer » sur les conditions d'utilisation, et aucune source de secours n'est
-branchée : les statistiques BALLDONTLIE exigent un palier payant (401).
+La décision 001 fait d'ESPN la source principale de fait. Les conditions
+d'utilisation, relues le 10 octobre (`REGISTRE-SOURCES.md` § 8), ne couvrent
+pas notre usage d'ESPN ni de NBA.com : elles visent un usage personnel ou
+informatif, non commercial, sans extraction automatisée ni base stockée.
+BALLDONTLIE et Wikimedia, eux, couvrent notre usage.
 
-### Ce qui reste à décider
+### Options
 
-Voir `REGISTRE-SOURCES.md` § 6 : lecture des conditions d'utilisation, risque
-acceptable pour un site gratuit, palier BALLDONTLIE ou non, avis juridique ou
-non.
+1. Accepter le risque pour le site gratuit et le revoir en fin de saison.
+2. Souscrire dès maintenant un palier BALLDONTLIE payant comme secours.
+3. Retirer les logos du CDN NBA en plus.
 
-### En attendant
+### Décision
 
-Si ESPN tombe, la synchro échoue, le contrôle de fraîcheur le signale et le
-site affiche « Données en retard » (§ 4.1). Le plan manuel est décrit au § 5 du
-registre.
+Option 1.
+
+- **Source principale** : ESPN pour les matchs, box scores, classements et
+  playoffs ; les moyennes de la saison sont recalculées par nous (001).
+- **Secours** : aucun branché. L'historique est en base, la fraîcheur alerte à
+  36 h. Si ESPN s'arrête plus d'une semaine : BALLDONTLIE en palier payant,
+  selon la procédure du registre (§ 5).
+- **Garde-fous** tant que le risque est accepté : site gratuit, sans publicité,
+  abonnement ni lien avec les paris ; export limité à nos calculs (009) ;
+  sources des statistiques citées en pied de page et sur la page Sources.
+
+### Conséquences
+
+Un service peut couper l'accès sans préavis, et un ayant droit peut demander le
+retrait : on retire alors le contenu visé sans discuter. Aucune monétisation
+avant d'avoir une source contractuelle et l'avis d'un professionnel.
+
+### À revoir si
+
+Bilan de fin de saison, projet de monétisation, demande d'un ayant droit, ou
+arrêt durable d'ESPN.
 
 ## 011 — Critères de démarrage de la phase 3
 

@@ -2,7 +2,8 @@
 
 > Inventaire factuel des données utilisées par hoopstats, de leur origine et de
 > ce que nous en faisons. Établi le 12 août 2026 en relevant les appels réels
-> du code et les volumes réels en base.
+> du code et les volumes réels en base. Conditions d'utilisation relues le
+> 10 octobre 2026 (§ 8).
 >
 > **Ce document ne porte aucune appréciation juridique.** Il décrit les usages
 > pour qu'ils puissent être soumis à quelqu'un dont c'est le métier. La colonne
@@ -15,14 +16,26 @@
 
 | Source | Ce qu'elle fournit | Contrat | Statut |
 |---|---|---|---|
-| ESPN — `site.api.espn.com` | Matchs, box scores, classements, playoffs | Aucun | **à confirmer** |
-| NBA Stats — `stats.nba.com` | Saisons révolues, métriques avancées | Aucun | **à confirmer** — et injoignable |
-| NBA CDN — `cdn.nba.com` | Logos des 30 équipes, 48 photos joueurs | Aucun | **à confirmer** |
-| BALLDONTLIE — `api.balldontlie.io` | Profils joueurs (draft, université) | Clé d'API, conditions publiées | **autorisé** sous réserve du palier |
-| Wikimedia / Wikipédia | 514 photos, 4 964 biographies | CC BY-SA, domaine public | **autorisé** si attribution respectée |
+| ESPN — `site.api.espn.com` | Matchs, box scores, classements, playoffs | Aucun | **toléré, risque accepté** (décision 010) |
+| NBA Stats — `stats.nba.com` | Saisons révolues, métriques avancées | Aucun | **toléré, risque accepté** — plus appelée, injoignable |
+| NBA CDN — `cdn.nba.com` | Logos des 30 équipes, 48 photos joueurs | Aucun | **toléré, risque accepté** |
+| BALLDONTLIE — `api.balldontlie.io` | Profils joueurs (draft, université) | Clé d'API, conditions publiées | **autorisé** |
+| Wikimedia / Wikipédia | 514 photos, 4 964 biographies | CC BY-SA, domaine public | **autorisé**, attribution affichée |
+
+### Fiche par source
+
+| Source | Licence et conditions | Stockage | Affichage | Attribution | Débit et coût | Stabilité | Secours |
+|---|---|---|---|---|---|---|---|
+| ESPN | Aucune API publique : endpoints non documentés. Les conditions Disney visent un usage personnel et non commercial et interdisent l'extraction automatisée (§ 8). | Non couvert | Non couvert | « Données ESPN » sur les pages et les exports | Aucune limite publiée ; un appel par jour et par famille ; gratuit | Peut changer ou fermer sans préavis | Historique en base ; alerte de fraîcheur à 36 h ; BALLDONTLIE payant si arrêt durable (§ 5) |
+| NBA Stats | Conditions NBA.com : statistiques réservées à l'information ou à un usage privé non commercial, attribution visible à NBA.com, pas de base régulièrement mise à jour sans accord (§ 8). | Non couvert (base de plusieurs décennies) | Toléré pour l'information | « NBA Stats API » sur la page Sources | Plus appelée ; gratuit | Injoignable depuis l'été 2026 | Aucun besoin : saisons révolues figées en base |
+| NBA CDN | Logos et images restent la propriété de la NBA et des équipes ; tout usage demande leur accord (§ 8). | Rien n'est copié, seules les URL | Toléré dans un cadre éditorial | Pied de page et mentions légales | Gratuit | Stable | Logos : sigle texte de l'équipe ; photos : avatar aux initiales (déjà en place quand l'image manque) |
+| BALLDONTLIE | Conditions publiées : affichage public, stockage et bases dérivées autorisés ; pas de revente brute ni de produit concurrent (§ 8). | Autorisé | Autorisé | Non exigée | Palier gratuit ; stats en palier payant (401) | Service commercial | Profils déjà en base |
+| Wikimedia | CC BY-SA ou domaine public, fichier par fichier. | Seules les URL (photos) ; texte adapté (biographies) | Autorisé | Auteur et licence de chaque photo, lien et licence sous chaque biographie | Gratuit | Stable | Avatar aux initiales |
 
 Trois des cinq sources sont consommées **sans aucun accord** : ni clé, ni
-inscription, ni conditions développeur acceptées.
+inscription, ni conditions développeur acceptées. Leurs conditions publiques ne
+couvrent pas notre usage (§ 8) : le propriétaire accepte ce risque jusqu'au
+bilan de fin de saison (décision 010).
 
 ---
 
@@ -60,6 +73,12 @@ de faire vérifier ces usages **avant** toute exploitation commerciale.
 ---
 
 ## 4. Écarts constatés entre ce que le site affirme et ce qu'il fait
+
+> **Corrigés.** Vérifié dans le code le 10 octobre 2026 : la page joueur crédite
+> Wikipédia (lien et CC BY-SA) sous chaque biographie et affiche l'auteur et la
+> licence de chaque photo (`components/player/player-header.tsx`) ; le pied de
+> page et les mentions légales distinguent les photos Wikimedia de celles du
+> CDN NBA. Le constat d'origine est gardé ci-dessous.
 
 Trois points relevés en lisant le code. Ils ne relèvent pas du droit mais de
 l'exactitude de nos propres déclarations — donc de la promesse de fiabilité.
@@ -120,6 +139,25 @@ seule candidate contractuelle identifiée, mais ses endpoints statistiques
 (`/season_averages`, `/stats`) exigent un palier payant — vérifié le 12 août
 2026, la clé actuelle reçoit une réponse 401.
 
+### Procédure de remplacement d'un fournisseur
+
+1. **Constater** : la synchro échoue, `SyncLog` et le contrôle de fraîcheur le
+   montrent. Une panne de 3 jours au plus se rattrape seule (la synchro relit
+   J-3 à J+2) ; au-delà, si ESPN revient, `pnpm backfill:games` reprend le
+   calendrier et `pnpm tsx scripts/sync-box-scores.ts` les box scores manquants. On ne bascule que si la panne dure plus d'une semaine.
+2. **Choisir** la source : BALLDONTLIE en palier payant pour les matchs et box
+   scores, ou toute source contractuelle équivalente.
+3. **Écrire un seul script** `scripts/sync-<source>.ts` qui remplit les mêmes
+   tables (`Game`, box scores, `TeamSeason`) avec les mêmes identifiants
+   d'équipes ; la correspondance des statuts passe par `lib/game-status.ts`.
+4. **Recalculer** les moyennes de la saison : elles viennent de nos box scores
+   (décision 001), donc rien ne change côté pages.
+5. **Contrôler** avec `pnpm health:data` et `pnpm check:rollover`, puis
+   brancher le script dans la synchro quotidienne et mettre à jour la page
+   Sources, ce registre et `lib/data-sources.ts`.
+
+Les pages ne lisent que la base : aucune ne change.
+
 ### Coût d'un basculement
 
 L'abstraction existe partiellement : `lib/game-status.ts` isole déjà la
@@ -133,23 +171,63 @@ synchronisation, pas les pages.
 
 Elles ne relèvent pas de l'ingénierie :
 
-- [ ] Lire les conditions d'utilisation NBA et ESPN, et déterminer si le
-      stockage durable et la republication y sont couverts.
-- [ ] Décider du niveau de risque acceptable tant que le site n'est pas
-      monétisé, et de ce qui change s'il le devient.
-- [ ] Décider s'il faut souscrire un palier BALLDONTLIE pour disposer d'une
-      source contractuelle de secours.
+- [x] Lire les conditions d'utilisation NBA et ESPN, et déterminer si le
+      stockage durable et la republication y sont couverts. — Non couverts
+      (§ 8).
+- [x] Décider du niveau de risque acceptable tant que le site n'est pas
+      monétisé, et de ce qui change s'il le devient. — Risque accepté pour le
+      site gratuit jusqu'au bilan de fin de saison (décision 010).
+- [x] Décider s'il faut souscrire un palier BALLDONTLIE pour disposer d'une
+      source contractuelle de secours. — Non tant qu'ESPN répond ; c'est la
+      réponse prévue à un arrêt durable (§ 5).
 - [ ] Faire vérifier l'ensemble par un professionnel avant toute exploitation
-      commerciale significative.
+      commerciale significative. — Reporté : avant toute monétisation.
 
-Les trois écarts de la section 4 sont, eux, du ressort de l'ingénierie et
-peuvent être corrigés sans attendre ces décisions.
+Les trois écarts de la section 4 sont corrigés.
 
 ---
 
 ## 7. Références
 
+- [Conditions d'utilisation Disney, applicables à ESPN](https://disneytermsofuse.com/english/)
+
 - [Conditions d'utilisation NBA](https://www.nba.com/termsofuse)
 - [Conditions BALLDONTLIE](https://www.balldontlie.io/terms.html)
 - [Réutilisation du contenu Wikipédia](https://fr.wikipedia.org/wiki/Wikipédia:Citation_et_réutilisation_du_contenu_de_Wikipédia)
 - [Licences Wikimedia Commons](https://commons.wikimedia.org/wiki/Commons:Licensing)
+
+---
+
+## 8. Lecture des conditions d'utilisation (10 octobre 2026)
+
+Résumé de lecture, sans valeur d'avis juridique.
+
+**ESPN.** Aucune API publique : `site.api.espn.com` est un ensemble d'endpoints
+non documentés. Les conditions Disney, qui s'appliquent à ESPN, accordent un
+usage personnel et non commercial, interdisent l'extraction par script ou robot
+et la redistribution. Notre usage (appel automatisé quotidien, stockage,
+republication) n'y est pas couvert.
+
+**NBA.com (NBA Stats et CDN).** Les statistiques peuvent servir à l'information
+ou à un usage privé non commercial, avec une attribution visible à NBA.com,
+jamais pour des paris ni des produits commerciaux, et pas dans une base
+régulièrement mise à jour sans accord écrit. Logos, marques et images restent
+la propriété de la NBA et des équipes : aucune licence d'usage n'est accordée.
+Notre site est gratuit et informatif, mais la base historique dépasse ce cadre.
+
+**BALLDONTLIE.** Les conditions publiées autorisent l'affichage public, le
+stockage, l'archivage et la création de bases dérivées. Interdits : revendre
+les données brutes, construire un service concurrent, contourner les limites
+de débit. Aucune attribution exigée. Notre usage est couvert.
+
+**Wikimedia.** CC BY-SA ou domaine public, fichier par fichier : attribution et
+maintien de la licence. Fait sur chaque page joueur.
+
+**Conséquences retenues** (décision 010) :
+
+- le site reste gratuit, sans publicité ni abonnement, ni lien avec les paris ;
+- l'export CSV ne sort que nos propres calculs (`isExportable`, décision 009) et
+  la carte sociale ne montre qu'une valeur isolée, sourcée et datée ;
+- le pied de page cite les sources des statistiques (ESPN et NBA.com) ;
+- au bilan de fin de saison, ou avant toute monétisation : source contractuelle
+  et avis d'un professionnel.

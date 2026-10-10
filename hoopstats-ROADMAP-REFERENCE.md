@@ -21,24 +21,20 @@ Cases revues une à une dans le code le 10 octobre. Conventions :
 
 | Phase | État |
 |---|---|
-| 0 — Fondations | Fait, sauf les droits des sources (0.1) et la règle d'arrondi (0.2). |
+| 0 — Fondations | Fait, sauf la règle d'arrondi (0.2). |
 | 1 — Fiabilité de l'usage | Fait. |
-| 2 — Usages quotidiens | Fait, sauf « partage et export conformes aux droits » qui attend 0.1. |
+| 2 — Usages quotidiens | Fait. |
 | 3 — Profondeur statistique | Reportée après la saison (décision 011) ; les 5, 10 et 20 derniers matchs existent déjà (Tendances). |
 | 4 — Valider et faire connaître | 4.1 fait, sauf la relecture CNIL ; 4.2 à 4.4 abandonnés ; formulaire 4.5 en ligne ; le reste après la saison. |
 
 ### Reste à faire pour le MVP
 
-Neuf cases, en trois sujets. Une fois faits, le MVP est terminé : la suite est
-de l'exploitation pendant la saison, pas du développement.
+Deux cases. Une fois faites, le MVP est terminé : la suite est de
+l'exploitation pendant la saison, pas du développement.
 
-1. **Droits des sources** (0.1, 7 cases) : ta décision. Pour un site gratuit,
-   l'option la plus simple est de compléter le registre (licence, limites,
-   secours pour chaque source), d'acter ESPN comme source principale et
-   d'accepter le risque jusqu'au bilan de fin de saison.
-2. **Règle d'arrondi commune** (0.2, 1 case) : l'écrire et faire passer les
+1. **Règle d'arrondi commune** (0.2, 1 case) : l'écrire et faire passer les
    derniers graphiques par `lib/format.ts`.
-3. **Relecture CNIL** (4.1, 1 case) : confronter la décision 008 à la
+2. **Relecture CNIL** (4.1, 1 case) : confronter la décision 008 à la
    recommandation CNIL sur l'exemption de consentement.
 
 Et un rendez-vous : **la reprise réelle du 20 octobre**. Relire la synchro du
@@ -48,7 +44,7 @@ les classements une fois les premiers matchs importés. La répétition locale d
 
 ### Points ouverts
 
-- Droits des sources (0.1) : décision du propriétaire.
+- Droits des sources : risque accepté jusqu'au bilan de fin de saison (décision 010). Pas de monétisation avant une source contractuelle et un avis juridique.
 - Audience : aucune visite réelle encore observée en production depuis la garde
   du 10 octobre ; à relire en base.
 - Synchro du 9 octobre partielle (un match sauté) et 46 joueurs non vérifiés,
@@ -65,6 +61,7 @@ les classements une fois les premiers matchs importés. La répétition locale d
 | 10 oct. | Audience nettoyée : 476 pages vues et 16 visites retirées (contrôles automatiques des 8 au 10 oct. et une visite de développement), sauvegarde dans `backups/`. Il reste 27 pages vues et 3 visites probablement humaines. |
 | 10 oct. | Répétition de la bascule (date simulée 20 oct. 05:00 UTC, build local) : pages en 2026-27, saison vide annoncée, fiches joueurs sur 2025-26. Corrigé : l'« affiche à venir » se choisit sur les bilans 2025-26 tant que personne n'a joué ; `check:mobile` remonte au dernier jour de matchs ; `check:journeys` accepte un classement vide annoncé. |
 | 10 oct. | Feuille de route revue case par case : 154 cases cochées après vérification dans le code, 48 reportées après la saison ou écartées, 9 restantes pour le MVP. |
+| 10 oct. | Droits des sources (0.1) : conditions ESPN, NBA.com, BALLDONTLIE et Wikimedia relues ; registre complété (fiche par source, procédure de remplacement) ; décision 010 : ESPN principale, risque accepté jusqu'au bilan ; sources des statistiques citées en pied de page. Liste du § 11, déjà faite, cochée. Reste 2 cases. |
 
 ---
 
@@ -257,12 +254,12 @@ Les estimations supposent un développement individuel à temps partiel. Elles s
 ### Actions
 
 - [x] Inventorier chaque famille de données et sa source actuelle : joueurs, saisons, matchs, box scores, standings, playoffs, Draft, trophées, photos et logos (`REGISTRE-SOURCES.md`).
-- [ ] Pour chaque source, documenter : endpoint, licence, droit de stockage, droit d'affichage, attribution, limites de débit, coût, stabilité et solution de secours.
-- [ ] Relire les conditions NBA, BALLDONTLIE, ESPN et Wikimedia applicables.
+- [x] Pour chaque source, documenter : endpoint, licence, droit de stockage, droit d'affichage, attribution, limites de débit, coût, stabilité et solution de secours. (`REGISTRE-SOURCES.md` § 1, fiche par source)
+- [x] Relire les conditions NBA, BALLDONTLIE, ESPN et Wikimedia applicables. (registre § 8, 10 oct.)
 - [x] ~~Obtenir une confirmation écrite du fournisseur principal concernant le stockage, l'affichage public, les données dérivées et la monétisation~~ Reporté : avant toute monétisation, au bilan de fin de saison.
 - [x] ~~Faire vérifier les points sensibles par un professionnel du droit avant une exploitation commerciale significative~~ Reporté : avant toute monétisation, au bilan de fin de saison.
-- [ ] Définir un fournisseur principal et un fournisseur de secours pour les données indispensables.
-- [ ] Documenter une procédure de remplacement du fournisseur sans refonte du produit.
+- [x] Définir un fournisseur principal et un fournisseur de secours pour les données indispensables. (décision 010 : ESPN, BALLDONTLIE payant en cas d'arrêt durable)
+- [x] Documenter une procédure de remplacement du fournisseur sans refonte du produit. (registre § 5)
 
 ### Livrable
 
@@ -394,7 +391,7 @@ Une plateforme dont les chiffres peuvent être défendus : source connue, derni�
 
 ### Go/No-Go phase 0
 
-- [ ] droits des sources clarifiés ;
+- [x] droits des sources clarifiés ; (décision 010, risque accepté jusqu'au bilan)
 - [x] pipeline joueurs automatisé ;
 - [x] anomalies critiques corrigées ;
 - [x] tests critiques présents ;
@@ -620,7 +617,7 @@ HoopStats devient utile au réveil, suit naturellement les joueurs français et 
 - [x] tendances testées ;
 - [x] hub français complet ;
 - [x] calendrier navigable ;
-- [ ] partage et export conformes aux droits des données ;
+- [x] partage et export conformes aux droits des données ; (export limité à nos calculs, décisions 009 et 010)
 - [x] ~~amélioration mesurable du retour à J7 dans le pilotage~~ Reporté : Mesurable seulement avec du trafic : bilan de fin de saison.
 
 ---
@@ -925,30 +922,32 @@ Les visites brutes ne doivent jamais être l'unique mesure de réussite.
 
 ## 11. Ordre d'exécution immédiat
 
+Liste d'origine, entièrement traitée : le détail et les preuves sont dans les phases 0 à 2.
+
 ### Semaine de démarrage
 
-1. [ ] Créer le registre des sources, licences et dépendances.
-2. [ ] Écrire les cas de contrôle pour joueurs transférés et moyennes de carrière.
-3. [ ] Corriger les lignes `TOT` et les agrégations de carrière.
-4. [ ] Corriger les saisons incohérentes du comparateur.
-5. [ ] Étendre `health:data` aux statuts de matchs, scores et fraîcheur `PlayerSeason`.
-6. [ ] Concevoir l'automatisation du pipeline joueurs en production.
-7. [ ] Définir le schéma minimal d'analytics respectueux de la vie privée.
+1. [x] Créer le registre des sources, licences et dépendances.
+2. [x] Écrire les cas de contrôle pour joueurs transférés et moyennes de carrière.
+3. [x] Corriger les lignes `TOT` et les agrégations de carrière.
+4. [x] Corriger les saisons incohérentes du comparateur.
+5. [x] Étendre `health:data` aux statuts de matchs, scores et fraîcheur `PlayerSeason`.
+6. [x] Concevoir l'automatisation du pipeline joueurs en production.
+7. [x] Définir le schéma minimal d'analytics respectueux de la vie privée.
 
 ### Deuxième bloc
 
-1. [ ] Automatiser les statistiques joueurs.
-2. [ ] Afficher les dates et statuts de fraîcheur.
-3. [ ] Installer les tests statistiques et la CI.
-4. [ ] Unifier la saison dans les routes et composants.
-5. [ ] Ouvrir la recherche à tout l'historique.
+1. [x] Automatiser les statistiques joueurs.
+2. [x] Afficher les dates et statuts de fraîcheur.
+3. [x] Installer les tests statistiques et la CI.
+4. [x] Unifier la saison dans les routes et composants.
+5. [x] Ouvrir la recherche à tout l'historique.
 
 ### Troisième bloc
 
-1. [ ] Finaliser le comparateur partageable.
-2. [ ] Repenser l'accueil quotidien.
-3. [ ] Ajouter les tendances 5/10/20 matchs.
-4. [ ] Construire le hub des Français.
+1. [x] Finaliser le comparateur partageable.
+2. [x] Repenser l'accueil quotidien.
+3. [x] Ajouter les tendances 5/10/20 matchs.
+4. [x] Construire le hub des Français.
 5. [x] ~~Lancer les tests comparatifs puis la bêta.~~ Abandonné (voir 4.2 à 4.4).
 
 ---
@@ -957,9 +956,9 @@ Les visites brutes ne doivent jamais être l'unique mesure de réussite.
 
 Chaque décision structurante doit être enregistrée brièvement avec : contexte, options, décision, conséquences et date.
 
-Décisions initiales nécessaires (consignées dans `DECISIONS.md`, 002 à 011) :
+Décisions initiales nécessaires (consignées dans `DECISIONS.md`, 002 à 012) :
 
-- [ ] source de données principale et source de secours ; — **en attente** (DECISIONS.md, 010)
+- [x] source de données principale et source de secours ; (DECISIONS.md, 010)
 - [x] définition et stockage des lignes `TOT` ;
 - [x] règle de calcul des carrières ;
 - [x] modèle saison régulière/playoffs ;
