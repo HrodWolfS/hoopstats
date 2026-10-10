@@ -27,6 +27,17 @@ export function isAnalyticsEvent(value: unknown): value is AnalyticsEventName {
   return typeof value === "string" && ANALYTICS_EVENTS.includes(value as AnalyticsEventName);
 }
 
+/**
+ * Seul le déploiement de production enregistre : un serveur local ou une
+ * preview Vercel partage la même base et fausserait l'audience. L'adresse est
+ * vérifiée aussi, car les variables Vercel peuvent être copiées en local.
+ */
+export function isAnalyticsRecorded(host: string, vercelEnv = process.env.VERCEL_ENV): boolean {
+  const hostname = host.replace(/:\d+$/, "").replace(/^\[|\]$/g, "").toLowerCase();
+  const local = ["localhost", "127.0.0.1", "::1"].includes(hostname) || hostname.endsWith(".localhost");
+  return vercelEnv === "production" && !local;
+}
+
 export function sanitizeAnalyticsDimension(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase();

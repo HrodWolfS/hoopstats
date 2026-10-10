@@ -75,11 +75,20 @@ async function overflowCulprits(page: Page): Promise<string[]> {
 
 async function main() {
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  // Les contrôles ne doivent pas compter dans l'audience : refus de mesure
+  // (GPC) et, par sécurité, aucun envoi ne quitte le navigateur.
+  // En chaîne : tsx ajoute des aides (`__name`) aux fonctions, absentes de la page.
+  const context = await browser.newContext();
+  await context.addInitScript(
+    'Object.defineProperty(navigator, "globalPrivacyControl", { get: () => true });',
+  );
+  await context.route("**/api/analytics**", (route) => route.fulfill({ status: 204 }));
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 390, height: 844 });
 
   const details = await Promise.all(
     DETAIL_SOURCES.map(async ({ from, prefix }) => {
-      const detailPage = await browser.newPage();
+      const detailPage = await context.newPage();
       const link = await firstLink(detailPage, from, prefix);
       await detailPage.close();
       if (!link) throw new Error(`Aucun lien ${prefix}… trouvé sur ${from}`);

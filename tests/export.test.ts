@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { csvCell, csvFilename, EXPORT_ATTRIBUTION, isExportable, toCsv } from "@/lib/export";
-import { isAnalyticsEvent, validateAnalyticsPayload } from "@/lib/analytics";
+import { isAnalyticsEvent, isAnalyticsRecorded, validateAnalyticsPayload } from "@/lib/analytics";
 import { playerStatsOrigin } from "@/lib/data-sources";
 
 describe("export CSV", () => {
@@ -68,5 +68,21 @@ describe("mesure du partage", () => {
     expect(isAnalyticsEvent("copy_link")).toBe(true);
     expect(isAnalyticsEvent("export")).toBe(true);
     expect(validateAnalyticsPayload()).toEqual([]);
+  });
+});
+
+describe("enregistrement de l'audience", () => {
+  it("n'écrit que depuis le déploiement de production", () => {
+    expect(isAnalyticsRecorded("hoopstats-kappa.vercel.app", "production")).toBe(true);
+    expect(isAnalyticsRecorded("hoopstats.fr", "production")).toBe(true);
+    expect(isAnalyticsRecorded("hoopstats-git-x.vercel.app", "preview")).toBe(false);
+    expect(isAnalyticsRecorded("hoopstats.fr", undefined)).toBe(false);
+  });
+
+  it("n'écrit jamais depuis un serveur local, même avec les variables de production", () => {
+    expect(isAnalyticsRecorded("localhost:3000", "production")).toBe(false);
+    expect(isAnalyticsRecorded("127.0.0.1:3123", "production")).toBe(false);
+    expect(isAnalyticsRecorded("[::1]:3000", "production")).toBe(false);
+    expect(isAnalyticsRecorded("hoopstats.localhost", "production")).toBe(false);
   });
 });

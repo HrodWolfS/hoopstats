@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import {
   isAnalyticsEvent,
+  isAnalyticsRecorded,
   sanitizeAnalyticsDimension,
 } from "@/lib/analytics";
 
@@ -24,6 +25,9 @@ export async function POST(request: Request) {
   if (!isAnalyticsEvent(payload.event) || !dimension) {
     return Response.json({ error: "Événement non autorisé" }, { status: 400 });
   }
+
+  // Validé mais pas enregistré hors production : même réponse pour le client.
+  if (!isAnalyticsRecorded(new URL(request.url).host)) return new Response(null, { status: 204 });
 
   const now = new Date();
   const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
