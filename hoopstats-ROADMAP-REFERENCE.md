@@ -16,7 +16,7 @@ des phases 1 et 2 dans le code, sans cocher chaque ligne.
 
 | Phase | État |
 |---|---|
-| 0 — Fondations | Fait, sauf : droits des sources (0.1, décision du propriétaire), parcours end-to-end mobile (seul le débordement est contrôlé), invalidation ciblée des caches (tout le site est revalidé). |
+| 0 — Fondations | Fait, sauf : droits des sources (0.1, décision du propriétaire). Invalidation ciblée des caches écartée (décision 012). |
 | 1 — Fiabilité de l'usage | Fait dans le code. |
 | 2 — Usages quotidiens | Fait dans le code. |
 | 3 — Profondeur statistique | Pas commencée, conformément à la décision 011. |
@@ -310,7 +310,7 @@ Supprimer la synchronisation manuelle des statistiques joueurs et détecter les 
 - [ ] Écrire un `SyncLog` précis pour chaque famille de données.
 - [ ] Ajouter une alerte lorsqu'une étape échoue, importe zéro ligne ou produit un volume anormal.
 - [ ] Ajouter des contrôles de complétude après chaque synchronisation.
-- [ ] Invalider uniquement les caches affectés après succès.
+- [x] ~~Invalider uniquement les caches affectés après succès.~~ Écarté : la date de fraîcheur est figée dans chaque page en cache (décision 012).
 - [ ] Afficher l'heure de dernière mise à jour sur l'accueil et les pages statistiques.
 
 ### Passage automatique de saison
@@ -337,7 +337,7 @@ Supprimer la synchronisation manuelle des statistiques joueurs et détecter les 
 
 - [ ] Installer un socle de tests unitaires pour les calculs statistiques.
 - [ ] Ajouter des tests d'intégration pour recherche, classement, comparaison et changement de saison.
-- [ ] Ajouter un parcours end-to-end mobile sur les tâches principales.
+- [x] Ajouter un parcours end-to-end mobile sur les tâches principales (`pnpm check:journeys`, workflow Mobile).
 - [x] Exécuter lint, tests, build et santé des données dans la CI.
 - [ ] Centraliser les erreurs serveur et client utiles au diagnostic.
 - [ ] Ajouter un tableau interne de fraîcheur, volumes, erreurs et anomalies.

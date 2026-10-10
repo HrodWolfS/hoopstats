@@ -334,3 +334,29 @@ Et on ne construit que les **deux catégories de demandes les plus fréquentes**
 ### À revoir si
 
 Fin de saison : le bilan décide de la suite.
+
+## 012 — Revalidation de tout le site après la synchro
+
+**Date** : 9 octobre 2026
+**Statut** : décidée
+**Feuille de route** : § 0.4
+
+### Décision
+
+Après une synchro réussie, `/api/revalidate` continue de revalider **tout le
+site** (`revalidatePath("/", "layout")`). On n'invalide pas page par page.
+
+### Pourquoi
+
+- Le bandeau de fraîcheur du layout fige la date de dernière synchro dans
+  chaque page en cache. Une page non revalidée garderait l'ancienne date et
+  afficherait à tort « Données en retard » au bout de 36 h.
+- Les pages de données se régénèrent déjà seules (5 min à 6 h) : un ciblage
+  ne ferait gagner presque rien.
+- Une seule synchro par jour : le coût d'une revalidation complète est faible
+  (les pages se régénèrent à la visite suivante, pas toutes d'un coup).
+
+### À revoir si
+
+La date de fraîcheur est lue côté client au lieu d'être figée dans la page, ou
+la synchro passe à plusieurs fois par jour.

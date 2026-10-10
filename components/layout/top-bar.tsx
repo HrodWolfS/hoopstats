@@ -271,6 +271,7 @@ export function TopBar() {
                 }),
               )
             }
+            aria-label="Rechercher un joueur ou une équipe"
             className="flex items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-white/40 hover:border-white/20 hover:text-white/80 transition flex-1 min-w-0 max-w-[440px]"
           >
             <svg

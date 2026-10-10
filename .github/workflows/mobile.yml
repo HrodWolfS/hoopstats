@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   overflow:
-    name: Débordement mobile (320 et 390 px)
+    name: Débordement (320 et 390 px) et parcours mobiles
     if: >-
       github.event_name != 'deployment_status' ||
       (github.event.deployment_status.state == 'success' &&
@@ -53,3 +53,10 @@ jobs:
         env:
           SITE_URL: ${{ inputs.url || 'https://hoopstats-kappa.vercel.app' }}
         run: pnpm check:mobile "$SITE_URL"
+
+      # Lancé même si le débordement échoue : les deux contrôles sont indépendants.
+      - name: Check mobile journeys
+        if: ${{ !cancelled() }}
+        env:
+          SITE_URL: ${{ inputs.url || 'https://hoopstats-kappa.vercel.app' }}
+        run: pnpm check:journeys "$SITE_URL"

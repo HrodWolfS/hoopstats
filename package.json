@@ -26,7 +26,8 @@
     "generate:summaries": "tsx scripts/generate-summaries.ts",
     "seed:logos": "tsx scripts/seed-team-logos.ts",
     "test": "vitest run",
-    "check:mobile": "tsx scripts/check-mobile-layout.ts"
+    "check:mobile": "tsx scripts/check-mobile-layout.ts",
+    "check:journeys": "tsx scripts/check-mobile-journeys.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
