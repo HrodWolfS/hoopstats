@@ -25,17 +25,14 @@ Cases revues une à une dans le code le 10 octobre. Conventions :
 | 1 — Fiabilité de l'usage | Fait. |
 | 2 — Usages quotidiens | Fait. |
 | 3 — Profondeur statistique | Reportée après la saison (décision 011) ; les 5, 10 et 20 derniers matchs existent déjà (Tendances). |
-| 4 — Valider et faire connaître | 4.1 fait, sauf la relecture CNIL ; 4.2 à 4.4 abandonnés ; formulaire 4.5 en ligne ; le reste après la saison. |
+| 4 — Valider et faire connaître | 4.1 fait ; 4.2 à 4.4 abandonnés ; formulaire 4.5 en ligne ; le reste après la saison. |
 
 ### Reste à faire pour le MVP
 
-Une case. Une fois faite, le MVP est terminé : la suite est de l'exploitation
+Rien : **le MVP est terminé** (10 octobre). La suite est de l'exploitation
 pendant la saison, pas du développement.
 
-1. **Relecture CNIL** (4.1, 1 case) : confronter la décision 008 à la
-   recommandation CNIL sur l'exemption de consentement.
-
-Et un rendez-vous : **la reprise réelle du 20 octobre**. Relire la synchro du
+Reste un rendez-vous : **la reprise réelle du 20 octobre**. Relire la synchro du
 matin (`SyncLog`, `pnpm check:rollover`), puis l'accueil, les matchs du 20 et
 les classements une fois les premiers matchs importés. La répétition locale du
 10 octobre est passée (voir le journal).
@@ -64,6 +61,7 @@ les classements une fois les premiers matchs importés. La répétition locale d
 | 10 oct. | Feuille de route revue case par case : 154 cases cochées après vérification dans le code, 48 reportées après la saison ou écartées, 9 restantes pour le MVP. |
 | 10 oct. | Droits des sources (0.1) : conditions ESPN, NBA.com, BALLDONTLIE et Wikimedia relues ; registre complété (fiche par source, procédure de remplacement) ; décision 010 : ESPN principale, risque accepté jusqu'au bilan ; sources des statistiques citées en pied de page. Liste du § 11, déjà faite, cochée. Reste 2 cases. |
 | 10 oct. | Règle d'arrondi commune (0.2, décision 013) : moyennes et notes à 1 décimale, pourcentages sur 100, écarts signés avec vrai signe moins, totaux entiers ; graphiques, analyses d'équipe, tendances, carrière et images de partage passent par `lib/format.ts` ; le CSV garde un nombre lisible par le tableur ; 7 tests. Reste 1 case. |
+| 10 oct. | Relecture CNIL (4.1) : la mesure d'audience remplit les conditions d'exemption de consentement ; deux écarts corrigés — compteurs effacés au bout de 25 mois au lieu de « sans limite », plus aucune écriture dans le stockage de session après un refus de mesure ; durées revues à chaque bilan de fin de saison. **MVP terminé.** |
 
 ---
 
@@ -742,7 +740,7 @@ La validation commence pendant la phase 0 et accompagne toutes les phases suivan
 - [x] limiter la collecte à ce qui sert une décision produit ;
 - [x] éviter les identifiants directs et requêtes brutes lorsqu'ils ne sont pas nécessaires ;
 - [x] documenter la configuration de mesure d'audience ;
-- [ ] vérifier la conformité avec les recommandations de la CNIL ;
+- [x] vérifier la conformité avec les recommandations de la CNIL (décision 008, relecture du 10 octobre : compteurs effacés après 25 mois, durées revues à chaque bilan) ;
 - [x] définir une durée de conservation raisonnable.
 
 ---

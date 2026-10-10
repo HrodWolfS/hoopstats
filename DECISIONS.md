@@ -238,7 +238,7 @@ La NBA modifie ses propres seuils, ou un classement observé reste trompeur.
 ## 008 — Mesure d'audience et conservation
 
 **Date** : 9 octobre 2026
-**Statut** : appliquée — `lib/analytics.ts`, `lib/retention.ts`, `lib/stat-requests.ts`
+**Statut** : appliquée — `lib/analytics.ts`, `lib/retention.ts`, `lib/stat-requests.ts` ; relue face aux règles CNIL le 10 octobre 2026
 **Feuille de route** : § 4.1 (instrumentation)
 
 ### Décision
@@ -252,8 +252,27 @@ La NBA modifie ses propres seuils, ou un classement observé reste trompeur.
 - Les demandes de statistiques (`StatRequest`) ne stockent pas d'e-mail et sont
   supprimées après **365 jours**.
 - Les compteurs quotidiens (`AnalyticsDaily`) ne contiennent aucune donnée
-  personnelle et sont **conservés sans limite** : ils servent au bilan de fin de
-  saison.
+  personnelle et sont **effacés au bout de 25 mois** (purge à chaque nouveau
+  visiteur) : assez pour le bilan de fin de saison et la comparaison d'une
+  saison à l'autre.
+- Durées revues à chaque bilan de fin de saison.
+
+### Relecture CNIL (10 octobre 2026)
+
+Confrontée à la page CNIL « Cookies : solutions pour les outils de mesure
+d'audience » (version du 4 juillet 2025) :
+
+| Condition ou recommandation CNIL | hoopstats |
+|---|---|
+| Finalité limitée à la mesure d'audience, pour le seul éditeur | Oui : base propre, aucun outil tiers de mesure |
+| Statistiques anonymes uniquement | Oui : compteurs par jour, sans identifiant ni adresse IP |
+| Pas de recoupement ni de transmission à des tiers | Oui |
+| Pas de suivi d'un site à l'autre | Oui : stockage local propre au domaine |
+| Information des utilisateurs | Oui : page Confidentialité et `/sources#mesure` |
+| Traceur limité à 13 mois, non prolongé à chaque visite | Oui : compté depuis la première visite (`VISIT_STATE_LIFETIME_DAYS`) |
+| Données conservées 25 mois au plus | Corrigé : les compteurs étaient gardés sans limite |
+| Réexamen périodique des durées | Ajouté : au bilan de fin de saison |
+| Opposition possible (non exigée pour l'exemption) | Oui : signal GPC et réglage du site ; corrigé, un événement dédoublonné écrivait encore dans le stockage de session après un refus |
 
 ### Conséquences
 

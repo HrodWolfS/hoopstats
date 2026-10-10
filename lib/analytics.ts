@@ -38,6 +38,17 @@ export function isAnalyticsRecorded(host: string, vercelEnv = process.env.VERCEL
   return vercelEnv === "production" && !local;
 }
 
+/**
+ * Recommandation CNIL pour la mesure exemptée de consentement : les compteurs
+ * sont effacés au bout de 25 mois (DECISIONS.md, 008).
+ */
+export const ANALYTICS_RETENTION_MONTHS = 25;
+
+/** Premier jour conservé : les lignes d'un jour antérieur sont effacées. */
+export function analyticsCutoff(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - ANALYTICS_RETENTION_MONTHS, now.getUTCDate()));
+}
+
 export function sanitizeAnalyticsDimension(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase();

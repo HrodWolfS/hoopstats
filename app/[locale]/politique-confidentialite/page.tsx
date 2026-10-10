@@ -64,6 +64,13 @@ export default function PolitiqueConfidentialitePage() {
           l&apos;heure elle-même n&apos;est jamais envoyée.
         </p>
         <p className="text-white/70 text-sm leading-relaxed">
+          Les compteurs du jour sont effacés au bout de 25 mois. Ils servent
+          uniquement à hoopstats, ne sont ni croisés avec d&apos;autres
+          données ni transmis à des tiers, et ne permettent pas de suivre
+          votre navigation sur d&apos;autres sites. Ces durées sont revues à
+          chaque bilan de fin de saison.
+        </p>
+        <p className="text-white/70 text-sm leading-relaxed">
           Si votre navigateur envoie le signal Global Privacy Control, rien
           n&apos;est mesuré. Vous pouvez aussi désactiver la mesure ici ; les
           dates déjà stockées sont alors effacées.

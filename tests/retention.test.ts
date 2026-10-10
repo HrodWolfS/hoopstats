@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextVisit, parseVisitState, retentionRate, type VisitState } from "@/lib/retention";
-import { sanitizeAnalyticsDimension } from "@/lib/analytics";
+import { analyticsCutoff, sanitizeAnalyticsDimension } from "@/lib/analytics";
 import { validateStatRequest } from "@/lib/stat-requests";
 
 function visit(state: VisitState | null, day: string) {
@@ -44,5 +44,12 @@ describe("demandes de statistiques", () => {
   it("refuse une adresse e-mail et accepte un texte normal", () => {
     expect(validateStatRequest({ category: "autre", text: "contact: moi@gmail.com" }).ok).toBe(false);
     expect(validateStatRequest({ category: "tirs", text: "Zones de tir de Sarr" }).ok).toBe(true);
+  });
+});
+
+describe("conservation des compteurs", () => {
+  it("garde 25 mois, comme le recommande la CNIL", () => {
+    expect(analyticsCutoff(new Date("2026-10-10T15:00:00Z")).toISOString()).toBe("2024-09-10T00:00:00.000Z");
+    expect(analyticsCutoff(new Date("2027-01-31T00:00:00Z")).toISOString().slice(0, 7)).toBe("2024-12");
   });
 });

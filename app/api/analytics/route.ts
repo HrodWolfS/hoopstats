@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import {
+  analyticsCutoff,
   isAnalyticsEvent,
   isAnalyticsRecorded,
   sanitizeAnalyticsDimension,
@@ -36,5 +37,9 @@ export async function POST(request: Request) {
     create: { day, event: payload.event, dimension, count: 1 },
     update: { count: { increment: 1 } },
   });
+  // Purge au plus une fois par nouveau visiteur : assez fréquent, jamais par clic.
+  if (payload.event === "visit" && dimension === "new") {
+    await prisma.analyticsDaily.deleteMany({ where: { day: { lt: analyticsCutoff(now) } } });
+  }
   return new Response(null, { status: 204 });
 }

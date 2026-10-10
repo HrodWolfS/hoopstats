@@ -63,9 +63,15 @@ export function AnalyticsEvent({
   dedupeKey: string;
 }) {
   useEffect(() => {
+    // Mesure refusée : rien n'est écrit dans le navigateur non plus.
+    if (isMeasureDisabled()) return;
     const key = `hoopstats:event:${dedupeKey}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      // Stockage de session bloqué : l'événement n'est pas dédoublonné.
+    }
     sendAnalyticsEvent(event, dimension);
   }, [dedupeKey, dimension, event]);
   return null;

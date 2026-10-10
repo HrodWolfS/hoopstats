@@ -187,7 +187,7 @@ export function validateRetention(): string[] {
 export const MEASURE_RULES = [
   {
     title: "Ce qui est compté",
-    rule: "Des compteurs par jour (UTC) : recherches, filtres, comparaisons, partages, exports, nouvelles visites et visites de retour. Ni cookie, ni identifiant, ni adresse IP, ni terme recherché.",
+    rule: "Des compteurs par jour (UTC) : recherches, filtres, comparaisons, partages, exports, nouvelles visites et visites de retour. Ni cookie, ni identifiant, ni adresse IP, ni terme recherché. Les compteurs sont effacés au bout de 25 mois.",
   },
   {
     title: "Pages et parcours",
