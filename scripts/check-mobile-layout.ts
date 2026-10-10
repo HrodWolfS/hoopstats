@@ -49,13 +49,22 @@ type Failure = { width: number; path: string; reason: string };
 
 async function firstLink(page: Page, from: string, prefix: string): Promise<string | null> {
   await page.goto(BASE_URL + from, { waitUntil: "domcontentloaded" });
-  return page.evaluate(
-    (start) =>
-      [...document.querySelectorAll<HTMLAnchorElement>("a[href]")]
-        .map((a) => a.getAttribute("href") ?? "")
-        .find((href) => href.startsWith(start) && href.length > start.length) ?? null,
-    prefix,
-  );
+  // Un jour sans match (veille de reprise, All-Star) : on remonte les
+  // journées précédentes, une semaine au plus.
+  for (let step = 0; step < 8; step++) {
+    const link = await page.evaluate(
+      (start) =>
+        [...document.querySelectorAll<HTMLAnchorElement>("a[href]")]
+          .map((a) => a.getAttribute("href") ?? "")
+          .find((href) => href.startsWith(start) && href.length > start.length) ?? null,
+      prefix,
+    );
+    if (link) return link;
+    const previous = await page.locator('a[aria-label^="Journée précédente"]').first().getAttribute("href").catch(() => null);
+    if (!previous) return null;
+    await page.goto(BASE_URL + previous, { waitUntil: "domcontentloaded" });
+  }
+  return null;
 }
 
 /** Éléments les plus larges qui dépassent l'écran, pour savoir quoi corriger. */

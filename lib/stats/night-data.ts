@@ -372,7 +372,7 @@ async function loadStreak(season: string, active: boolean): Promise<NightStreak 
 }
 
 async function loadBigGame(now: Date): Promise<NightBigGame | null> {
-  const recordSeason = currentSeason(now);
+  let recordSeason = currentSeason(now);
   const upcoming = await prisma.game.findMany({
     where: { status: "scheduled", gameDate: { gte: now, lte: new Date(now.getTime() + BIG_GAME_HORIZON_DAYS * DAY_MS) } },
     select: {
@@ -390,14 +390,22 @@ async function loadBigGame(now: Date): Promise<NightBigGame | null> {
       : null;
   }
   const teamIds = [...new Set(upcoming.flatMap((game) => [game.homeTeam.id, game.awayTeam.id]))];
-  const records = new Map(
-    (
-      await prisma.teamSeason.findMany({
-        where: { season: recordSeason, teamId: { in: teamIds } },
-        select: { teamId: true, wins: true, losses: true },
-      })
-    ).map((row) => [row.teamId, { wins: row.wins, losses: row.losses }]),
-  );
+  const recordsOf = async (season: string) =>
+    new Map(
+      (
+        await prisma.teamSeason.findMany({
+          where: { season, teamId: { in: teamIds } },
+          select: { teamId: true, wins: true, losses: true },
+        })
+      ).map((row) => [row.teamId, { wins: row.wins, losses: row.losses }]),
+    );
+  // Avant le premier match de la saison, tous les bilans sont vides ou à 0-0 :
+  // on départage sur la saison précédente.
+  let records = await recordsOf(recordSeason);
+  if (![...records.values()].some((r) => r.wins + r.losses > 0)) {
+    recordSeason = previousSeason(recordSeason);
+    records = await recordsOf(recordSeason);
+  }
   const rate = (teamId: string) => {
     const record = records.get(teamId);
     return record ? winRate(record.wins, record.losses) : null;

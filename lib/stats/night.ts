@@ -277,6 +277,6 @@ export const NIGHT_RULES: { title: string; rule: string }[] = [
   },
   {
     title: "Affiche à venir",
-    rule: `Parmi les matchs des ${BIG_GAME_HORIZON_DAYS} prochains jours, celui dont les deux équipes ont le meilleur bilan cumulé sur la saison de référence.`,
+    rule: `Parmi les matchs des ${BIG_GAME_HORIZON_DAYS} prochains jours, celui dont les deux équipes ont le meilleur bilan cumulé sur la saison en cours, ou sur la précédente tant qu'aucun match de la nouvelle saison n'a été joué.`,
   },
 ];

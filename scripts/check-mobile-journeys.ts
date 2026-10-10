@@ -103,8 +103,10 @@ const JOURNEYS: Journey[] = [
       await link.waitFor({ timeout: TIMEOUT }).catch(() => fail("aucun lien de classement"));
       await link.tap();
       await waitForPath(page, (url) => /^\/fr\/classements\/[^/]+\/[^/]+$/.test(url.pathname), "page de classement");
+      // Avant le premier match de la saison, le classement annonce qu'il est vide.
       const rows = await page.getByRole("row").count();
-      if (rows < 2) fail("classement vide");
+      const notStarted = await page.getByText(/Aucun match de saison régulière joué/).count();
+      if (rows < 2 && !notStarted) fail("classement vide");
       await assertNoOverflow(page, "page de classement");
     },
   },

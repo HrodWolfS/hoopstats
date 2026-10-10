@@ -8,7 +8,10 @@
 
 ---
 
-## État d'avancement au 9 octobre 2026
+## État d'avancement au 10 octobre 2026
+
+À mettre à jour à chaque étape terminée : état des phases, journal, prochaine
+étape.
 
 Les cases cochées ont été vérifiées une à une dans le code ou en base. Une case
 vide ne veut pas dire « pas fait » : l'audit du 9 octobre a constaté l'essentiel
@@ -16,11 +19,37 @@ des phases 1 et 2 dans le code, sans cocher chaque ligne.
 
 | Phase | État |
 |---|---|
-| 0 — Fondations | Fait, sauf : droits des sources (0.1, décision du propriétaire). Invalidation ciblée des caches écartée (décision 012). |
+| 0 — Fondations | Fait, sauf : droits des sources (0.1, décision du propriétaire). Invalidation ciblée des caches écartée (décision 012). Parcours mobiles de bout en bout en place (0.5). |
 | 1 — Fiabilité de l'usage | Fait dans le code. |
 | 2 — Usages quotidiens | Fait dans le code. |
 | 3 — Profondeur statistique | Pas commencée, conformément à la décision 011. |
-| 4 — Valider et faire connaître | 4.1 en place ; 4.2 à 4.4 abandonnés ; 4.5 et 4.6 après la saison. |
+| 4 — Valider et faire connaître | 4.1 en place et protégée (seule la production enregistre, contrôles automatiques exclus) ; 4.2 à 4.4 abandonnés ; 4.5 et 4.6 après la saison. |
+
+### Prochaine étape
+
+**Surveiller la reprise réelle du 20 octobre** : relire la synchro du matin
+(`SyncLog`, `pnpm check:rollover`), puis l'accueil, les matchs du 20 et les
+classements une fois les premiers matchs importés. La répétition locale du
+10 octobre est passée (voir le journal).
+
+### Points ouverts
+
+- Droits des sources (0.1) : décision du propriétaire.
+- Audience : aucune visite réelle encore observée en production depuis la garde
+  du 10 octobre ; à relire en base.
+- Synchro du 9 octobre partielle (un match sauté) et 46 joueurs non vérifiés,
+  relevés par `check:rollover` : sans effet sur la reprise.
+- Le tri par défaut du tableau des joueurs est compté comme `filter_apply` dès
+  l'ouverture de la page : compteur gonflé, correction laissée de côté.
+
+### Journal
+
+| Date | Fait |
+|---|---|
+| 10 oct. | Parcours mobiles de bout en bout (`check:journeys`) après chaque mise en production et chaque matin ; décision 012. |
+| 10 oct. | Garde d'audience : seul le déploiement de production enregistre ; `check:mobile` et `check:journeys` n'envoient plus rien. |
+| 10 oct. | Audience nettoyée : 476 pages vues et 16 visites retirées (contrôles automatiques des 8 au 10 oct. et une visite de développement), sauvegarde dans `backups/`. Il reste 27 pages vues et 3 visites probablement humaines. |
+| 10 oct. | Répétition de la bascule (date simulée 20 oct. 05:00 UTC, build local) : pages en 2026-27, saison vide annoncée, fiches joueurs sur 2025-26. Corrigé : l'« affiche à venir » se choisit sur les bilans 2025-26 tant que personne n'a joué ; `check:mobile` remonte au dernier jour de matchs ; `check:journeys` accepte un classement vide annoncé. |
 
 ---
 
@@ -317,7 +346,7 @@ Supprimer la synchronisation manuelle des statistiques joueurs et détecter les 
 
 - [ ] Centraliser la saison NBA active dans une seule source de vérité.
 - [ ] Détecter et préparer la prochaine saison sans éditer plusieurs fichiers.
-- [ ] Gérer les périodes où la nouvelle saison existe mais ne contient pas encore de matchs.
+- [x] Gérer les périodes où la nouvelle saison existe mais ne contient pas encore de matchs (répétition du 10 octobre).
 - [x] Ajouter un script de contrôle de bascule de saison.
 - [x] Écrire un guide opératoire de début et de fin de saison.
 
