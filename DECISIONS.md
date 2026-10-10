@@ -440,7 +440,7 @@ de zéro, par exemple) : on l'ajoute au tableau plutôt qu'un arrondi local.
 ## 014 — Résultats de la nuit en ligne au réveil
 
 **Date** : 10 octobre 2026
-**Statut** : code prêt — `vercel.json`, `app/api/cron/sync/route.ts`, `lib/morning-sync.ts` ; actif quand `GITHUB_DISPATCH_TOKEN` est posé dans Vercel
+**Statut** : actif depuis le 10 octobre 2026 (jeton posé, essai réussi de bout en bout) — `vercel.json`, `app/api/cron/sync/route.ts`, `lib/morning-sync.ts`
 **Feuille de route** : exploitation pendant la saison
 
 ### Contexte
