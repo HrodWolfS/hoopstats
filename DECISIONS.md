@@ -436,3 +436,37 @@ partage et dans le CSV. Les tests `tests/format.test.ts` fixent la règle.
 
 Une métrique demande plus de précision (deux décimales pour un ratio proche
 de zéro, par exemple) : on l'ajoute au tableau plutôt qu'un arrondi local.
+
+## 014 — Résultats de la nuit en ligne au réveil
+
+**Date** : 10 octobre 2026
+**Statut** : code prêt — `vercel.json`, `app/api/cron/sync/route.ts`, `lib/morning-sync.ts` ; actif quand `GITHUB_DISPATCH_TOKEN` est posé dans Vercel
+**Feuille de route** : exploitation pendant la saison
+
+### Contexte
+
+Les matchs NBA se jouent la nuit en France : le lecteur attend les résultats
+en se levant. Le cron GitHub de 05:00 UTC partait en réalité entre 10:13 et
+12:04 UTC (12 h – 14 h à Paris) sur les 8 derniers jours : les résultats
+arrivaient l'après-midi.
+
+### Décision
+
+- **Déclencheur principal : cron Vercel**, deux passages par jour (dans l'heure
+  de 05:00 et de 07:00 UTC, soit 6 h et 8 h à Paris l'hiver). Il appelle
+  `/api/cron/sync` (protégé par `CRON_SECRET`, production seulement), qui
+  demande à GitHub de lancer `daily-sync.yml` immédiatement.
+- Le second passage récupère les matchs tardifs de la côte Ouest (fin vers
+  06:00 UTC) et les box scores finalisés ; la synchro est idempotente.
+- **Secours** : les horaires GitHub restent, à 05:23 et 07:43 UTC.
+- Deux passages ne se chevauchent jamais (`concurrency` du workflow).
+- Le contrôle mobile part après chaque synchro (`workflow_run`) au lieu
+  d'une heure fixe.
+- Le jeton GitHub (`GITHUB_DISPATCH_TOKEN`) est un jeton à grain fin limité à
+  ce dépôt, permission Actions en lecture et écriture, avec une expiration
+  après la fin de saison.
+
+### À revoir si
+
+Le cron Vercel échoue plusieurs matins (journaux Vercel), ou si la synchro
+passe sur Vercel lui-même.

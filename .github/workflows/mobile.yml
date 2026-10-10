@@ -6,10 +6,11 @@ name: Mobile
 on:
   # Après chaque mise en production réussie.
   deployment_status:
-  # Chaque matin après la synchro de 05:00 UTC : de nouvelles données (noms
-  # longs, gros scores) peuvent casser une mise en page sans aucun commit.
-  schedule:
-    - cron: "30 6 * * *"
+  # Après chaque synchro : de nouvelles données (noms longs, gros scores)
+  # peuvent casser une mise en page sans aucun commit.
+  workflow_run:
+    workflows: ["Daily NBA Sync"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       url:

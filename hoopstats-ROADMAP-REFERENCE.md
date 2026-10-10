@@ -46,6 +46,9 @@ les classements une fois les premiers matchs importés. La répétition locale d
   relevés par `check:rollover` : sans effet sur la reprise.
 - Le tri par défaut du tableau des joueurs est compté comme `filter_apply` dès
   l'ouverture de la page : compteur gonflé, correction laissée de côté.
+- Synchro du matin (décision 014) : code prêt, actif dès que
+  `GITHUB_DISPATCH_TOKEN` est posé dans Vercel. D'ici là, les résultats de la
+  nuit n'arrivent qu'en début d'après-midi (cron GitHub en retard).
 - Colonne NET de la page Saisons toujours vide : `netRating` absent en base
   pour les 30 équipes de 2023-24 à 2025-26 (constaté le 10 oct., antérieur à
   la règle d'arrondi).
@@ -62,6 +65,7 @@ les classements une fois les premiers matchs importés. La répétition locale d
 | 10 oct. | Droits des sources (0.1) : conditions ESPN, NBA.com, BALLDONTLIE et Wikimedia relues ; registre complété (fiche par source, procédure de remplacement) ; décision 010 : ESPN principale, risque accepté jusqu'au bilan ; sources des statistiques citées en pied de page. Liste du § 11, déjà faite, cochée. Reste 2 cases. |
 | 10 oct. | Règle d'arrondi commune (0.2, décision 013) : moyennes et notes à 1 décimale, pourcentages sur 100, écarts signés avec vrai signe moins, totaux entiers ; graphiques, analyses d'équipe, tendances, carrière et images de partage passent par `lib/format.ts` ; le CSV garde un nombre lisible par le tableur ; 7 tests. Reste 1 case. |
 | 10 oct. | Relecture CNIL (4.1) : la mesure d'audience remplit les conditions d'exemption de consentement ; deux écarts corrigés — compteurs effacés au bout de 25 mois au lieu de « sans limite », plus aucune écriture dans le stockage de session après un refus de mesure ; durées revues à chaque bilan de fin de saison. **MVP terminé.** |
+| 10 oct. | Résultats au réveil (décision 014) : le cron GitHub partait 5 à 7 h en retard (12 h – 14 h à Paris) ; un cron Vercel lance désormais la synchro à la demande vers 6 h et 8 h, l'horaire GitHub reste en secours ; contrôle mobile après chaque synchro. |
 
 ---
 
