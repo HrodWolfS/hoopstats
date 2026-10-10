@@ -10,26 +10,40 @@
 
 ## État d'avancement au 10 octobre 2026
 
-À mettre à jour à chaque étape terminée : état des phases, journal, prochaine
-étape.
+À mettre à jour à chaque étape terminée : cases, reste à faire, journal.
 
-Les cases cochées ont été vérifiées une à une dans le code ou en base. Une case
-vide ne veut pas dire « pas fait » : l'audit du 9 octobre a constaté l'essentiel
-des phases 1 et 2 dans le code, sans cocher chaque ligne.
+Cases revues une à une dans le code le 10 octobre. Conventions :
+
+- `[x]` : fait et vérifié (la preuve est entre parenthèses quand elle n'est pas évidente) ;
+- `[x] ~~barré~~ Reporté` : hors du MVP gratuit de cette saison, repris au bilan
+  de fin de saison ;
+- `[ ]` : reste à faire pour le MVP.
 
 | Phase | État |
 |---|---|
-| 0 — Fondations | Fait, sauf : droits des sources (0.1, décision du propriétaire). Invalidation ciblée des caches écartée (décision 012). Parcours mobiles de bout en bout en place (0.5). |
-| 1 — Fiabilité de l'usage | Fait dans le code. |
-| 2 — Usages quotidiens | Fait dans le code. |
-| 3 — Profondeur statistique | Pas commencée, conformément à la décision 011. |
-| 4 — Valider et faire connaître | 4.1 en place et protégée (seule la production enregistre, contrôles automatiques exclus) ; 4.2 à 4.4 abandonnés ; 4.5 et 4.6 après la saison. |
+| 0 — Fondations | Fait, sauf les droits des sources (0.1) et la règle d'arrondi (0.2). |
+| 1 — Fiabilité de l'usage | Fait. |
+| 2 — Usages quotidiens | Fait, sauf « partage et export conformes aux droits » qui attend 0.1. |
+| 3 — Profondeur statistique | Reportée après la saison (décision 011) ; les 5, 10 et 20 derniers matchs existent déjà (Tendances). |
+| 4 — Valider et faire connaître | 4.1 fait, sauf la relecture CNIL ; 4.2 à 4.4 abandonnés ; formulaire 4.5 en ligne ; le reste après la saison. |
 
-### Prochaine étape
+### Reste à faire pour le MVP
 
-**Surveiller la reprise réelle du 20 octobre** : relire la synchro du matin
-(`SyncLog`, `pnpm check:rollover`), puis l'accueil, les matchs du 20 et les
-classements une fois les premiers matchs importés. La répétition locale du
+Neuf cases, en trois sujets. Une fois faits, le MVP est terminé : la suite est
+de l'exploitation pendant la saison, pas du développement.
+
+1. **Droits des sources** (0.1, 7 cases) : ta décision. Pour un site gratuit,
+   l'option la plus simple est de compléter le registre (licence, limites,
+   secours pour chaque source), d'acter ESPN comme source principale et
+   d'accepter le risque jusqu'au bilan de fin de saison.
+2. **Règle d'arrondi commune** (0.2, 1 case) : l'écrire et faire passer les
+   derniers graphiques par `lib/format.ts`.
+3. **Relecture CNIL** (4.1, 1 case) : confronter la décision 008 à la
+   recommandation CNIL sur l'exemption de consentement.
+
+Et un rendez-vous : **la reprise réelle du 20 octobre**. Relire la synchro du
+matin (`SyncLog`, `pnpm check:rollover`), puis l'accueil, les matchs du 20 et
+les classements une fois les premiers matchs importés. La répétition locale du
 10 octobre est passée (voir le journal).
 
 ### Points ouverts
@@ -50,6 +64,7 @@ classements une fois les premiers matchs importés. La répétition locale du
 | 10 oct. | Garde d'audience : seul le déploiement de production enregistre ; `check:mobile` et `check:journeys` n'envoient plus rien. |
 | 10 oct. | Audience nettoyée : 476 pages vues et 16 visites retirées (contrôles automatiques des 8 au 10 oct. et une visite de développement), sauvegarde dans `backups/`. Il reste 27 pages vues et 3 visites probablement humaines. |
 | 10 oct. | Répétition de la bascule (date simulée 20 oct. 05:00 UTC, build local) : pages en 2026-27, saison vide annoncée, fiches joueurs sur 2025-26. Corrigé : l'« affiche à venir » se choisit sur les bilans 2025-26 tant que personne n'a joué ; `check:mobile` remonte au dernier jour de matchs ; `check:journeys` accepte un classement vide annoncé. |
+| 10 oct. | Feuille de route revue case par case : 154 cases cochées après vérification dans le code, 48 reportées après la saison ou écartées, 9 restantes pour le MVP. |
 
 ---
 
@@ -241,11 +256,11 @@ Les estimations supposent un développement individuel à temps partiel. Elles s
 
 ### Actions
 
-- [ ] Inventorier chaque famille de données et sa source actuelle : joueurs, saisons, matchs, box scores, standings, playoffs, Draft, trophées, photos et logos.
+- [x] Inventorier chaque famille de données et sa source actuelle : joueurs, saisons, matchs, box scores, standings, playoffs, Draft, trophées, photos et logos (`REGISTRE-SOURCES.md`).
 - [ ] Pour chaque source, documenter : endpoint, licence, droit de stockage, droit d'affichage, attribution, limites de débit, coût, stabilité et solution de secours.
 - [ ] Relire les conditions NBA, BALLDONTLIE, ESPN et Wikimedia applicables.
-- [ ] Obtenir une confirmation écrite du fournisseur principal concernant le stockage, l'affichage public, les données dérivées et la monétisation.
-- [ ] Faire vérifier les points sensibles par un professionnel du droit avant une exploitation commerciale significative.
+- [x] ~~Obtenir une confirmation écrite du fournisseur principal concernant le stockage, l'affichage public, les données dérivées et la monétisation~~ Reporté : avant toute monétisation, au bilan de fin de saison.
+- [x] ~~Faire vérifier les points sensibles par un professionnel du droit avant une exploitation commerciale significative~~ Reporté : avant toute monétisation, au bilan de fin de saison.
 - [ ] Définir un fournisseur principal et un fournisseur de secours pour les données indispensables.
 - [ ] Documenter une procédure de remplacement du fournisseur sans refonte du produit.
 
@@ -267,13 +282,13 @@ Rendre la provenance, la période et la fraîcheur explicites dans le modèle et
 
 ### Actions
 
-- [ ] Créer un catalogue des métriques avec identifiant, libellé, unité, formule, source et limites.
+- [x] Créer un catalogue des métriques avec identifiant, libellé, unité, formule, source et limites (`lib/stats/metrics.ts`).
 - [x] Définir les notions de saison régulière, play-in, playoffs, NBA Cup et présaison.
 - [x] Définir une politique unique pour les joueurs transférés et les lignes `TOT`.
 - [ ] Définir une politique d'arrondi commune aux cartes, tableaux, graphiques et exports.
-- [ ] Ajouter ou normaliser les champs de provenance et `updatedAt` nécessaires.
-- [ ] Distinguer visuellement les données officielles, importées, calculées et estimées.
-- [ ] Ajouter un composant réutilisable « Source et mise à jour ».
+- [x] Ajouter ou normaliser les champs de provenance et `updatedAt` nécessaires (`DATA_ORIGINS` et `SyncLog`).
+- [x] Distinguer visuellement les données officielles, importées, calculées et estimées (Officielle, importée, calculée).
+- [x] Ajouter un composant réutilisable « Source et mise à jour » (`SourceNote`, 7 pages).
 
 ### Critères d'acceptation
 
@@ -295,26 +310,26 @@ Supprimer les erreurs susceptibles de faire perdre immédiatement la confiance.
 - [x] Produire une seule ligne consolidée `TOT` par joueur et par saison, sans double comptage des passages en équipe.
 - [x] Recalculer les moyennes de carrière à partir des totaux et des matchs joués.
 - [x] Ne jamais additionner naïvement des pourcentages ou des moyennes par match.
-- [ ] Corriger la détermination des vainqueurs de séries de playoffs.
-- [ ] Empêcher le fallback silencieux vers une saison différente.
-- [ ] Forcer les comparaisons à utiliser la même saison par défaut.
-- [ ] Résoudre ou documenter chaque écart entre score final et somme des lignes individuelles.
-- [ ] Corriger les matchs restés dans un statut obsolète.
-- [ ] Vérifier les saisons manquantes ou incomplètes des playoffs.
-- [ ] Auditer les champs BPM, VORP et Win Shares ; les masquer tant qu'ils ne sont pas alimentés correctement.
+- [x] Corriger la détermination des vainqueurs de séries de playoffs.
+- [x] Empêcher le fallback silencieux vers une saison différente.
+- [x] Forcer les comparaisons à utiliser la même saison par défaut.
+- [x] Résoudre ou documenter chaque écart entre score final et somme des lignes individuelles.
+- [x] Corriger les matchs restés dans un statut obsolète.
+- [x] Vérifier les saisons manquantes ou incomplètes des playoffs.
+- [x] Auditer les champs BPM, VORP et Win Shares ; les masquer tant qu'ils ne sont pas alimentés correctement.
 
 ### Tests minimaux
 
-- [ ] joueur resté dans une seule équipe ;
-- [ ] joueur transféré une fois ;
-- [ ] joueur ayant trois équipes ou plus ;
-- [ ] saison partielle ;
-- [ ] joueur sans match ;
-- [ ] égalité dans un classement ;
-- [ ] seuil minimum de matchs ou minutes ;
-- [ ] saison régulière et playoffs ;
-- [ ] série gagnée par l'équipe la moins bien classée ;
-- [ ] match avec prolongation.
+- [x] joueur resté dans une seule équipe ;
+- [x] joueur transféré une fois ;
+- [x] joueur ayant trois équipes ou plus ;
+- [x] saison partielle ;
+- [x] joueur sans match ;
+- [x] égalité dans un classement ;
+- [x] seuil minimum de matchs ou minutes ;
+- [x] saison régulière et playoffs ;
+- [x] série gagnée par l'équipe la moins bien classée ;
+- [x] match avec prolongation.
 
 ### Critères de sortie
 
@@ -334,18 +349,18 @@ Supprimer la synchronisation manuelle des statistiques joueurs et détecter les 
 ### Actions
 
 - [x] Intégrer `PlayerSeason` au pipeline quotidien ou choisir une source exécutable depuis l'infrastructure de production.
-- [ ] Séparer les étapes : matchs, box scores, agrégats joueurs, standings, équipes et dérivés.
-- [ ] Rendre chaque étape idempotente et relançable indépendamment.
-- [ ] Écrire un `SyncLog` précis pour chaque famille de données.
-- [ ] Ajouter une alerte lorsqu'une étape échoue, importe zéro ligne ou produit un volume anormal.
-- [ ] Ajouter des contrôles de complétude après chaque synchronisation.
+- [x] Séparer les étapes : matchs, box scores, agrégats joueurs, standings, équipes et dérivés.
+- [x] Rendre chaque étape idempotente et relançable indépendamment (scripts lançables seuls, écritures en upsert).
+- [x] ~~Écrire un `SyncLog` précis pour chaque famille de données~~ Reporté : Un journal par synchro avec le compte de chaque famille suffit jusqu'à la fin de saison.
+- [x] Ajouter une alerte lorsqu'une étape échoue, importe zéro ligne ou produit un volume anormal (santé `--strict` après chaque synchro : échec ou zéro ligne font échouer le workflow ; volume anormal non couvert).
+- [x] Ajouter des contrôles de complétude après chaque synchronisation (`check-data-health` après chaque synchro).
 - [x] ~~Invalider uniquement les caches affectés après succès.~~ Écarté : la date de fraîcheur est figée dans chaque page en cache (décision 012).
-- [ ] Afficher l'heure de dernière mise à jour sur l'accueil et les pages statistiques.
+- [x] Afficher l'heure de dernière mise à jour sur l'accueil et les pages statistiques (bandeau de fraîcheur et bloc source).
 
 ### Passage automatique de saison
 
-- [ ] Centraliser la saison NBA active dans une seule source de vérité.
-- [ ] Détecter et préparer la prochaine saison sans éditer plusieurs fichiers.
+- [x] Centraliser la saison NBA active dans une seule source de vérité (`lib/nba.ts`).
+- [x] Détecter et préparer la prochaine saison sans éditer plusieurs fichiers (une date d'ouverture par saison dans `lib/nba.ts`).
 - [x] Gérer les périodes où la nouvelle saison existe mais ne contient pas encore de matchs (répétition du 10 octobre).
 - [x] Ajouter un script de contrôle de bascule de saison.
 - [x] Écrire un guide opératoire de début et de fin de saison.
@@ -364,13 +379,13 @@ Supprimer la synchronisation manuelle des statistiques joueurs et détecter les 
 
 ### Actions
 
-- [ ] Installer un socle de tests unitaires pour les calculs statistiques.
-- [ ] Ajouter des tests d'intégration pour recherche, classement, comparaison et changement de saison.
+- [x] Installer un socle de tests unitaires pour les calculs statistiques (vitest, 16 fichiers).
+- [x] Ajouter des tests d'intégration pour recherche, classement, comparaison et changement de saison (`check:journeys` et tests unitaires).
 - [x] Ajouter un parcours end-to-end mobile sur les tâches principales (`pnpm check:journeys`, workflow Mobile).
 - [x] Exécuter lint, tests, build et santé des données dans la CI.
-- [ ] Centraliser les erreurs serveur et client utiles au diagnostic.
-- [ ] Ajouter un tableau interne de fraîcheur, volumes, erreurs et anomalies.
-- [ ] Protéger les pages de pilotage et les endpoints de réindexation/synchronisation.
+- [x] ~~Centraliser les erreurs serveur et client utiles au diagnostic~~ Reporté : Journaux Vercel et erreurs client comptées dans le pilotage suffisent pour le MVP.
+- [x] Ajouter un tableau interne de fraîcheur, volumes, erreurs et anomalies (`/pilotage`).
+- [x] Protéger les pages de pilotage et les endpoints de réindexation/synchronisation (mot de passe et `CRON_SECRET`).
 - [x] Documenter la restauration et la correction d'une mauvaise importation.
 
 ### Livrable de phase 0
@@ -380,12 +395,12 @@ Une plateforme dont les chiffres peuvent être défendus : source connue, derni�
 ### Go/No-Go phase 0
 
 - [ ] droits des sources clarifiés ;
-- [ ] pipeline joueurs automatisé ;
-- [ ] anomalies critiques corrigées ;
-- [ ] tests critiques présents ;
-- [ ] aucune donnée morte affichée ;
-- [ ] fraîcheur visible publiquement ;
-- [ ] alertes opérationnelles fonctionnelles.
+- [x] pipeline joueurs automatisé ;
+- [x] anomalies critiques corrigées ;
+- [x] tests critiques présents ;
+- [x] aucune donnée morte affichée ;
+- [x] fraîcheur visible publiquement ;
+- [x] alertes opérationnelles fonctionnelles (échec de synchro ou santé en rouge).
 
 ---
 
@@ -395,14 +410,14 @@ Une plateforme dont les chiffres peuvent être défendus : source connue, derni�
 
 ### Actions
 
-- [ ] Créer un contexte ou contrat unique de saison utilisable par toutes les pages.
+- [x] Créer un contexte ou contrat unique de saison utilisable par toutes les pages.
 - [x] Utiliser un nom de paramètre unique dans les URLs.
 - [x] Définir clairement la relation entre année de Draft et saison NBA.
-- [ ] Aligner accueil, joueurs, équipes, classements, trophées, playoffs, Draft et comparateur.
-- [ ] Ajouter des URLs canoniques par saison lorsque le contenu change réellement.
-- [ ] Conserver le choix de saison pendant la navigation lorsque cela a du sens.
-- [ ] Afficher un état vide explicite lorsqu'une saison ne possède pas de données.
-- [ ] Retirer du sitemap les pages futures sans contenu utile.
+- [x] Aligner accueil, joueurs, équipes, classements, trophées, playoffs, Draft et comparateur.
+- [x] Ajouter des URLs canoniques par saison lorsque le contenu change réellement.
+- [x] Conserver le choix de saison pendant la navigation lorsque cela a du sens.
+- [x] Afficher un état vide explicite lorsqu'une saison ne possède pas de données.
+- [x] Retirer du sitemap les pages futures sans contenu utile.
 
 ### Critères d'acceptation
 
@@ -421,14 +436,14 @@ Trouver n'importe quel joueur ou équipe de l'historique en quelques secondes.
 
 ### Actions
 
-- [ ] Retirer la contrainte imposant une saison actuelle aux joueurs.
-- [ ] Rechercher prénom, nom, nom complet, équipe et abréviation.
-- [ ] Normaliser accents, apostrophes, traits d'union et caractères spéciaux.
-- [ ] Prévoir une table d'alias pour surnoms et changements de noms.
-- [ ] Afficher l'équipe actuelle, la dernière équipe connue ou les années de carrière selon le cas.
-- [ ] Ajouter des résultats « aucune correspondance » utiles.
-- [ ] Instrumenter recherches réussies et sans résultat sans conserver inutilement de données personnelles.
-- [ ] Réutiliser exactement le même moteur dans la palette globale et le comparateur.
+- [x] Retirer la contrainte imposant une saison actuelle aux joueurs.
+- [x] Rechercher prénom, nom, nom complet, équipe et abréviation.
+- [x] Normaliser accents, apostrophes, traits d'union et caractères spéciaux.
+- [x] Prévoir une table d'alias pour surnoms et changements de noms.
+- [x] Afficher l'équipe actuelle, la dernière équipe connue ou les années de carrière selon le cas.
+- [x] Ajouter des résultats « aucune correspondance » utiles.
+- [x] Instrumenter recherches réussies et sans résultat sans conserver inutilement de données personnelles.
+- [x] Réutiliser exactement le même moteur dans la palette globale et le comparateur.
 
 ### Critères d'acceptation
 
@@ -443,15 +458,15 @@ Trouver n'importe quel joueur ou équipe de l'historique en quelques secondes.
 
 ### Actions
 
-- [ ] Ajouter un sélecteur de saison pour chaque joueur.
-- [ ] Activer « même saison » par défaut.
-- [ ] Ajouter un mode joueur contre lui-même entre deux saisons.
-- [ ] Distinguer saison régulière et playoffs lorsque les données le permettent.
-- [ ] Afficher matchs, minutes et volume à côté des moyennes.
-- [ ] Comparer aux moyennes de ligue et aux percentiles pertinents.
-- [ ] Signaler les tailles d'échantillon faibles.
-- [ ] Conserver joueurs, saisons et métriques dans l'URL.
-- [ ] Produire une carte ou image partageable.
+- [x] Ajouter un sélecteur de saison pour chaque joueur.
+- [x] Activer « même saison » par défaut.
+- [x] Ajouter un mode joueur contre lui-même entre deux saisons.
+- [x] ~~Distinguer saison régulière et playoffs lorsque les données le permettent~~ Reporté : Pas de statistiques joueur de playoffs par match en base.
+- [x] Afficher matchs, minutes et volume à côté des moyennes.
+- [x] Comparer aux moyennes de ligue et aux percentiles pertinents.
+- [x] Signaler les tailles d'échantillon faibles.
+- [x] Conserver joueurs, saisons et métriques dans l'URL.
+- [x] Produire une carte ou image partageable.
 
 ### Critères d'acceptation
 
@@ -466,20 +481,20 @@ Trouver n'importe quel joueur ou équipe de l'historique en quelques secondes.
 
 ### Pages joueurs
 
-- [ ] Afficher totaux et moyennes exactes.
-- [ ] Ajouter matchs joués, titularisations et minutes.
-- [ ] Afficher les volumes de tirs avec les pourcentages.
-- [ ] Proposer carrière, saison sélectionnée et matchs récents sans ambiguïté.
-- [ ] Étendre le journal des matchs au-delà des 25 derniers avec pagination.
-- [ ] Ajouter trophées, votes et faits de carrière structurés.
-- [ ] Rendre les définitions de métriques accessibles depuis les colonnes.
+- [x] Afficher totaux et moyennes exactes.
+- [x] Ajouter matchs joués, titularisations et minutes.
+- [x] Afficher les volumes de tirs avec les pourcentages.
+- [x] Proposer carrière, saison sélectionnée et matchs récents sans ambiguïté.
+- [x] Étendre le journal des matchs au-delà des 25 derniers avec pagination.
+- [x] Ajouter trophées, votes et faits de carrière structurés.
+- [x] Rendre les définitions de métriques accessibles depuis les colonnes.
 
 ### Pages équipes
 
-- [ ] Afficher ORtg, DRtg, Net Rating et Pace déjà disponibles.
-- [ ] Aligner l'historique et les matchs sur la saison sélectionnée.
-- [ ] Ajouter les tendances récentes et adversaires rencontrés.
-- [ ] Afficher clairement le résultat de playoffs et sa source.
+- [x] Afficher ORtg, DRtg, Net Rating et Pace déjà disponibles.
+- [x] Aligner l'historique et les matchs sur la saison sélectionnée.
+- [x] Ajouter les tendances récentes et adversaires rencontrés.
+- [x] Afficher clairement le résultat de playoffs et sa source.
 
 ### Livrable de phase 1
 
@@ -487,12 +502,12 @@ Un utilisateur peut rechercher n'importe quel acteur NBA, naviguer dans une sais
 
 ### Go/No-Go phase 1
 
-- [ ] recherche historique fonctionnelle ;
-- [ ] sélecteur unifié ;
-- [ ] comparateur cohérent ;
-- [ ] totaux et volumes disponibles ;
-- [ ] pages joueurs et équipes sans fallback trompeur ;
-- [ ] cinq tâches utilisateurs principales réussies sur mobile.
+- [x] recherche historique fonctionnelle ;
+- [x] sélecteur unifié ;
+- [x] comparateur cohérent ;
+- [x] totaux et volumes disponibles ;
+- [x] pages joueurs et équipes sans fallback trompeur ;
+- [x] cinq tâches utilisateurs principales réussies sur mobile.
 
 ---
 
@@ -506,13 +521,13 @@ Donner une raison de consulter HoopStats chaque matin sans transformer le site e
 
 ### Contenu automatique recommandé
 
-- [ ] résultats des derniers matchs terminés ;
-- [ ] trois performances majeures selon une règle documentée ;
-- [ ] performances des joueurs français ;
-- [ ] joueur ou équipe en plus forte progression récente ;
-- [ ] série active ou changement de classement notable ;
-- [ ] match important à venir ;
-- [ ] accès immédiat aux box scores et profils.
+- [x] résultats des derniers matchs terminés ;
+- [x] trois performances majeures selon une règle documentée ;
+- [x] performances des joueurs français ;
+- [x] joueur ou équipe en plus forte progression récente ;
+- [x] série active ou changement de classement notable ;
+- [x] match important à venir ;
+- [x] accès immédiat aux box scores et profils.
 
 ### Règles produit
 
@@ -535,12 +550,12 @@ Donner une raison de consulter HoopStats chaque matin sans transformer le site e
 
 ### Actions
 
-- [ ] Calculer les fenêtres 5, 10 et 20 derniers matchs.
-- [ ] Afficher l'évolution contre la moyenne de saison.
-- [ ] Distinguer volume, efficacité et temps de jeu.
-- [ ] Ajouter une taille minimale d'échantillon.
-- [ ] Permettre le tri et le partage des tendances.
-- [ ] Documenter le traitement des matchs non joués et transferts.
+- [x] Calculer les fenêtres 5, 10 et 20 derniers matchs.
+- [x] Afficher l'évolution contre la moyenne de saison.
+- [x] Distinguer volume, efficacité et temps de jeu.
+- [x] Ajouter une taille minimale d'échantillon.
+- [x] Permettre le tri et le partage des tendances.
+- [x] Documenter le traitement des matchs non joués et transferts.
 
 ### Questions couvertes
 
@@ -555,13 +570,13 @@ Donner une raison de consulter HoopStats chaque matin sans transformer le site e
 
 ### Contenu
 
-- [ ] liste vérifiée des joueurs français actifs et historiques ;
-- [ ] performances de la nuit ;
-- [ ] statistiques saison et tendances récentes ;
-- [ ] calendrier des prochains matchs ;
-- [ ] classement comparatif entre Français ;
-- [ ] pages individuelles et historique de carrière ;
-- [ ] URL stable et indexable.
+- [x] liste vérifiée des joueurs français actifs et historiques ;
+- [x] performances de la nuit ;
+- [x] statistiques saison et tendances récentes ;
+- [x] calendrier des prochains matchs ;
+- [x] classement comparatif entre Français ;
+- [x] pages individuelles et historique de carrière ;
+- [x] URL stable et indexable.
 
 ### Vigilance
 
@@ -573,13 +588,13 @@ Définir explicitement le critère d'inclusion : nationalité sportive, naissanc
 
 ### Actions
 
-- [ ] remplacer la fenêtre courte par une navigation par date ;
-- [ ] ajouter calendrier complet de la saison ;
-- [ ] proposer précédent/suivant et filtres par équipe ;
-- [ ] distinguer matchs à venir, en cours, terminés et reportés ;
-- [ ] afficher quart-temps, prolongations et leaders ;
-- [ ] ajouter les liens entre match, joueurs et équipes ;
-- [ ] contrôler les incohérences de score avant publication.
+- [x] remplacer la fenêtre courte par une navigation par date ;
+- [x] ajouter calendrier complet de la saison ;
+- [x] proposer précédent/suivant et filtres par équipe ;
+- [x] distinguer matchs à venir, en cours, terminés et reportés ;
+- [x] afficher quart-temps, prolongations et leaders ;
+- [x] ajouter les liens entre match, joueurs et équipes ;
+- [x] ~~contrôler les incohérences de score avant publication~~ Reporté : Le contrôle d'écart tourne après publication, chaque matin.
 
 ---
 
@@ -587,12 +602,12 @@ Définir explicitement le critère d'inclusion : nationalité sportive, naissanc
 
 ### Actions
 
-- [ ] préserver les filtres et tris dans les URLs ;
-- [ ] ajouter un bouton de copie de lien ;
-- [ ] générer une carte sociale lisible avec valeur, contexte, date et marque HoopStats ;
-- [ ] exporter les tableaux autorisés en CSV ;
-- [ ] ajouter l'attribution et la date de mise à jour aux exports ;
-- [ ] instrumenter copie, partage et export.
+- [x] préserver les filtres et tris dans les URLs ;
+- [x] ajouter un bouton de copie de lien ;
+- [x] générer une carte sociale lisible avec valeur, contexte, date et marque HoopStats ;
+- [x] exporter les tableaux autorisés en CSV ;
+- [x] ajouter l'attribution et la date de mise à jour aux exports ;
+- [x] instrumenter copie, partage et export.
 
 ### Livrable de phase 2
 
@@ -600,13 +615,13 @@ HoopStats devient utile au réveil, suit naturellement les joueurs français et 
 
 ### Go/No-Go phase 2
 
-- [ ] accueil entièrement automatique ;
-- [ ] données récentes visibles et fiables ;
-- [ ] tendances testées ;
-- [ ] hub français complet ;
-- [ ] calendrier navigable ;
+- [x] accueil entièrement automatique ;
+- [x] données récentes visibles et fiables ;
+- [x] tendances testées ;
+- [x] hub français complet ;
+- [x] calendrier navigable ;
 - [ ] partage et export conformes aux droits des données ;
-- [ ] amélioration mesurable du retour à J7 dans le pilotage.
+- [x] ~~amélioration mesurable du retour à J7 dans le pilotage~~ Reporté : Mesurable seulement avec du trafic : bilan de fin de saison.
 
 ---
 
@@ -619,24 +634,24 @@ Cette phase est conditionnelle. Chaque chantier doit passer deux portes :
 
 ## 3.1 Splits déterministes
 
-- [ ] saison régulière contre playoffs ;
-- [ ] domicile contre extérieur ;
-- [ ] victoires contre défaites ;
-- [ ] titulaire contre remplaçant ;
-- [ ] avant et après une date ou un transfert ;
-- [ ] face à une équipe ou un adversaire ;
-- [ ] cinq, dix et vingt derniers matchs.
+- [x] ~~saison régulière contre playoffs~~ Reporté : Après la saison (décision 011).
+- [x] ~~domicile contre extérieur~~ Reporté : Après la saison (décision 011).
+- [x] ~~victoires contre défaites~~ Reporté : Après la saison (décision 011).
+- [x] ~~titulaire contre remplaçant~~ Reporté : Après la saison (décision 011).
+- [x] ~~avant et après une date ou un transfert~~ Reporté : Après la saison (décision 011).
+- [x] ~~face à une équipe ou un adversaire~~ Reporté : Après la saison (décision 011).
+- [x] cinq, dix et vingt derniers matchs (page Tendances).
 
 ## 3.2 Recherche historique de performances
 
 ### Première version
 
-- [ ] choisir une ou plusieurs métriques ;
-- [ ] définir minimum et maximum ;
-- [ ] filtrer saison, playoffs, équipe, joueur et adversaire ;
-- [ ] ordonner les résultats ;
-- [ ] partager la requête ;
-- [ ] exporter le résultat.
+- [x] ~~choisir une ou plusieurs métriques~~ Reporté : Après la saison (décision 011).
+- [x] ~~définir minimum et maximum~~ Reporté : Après la saison (décision 011).
+- [x] ~~filtrer saison, playoffs, équipe, joueur et adversaire~~ Reporté : Après la saison (décision 011).
+- [x] ~~ordonner les résultats~~ Reporté : Après la saison (décision 011).
+- [x] ~~partager la requête~~ Reporté : Après la saison (décision 011).
+- [x] ~~exporter le résultat~~ Reporté : Après la saison (décision 011).
 
 ### Exemples à supporter
 
@@ -648,23 +663,23 @@ Cette phase est conditionnelle. Chaque chantier doit passer deux portes :
 
 ## 3.3 Statistiques équipes avancées
 
-- [ ] quatre facteurs : eFG%, pertes de balle, rebond offensif et lancers francs ;
-- [ ] rang et percentile de ligue ;
-- [ ] évolution dans le temps ;
-- [ ] profils attaque/défense ;
-- [ ] explication française courte pour chaque indicateur.
+- [x] ~~quatre facteurs : eFG%, pertes de balle, rebond offensif et lancers francs~~ Reporté : Après la saison (décision 011).
+- [x] ~~rang et percentile de ligue~~ Reporté : Après la saison (décision 011).
+- [x] ~~évolution dans le temps~~ Reporté : Après la saison (décision 011).
+- [x] ~~profils attaque/défense~~ Reporté : Après la saison (décision 011).
+- [x] ~~explication française courte pour chaque indicateur~~ Reporté : Après la saison (décision 011).
 
 ## 3.4 Données de possession et tracking
 
 À développer seulement avec une source soutenable :
 
-- [ ] lineups ;
-- [ ] on/off ;
-- [ ] clutch ;
-- [ ] shot charts ;
-- [ ] zones de tir ;
-- [ ] rythme et possessions nettoyées ;
-- [ ] touches, drives, passes ou matchup data.
+- [x] ~~lineups~~ Reporté : Après la saison (décision 011).
+- [x] ~~on/off~~ Reporté : Après la saison (décision 011).
+- [x] ~~clutch~~ Reporté : Après la saison (décision 011).
+- [x] ~~shot charts~~ Reporté : Après la saison (décision 011).
+- [x] ~~zones de tir~~ Reporté : Après la saison (décision 011).
+- [x] ~~rythme et possessions nettoyées~~ Reporté : Après la saison (décision 011).
+- [x] ~~touches, drives, passes ou matchup data~~ Reporté : Après la saison (décision 011).
 
 ### Exigences supplémentaires
 
@@ -678,12 +693,12 @@ Cette phase est conditionnelle. Chaque chantier doit passer deux portes :
 
 Cette fonctionnalité arrive en dernier, au-dessus d'un moteur déterministe déjà fiable.
 
-- [ ] traduire la question en filtres structurés ;
-- [ ] afficher la requête interprétée avant ou avec le résultat ;
-- [ ] refuser proprement les questions non couvertes ;
-- [ ] ne jamais inventer une réponse ;
-- [ ] conserver un lien vers la vue filtrée reproductible ;
-- [ ] mesurer les catégories de questions sans stocker inutilement du texte sensible.
+- [x] ~~traduire la question en filtres structurés~~ Reporté : Après la saison (décision 011).
+- [x] ~~afficher la requête interprétée avant ou avec le résultat~~ Reporté : Après la saison (décision 011).
+- [x] ~~refuser proprement les questions non couvertes~~ Reporté : Après la saison (décision 011).
+- [x] ~~ne jamais inventer une réponse~~ Reporté : Après la saison (décision 011).
+- [x] ~~conserver un lien vers la vue filtrée reproductible~~ Reporté : Après la saison (décision 011).
+- [x] ~~mesurer les catégories de questions sans stocker inutilement du texte sensible~~ Reporté : Après la saison (décision 011).
 
 ### Livrable de phase 3
 
@@ -699,16 +714,16 @@ La validation commence pendant la phase 0 et accompagne toutes les phases suivan
 
 ### Événements minimaux
 
-- [ ] `page_view` avec type de page ;
-- [ ] `search_submitted` avec catégorie et succès, sans requête brute si inutile ;
-- [ ] `season_changed` ;
-- [ ] `filter_applied` avec famille de filtre ;
-- [ ] `comparison_started` et `comparison_completed` ;
-- [ ] `share_clicked` ;
-- [ ] `export_completed` ;
-- [ ] `metric_definition_opened` ;
-- [ ] `data_freshness_warning_seen` ;
-- [ ] erreur fonctionnelle ou technique anonymisée.
+- [x] `page_view` avec type de page ;
+- [x] `search_submitted` avec catégorie et succès, sans requête brute si inutile ;
+- [x] `season_changed` ;
+- [x] `filter_applied` avec famille de filtre ;
+- [x] `comparison_started` et `comparison_completed` ;
+- [x] `share_clicked` ;
+- [x] `export_completed` ;
+- [x] `metric_definition_opened` ;
+- [x] `data_freshness_warning_seen` ;
+- [x] erreur fonctionnelle ou technique anonymisée.
 
 ### Indicateurs
 
@@ -725,11 +740,11 @@ La validation commence pendant la phase 0 et accompagne toutes les phases suivan
 
 ### Vie privée
 
-- [ ] limiter la collecte à ce qui sert une décision produit ;
-- [ ] éviter les identifiants directs et requêtes brutes lorsqu'ils ne sont pas nécessaires ;
-- [ ] documenter la configuration de mesure d'audience ;
+- [x] limiter la collecte à ce qui sert une décision produit ;
+- [x] éviter les identifiants directs et requêtes brutes lorsqu'ils ne sont pas nécessaires ;
+- [x] documenter la configuration de mesure d'audience ;
 - [ ] vérifier la conformité avec les recommandations de la CNIL ;
-- [ ] définir une durée de conservation raisonnable.
+- [x] définir une durée de conservation raisonnable.
 
 ---
 
@@ -754,11 +769,11 @@ Bilan à la fin de la saison : selon la fréquentation, décider de la suite (do
 
 Avant de développer un moteur complexe :
 
-- [ ] ajouter « Quelle statistique cherchez-vous ? » ;
-- [ ] traiter manuellement les 50 premières demandes ;
-- [ ] classer les questions : tendances, splits, records, face-à-face, Français, lineups, tirs, clutch, fantasy ;
-- [ ] mesurer fréquence, difficulté et récurrence ;
-- [ ] ne construire que les deux catégories les plus fréquentes et compatibles avec les données.
+- [x] ajouter « Quelle statistique cherchez-vous ? »  (page `/demande`);
+- [x] ~~traiter manuellement les 50 premières demandes~~ Reporté : Après la saison, selon les demandes reçues.
+- [x] ~~classer les questions : tendances, splits, records, face-à-face, Français, lineups, tirs, clutch, fantasy~~ Reporté : Après la saison, selon les demandes reçues.
+- [x] ~~mesurer fréquence, difficulté et récurrence~~ Reporté : Après la saison, selon les demandes reçues.
+- [x] ~~ne construire que les deux catégories les plus fréquentes et compatibles avec les données~~ Reporté : Après la saison, selon les demandes reçues.
 
 ---
 
@@ -782,12 +797,12 @@ Avant de développer un moteur complexe :
 
 ### Condition de lancement public soutenu
 
-- [ ] droits des données clarifiés ;
-- [ ] aucune anomalie critique ouverte ;
-- [ ] fraîcheur automatique visible ;
-- [ ] réussite des tâches principales ;
-- [ ] premiers signaux de retour récurrent ;
-- [ ] capacité opérationnelle à corriger une mauvaise donnée rapidement.
+- [x] ~~droits des données clarifiés~~ Reporté : Après la saison (4.6).
+- [x] ~~aucune anomalie critique ouverte~~ Reporté : Après la saison (4.6).
+- [x] ~~fraîcheur automatique visible~~ Reporté : Après la saison (4.6).
+- [x] ~~réussite des tâches principales~~ Reporté : Après la saison (4.6).
+- [x] ~~premiers signaux de retour récurrent~~ Reporté : Après la saison (4.6).
+- [x] ~~capacité opérationnelle à corriger une mauvaise donnée rapidement~~ Reporté : Après la saison (4.6).
 
 ---
 
