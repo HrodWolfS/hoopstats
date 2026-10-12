@@ -470,3 +470,37 @@ arrivaient l'après-midi.
 
 Le cron Vercel échoue plusieurs matins (journaux Vercel), ou si la synchro
 passe sur Vercel lui-même.
+
+## 015 — Rester dans le quota gratuit de transfert Neon
+
+**Date** : 12 octobre 2026
+**Statut** : préparé sur la branche `reduction-transfert-neon`, à mettre en ligne le 1er novembre
+**Feuille de route** : exploitation pendant la saison
+
+### Contexte
+
+Le 11 octobre, le projet Neon a dépassé son quota gratuit de transfert réseau
+(5 Go par mois et par projet ; 5,81 Go consommés) : la base est suspendue
+jusqu'au 1er novembre, données conservées. Le calcul, lui, était loin de la
+limite (5,99 CU-h sur 100). La base pèse 70 Mo, et chaque build en relisait
+l'équivalent pour pré-générer les fiches d'équipes et tous les classements
+depuis 2016 : 49 mises en production et 39 passages de CI depuis le
+1er octobre. Le projet reste gratuit : pas d'offre payante.
+
+### Décision
+
+- **Plus de pré-génération au build** des fiches d'équipes et des
+  classements : créées à la première visite, mises en cache 6 h (ISR). Les
+  classements gagnent au passage un rafraîchissement toutes les 6 h ; avant,
+  ils ne changeaient qu'à chaque mise en ligne.
+- **La CI ne lit plus la base** : lint, types et tests seulement. Le build est
+  fait par Vercel (un échec bloque la mise en ligne) et l'audit de santé
+  tourne après chaque synchro.
+- **Moins de mises en ligne** : regrouper les commits.
+- Pendant la suspension : synchro désactivée, rien n'est poussé (un build
+  échouerait sans la base), contrôles décalés aux 2 et 3 novembre.
+
+### À revoir si
+
+La consommation de novembre dépasse 2 Go à mi-mois (console Neon), ou si les
+visites réelles deviennent la première source de transfert.

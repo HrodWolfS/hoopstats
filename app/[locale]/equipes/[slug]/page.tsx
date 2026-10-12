@@ -26,9 +26,10 @@ export const revalidate = 21600; // 6h ISR
 
 // ── generateStaticParams ────────────────────────────────────────────────────
 
-export async function generateStaticParams() {
-  const teams = await prisma.team.findMany({ select: { slug: true } });
-  return teams.map((t) => ({ slug: t.slug }));
+// Rien n'est généré au build (quota de transfert Neon) : chaque fiche est
+// créée à la première visite, puis rafraîchie toutes les 6 h.
+export function generateStaticParams() {
+  return [];
 }
 
 // ── generateMetadata ────────────────────────────────────────────────────────

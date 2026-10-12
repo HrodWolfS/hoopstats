@@ -17,10 +17,14 @@ import { SeasonScope } from "@/components/layout/season-scope";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
 
+// Rien n'est généré au build : chaque build relisait la base pour toutes les
+// saisons et tous les classements, et a fait dépasser le quota de transfert
+// Neon (octobre 2026). La page est créée à la première visite puis mise en
+// cache 6 h (ISR), comme les autres.
+export const revalidate = 21600;
+
 export function generateStaticParams() {
-  return ALL_SEASONS.flatMap((season) =>
-    LEADERBOARDS.map((leaderboard) => ({ season, metric: leaderboard.slug })),
-  );
+  return [];
 }
 
 export async function generateMetadata({
