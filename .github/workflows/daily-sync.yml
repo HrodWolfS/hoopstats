@@ -2,8 +2,8 @@ name: Daily NBA Sync
 
 on:
   # Déclencheur principal : le cron Vercel (vercel.json → /api/cron/sync) lance
-  # ce workflow à la demande dans l'heure de 05:00 et de 07:00 UTC (6 h et 8 h à Paris
-  # l'hiver). Les horaires programmés de GitHub partent avec plusieurs heures
+  # ce workflow à la demande dans l'heure de 04:00 et de 06:00 UTC (5 h et 7 h à Paris
+  # l'hiver, 6 h et 8 h l'été). Les horaires programmés de GitHub partent avec plusieurs heures
   # de retard (12 h – 14 h à Paris début octobre) : ils restent en secours,
   # à des minutes peu chargées. Le dernier match de la nuit finit vers 06:00 UTC.
   workflow_dispatch:

@@ -453,11 +453,14 @@ arrivaient l'après-midi.
 ### Décision
 
 - **Déclencheur principal : cron Vercel**, deux passages par jour (dans l'heure
-  de 05:00 et de 07:00 UTC, soit 6 h et 8 h à Paris l'hiver). Il appelle
+  de 04:00 et de 06:00 UTC, soit 5 h et 7 h à Paris l'hiver, 6 h et 8 h
+  l'été ; avancés d'une heure le 1er novembre 2026). Il appelle
   `/api/cron/sync` (protégé par `CRON_SECRET`, production seulement), qui
   demande à GitHub de lancer `daily-sync.yml` immédiatement.
 - Le second passage récupère les matchs tardifs de la côte Ouest (fin vers
-  06:00 UTC) et les box scores finalisés ; la synchro est idempotente.
+  06:00 UTC) et les box scores finalisés ; la synchro est idempotente. Une
+  prolongation qui finit après son passage est reprise par le secours de
+  07:43 UTC.
 - **Secours** : les horaires GitHub restent, à 05:23 et 07:43 UTC.
 - Deux passages ne se chevauchent jamais (`concurrency` du workflow).
 - Le contrôle mobile part après chaque synchro (`workflow_run`) au lieu

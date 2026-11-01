@@ -51,7 +51,8 @@ Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
 - Synchro du matin (décision 014) : active depuis le 10 octobre, jeton
   `GITHUB_DISPATCH_TOKEN` expirant le 31 juillet 2027 (à renouveler s'il faut
   aller au-delà). Les crons Vercel ont bien lancé la synchro le 11 octobre
-  (7 h 40 et 9 h 37 à Paris) ; vrais passages à reconfirmer le 2 novembre.
+  (7 h 40 et 9 h 37 à Paris) ; horaires avancés le 1er novembre à 5 h et 7 h
+  (heure d'hiver), vrais passages à reconfirmer le 2 novembre.
 - Transfert Neon (décision 015) : surveiller la consommation dans la console
   Neon chaque semaine de novembre ; limite gratuite 5 Go par mois, à revoir
   au-delà de 2 Go à mi-novembre.
@@ -75,6 +76,7 @@ Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
 | 10 oct. | Synchro du matin activée : jeton `GITHUB_DISPATCH_TOKEN` posé dans Vercel (production) ; essai depuis Vercel → synchro lancée sur GitHub sans attente (réussie en 5 min), puis contrôle mobile enchaîné (réussi). |
 | 11 oct. | Base Neon suspendue : quota gratuit de transfert réseau dépassé (5,81 Go sur 5 Go), surtout par les builds (49 mises en production et 39 CI depuis le 1er octobre, chacune relisant ~66 Mo). Synchro désactivée jusqu'au 1er novembre, contrôles du 20 et du 21 octobre décalés aux 2 et 3 novembre ; corrections préparées sur la branche `reduction-transfert-neon` (décision 015). |
 | 1er nov. | Reprise après la pause Neon : base de nouveau joignable ; branche `reduction-transfert-neon` mise en ligne (fiches d'équipes et classements créés à la première visite, CI sans lecture de la base) ; 90 matchs du 20 octobre au 1er novembre rattrapés avec leurs feuilles de match ; synchro quotidienne réactivée. |
+| 1er nov. | Synchro du matin avancée d'une heure après le passage à l'heure d'hiver : crons Vercel dans l'heure de 5 h et de 7 h à Paris (04:00 et 06:00 UTC) ; secours GitHub inchangés (05:23 et 07:43 UTC). |
 
 ---
 
