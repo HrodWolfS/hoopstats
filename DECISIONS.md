@@ -474,7 +474,7 @@ passe sur Vercel lui-même.
 ## 015 — Rester dans le quota gratuit de transfert Neon
 
 **Date** : 12 octobre 2026
-**Statut** : préparé sur la branche `reduction-transfert-neon`, à mettre en ligne le 1er novembre
+**Statut** : appliquée le 1er novembre 2026 — `app/[locale]/classements/[season]/[metric]/page.tsx`, `app/[locale]/equipes/[slug]/page.tsx`, `.github/workflows/ci.yml`
 **Feuille de route** : exploitation pendant la saison
 
 ### Contexte

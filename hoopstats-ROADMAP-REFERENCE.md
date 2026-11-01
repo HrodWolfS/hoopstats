@@ -32,13 +32,10 @@ Cases revues une à une dans le code le 10 octobre. Conventions :
 Rien : **le MVP est terminé** (10 octobre). La suite est de l'exploitation
 pendant la saison, pas du développement.
 
-**Pause jusqu'au 1er novembre (décision 015)** : la base Neon est suspendue
-depuis le 11 octobre (quota gratuit de transfert réseau dépassé). Le site reste
-en ligne avec les données du 10 octobre ; recherche, Comparer et audience sont
-hors service. Le 1er novembre :
-1. réactiver la synchro (`gh workflow enable daily-sync.yml`) ;
-2. pousser la branche `reduction-transfert-neon` (moins de lecture de la base au build et en CI) ;
-3. rattraper les matchs du 20 octobre au 1er novembre (REGISTRE-SOURCES.md § 5), avec accord.
+**Reprise le 1er novembre (décision 015)** : la base Neon, suspendue du
+11 octobre au 1er novembre (quota gratuit de transfert réseau dépassé), répond
+de nouveau. Corrections mises en ligne (moins de lecture de la base au build et
+en CI), 90 matchs du 20 octobre au 1er novembre rattrapés, synchro réactivée.
 
 Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
 
@@ -56,7 +53,8 @@ Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
   aller au-delà). Les crons Vercel ont bien lancé la synchro le 11 octobre
   (7 h 40 et 9 h 37 à Paris) ; vrais passages à reconfirmer le 2 novembre.
 - Transfert Neon (décision 015) : surveiller la consommation dans la console
-  Neon chaque semaine de novembre ; limite gratuite 5 Go par mois.
+  Neon chaque semaine de novembre ; limite gratuite 5 Go par mois, à revoir
+  au-delà de 2 Go à mi-novembre.
 - Colonne NET de la page Saisons toujours vide : `netRating` absent en base
   pour les 30 équipes de 2023-24 à 2025-26 (constaté le 10 oct., antérieur à
   la règle d'arrondi).
@@ -76,6 +74,7 @@ Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
 | 10 oct. | Résultats au réveil (décision 014) : le cron GitHub partait 5 à 7 h en retard (12 h – 14 h à Paris) ; un cron Vercel lance désormais la synchro à la demande vers 6 h et 8 h, l'horaire GitHub reste en secours ; contrôle mobile après chaque synchro. |
 | 10 oct. | Synchro du matin activée : jeton `GITHUB_DISPATCH_TOKEN` posé dans Vercel (production) ; essai depuis Vercel → synchro lancée sur GitHub sans attente (réussie en 5 min), puis contrôle mobile enchaîné (réussi). |
 | 11 oct. | Base Neon suspendue : quota gratuit de transfert réseau dépassé (5,81 Go sur 5 Go), surtout par les builds (49 mises en production et 39 CI depuis le 1er octobre, chacune relisant ~66 Mo). Synchro désactivée jusqu'au 1er novembre, contrôles du 20 et du 21 octobre décalés aux 2 et 3 novembre ; corrections préparées sur la branche `reduction-transfert-neon` (décision 015). |
+| 1er nov. | Reprise après la pause Neon : base de nouveau joignable ; branche `reduction-transfert-neon` mise en ligne (fiches d'équipes et classements créés à la première visite, CI sans lecture de la base) ; 90 matchs du 20 octobre au 1er novembre rattrapés avec leurs feuilles de match ; synchro quotidienne réactivée. |
 
 ---
 
