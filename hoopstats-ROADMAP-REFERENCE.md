@@ -77,6 +77,7 @@ Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
 | 11 oct. | Base Neon suspendue : quota gratuit de transfert réseau dépassé (5,81 Go sur 5 Go), surtout par les builds (49 mises en production et 39 CI depuis le 1er octobre, chacune relisant ~66 Mo). Synchro désactivée jusqu'au 1er novembre, contrôles du 20 et du 21 octobre décalés aux 2 et 3 novembre ; corrections préparées sur la branche `reduction-transfert-neon` (décision 015). |
 | 1er nov. | Reprise après la pause Neon : base de nouveau joignable ; branche `reduction-transfert-neon` mise en ligne (fiches d'équipes et classements créés à la première visite, CI sans lecture de la base) ; 90 matchs du 20 octobre au 1er novembre rattrapés avec leurs feuilles de match ; synchro quotidienne réactivée. |
 | 1er nov. | Synchro du matin avancée d'une heure après le passage à l'heure d'hiver : crons Vercel dans l'heure de 5 h et de 7 h à Paris (04:00 et 06:00 UTC) ; secours GitHub inchangés (05:23 et 07:43 UTC). |
+| 2 nov. | Logo « Pourcentage » (signe % : ballon orange et cercle) : kit complet dans `design/logo/` (variantes, assemblages, icônes, guide d'usage) ; intégré au site — favicon, `app/icon.svg`, `app/apple-icon.png`, manifeste (`app/manifest.ts`, icônes dans `public/icons/`), symbole à la place de la tuile « h. » de la barre latérale et du menu mobile. Recherche d'antériorité INPI à faire avant tout dépôt. |
 
 ---
 

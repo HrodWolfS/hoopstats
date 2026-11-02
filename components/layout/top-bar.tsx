@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ALL_NAV_ITEMS, isItemActive } from "./sidebar-client";
+import { LogoMark } from "./logo-mark";
 import { useSeasonScope } from "./season-scope";
 import { neighbourSeasons, pageHasSeason, seasonScopeHref } from "@/lib/season-scope";
 import { sendAnalyticsEvent } from "@/components/analytics/analytics-event";
@@ -175,9 +176,7 @@ function MobileDrawer({
             onClick={onClose}
             className="flex items-center gap-2"
           >
-            <div className="h-7 w-7 rounded-md bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center font-display font-bold text-[12px] text-white">
-              h.
-            </div>
+            <LogoMark className="h-7 w-7" />
             <span className="font-display font-semibold tracking-tight text-[15px]">
               hoopstats
             </span>

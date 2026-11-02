@@ -1,0 +1,41 @@
+{
+  "brand": "hoopstats",
+  "tagline": "Les stats NBA, simplement",
+  "brief": "Un site gratuit de fan pour suivre les statistiques NBA : résultats, classements, fiches joueurs et équipes. Pensé d'abord pour le mobile. Il doit être simple, utile et esthétique, et se distinguer des logos sportifs chargés (boucliers, flammes, ballons en mouvement).",
+  "adjectives": ["précis", "simple", "vif", "moderne"],
+  "criteria": "Réussite : une idée lisible d'un coup d'œil, nette à 16 px dans un onglet, en une seule couleur, et propre à hoopstats plutôt qu'à un club.",
+  "industry": "consumer-app",
+  "nav": ["Matchs", "Classements", "Joueurs"],
+  "brand_color": "#F97316",
+  "tile_color": "#0A0A0B",
+  "greyscale": false,
+  "final": true,
+  "designer": "hoopstats",
+  "round": 2,
+  "concepts": [
+    {
+      "name": "Pourcentage",
+      "symbol": "../final/symbole-couleur.svg",
+      "lockup": "../final/horizontal-couleur.svg",
+      "stacked": "../final/empile-couleur.svg",
+      "avatar": "../final/symbole-petit-couleur.svg",
+      "symbol_on_tile": "../final/symbole-petit-couleur-fond-sombre.svg",
+      "symbol_on_dark": "../final/symbole-couleur-fond-sombre.svg",
+      "lockup_on_dark": "../final/horizontal-couleur-fond-sombre.svg",
+      "stacked_on_dark": "../final/empile-couleur-fond-sombre.svg",
+      "stacked_on_tile": "../final/empile-couleur-fond-sombre.svg",
+      "idea": "Un signe % dont les deux ronds sont le ballon et le cercle : réussis sur tentés.",
+      "rationale": [
+        "Le pourcentage est le langage même des stats de tir",
+        "Le ballon orange est le seul point de couleur : il se repère à 16 px",
+        "Trois formes simples, une barre à 60°, une version petite taille dédiée"
+      ]
+    }
+  ],
+  "recommendation": "Pourcentage — un signe que tout fan de stats connaît, rendu propre à hoopstats par le ballon et le cercle.",
+  "next_steps": [
+    "Intégrer favicon, icônes et logo dans le site",
+    "Remplacer la tuile « h. » de la barre latérale et de l'en-tête",
+    "Recherche d'antériorité de marque (INPI) avant tout dépôt"
+  ]
+}

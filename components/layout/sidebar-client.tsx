@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
+import { LogoMark } from "./logo-mark";
 import { useSidebar } from "./sidebar-context";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -399,9 +400,7 @@ export function SidebarClient({ lastSync }: Props) {
           className="flex items-center gap-2 group"
           title={collapsed ? "hoopstats" : undefined}
         >
-          <div className="h-7 w-7 shrink-0 rounded-md bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center font-display font-bold text-[12px] text-white">
-            h.
-          </div>
+          <LogoMark className="h-7 w-7 shrink-0" />
           {!collapsed && (
             <span className="font-display font-semibold tracking-tight text-[15px] whitespace-nowrap">
               hoopstats
