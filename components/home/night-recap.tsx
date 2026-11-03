@@ -45,15 +45,16 @@ function SectionTitle({ title, aside }: { title: string; aside?: React.ReactNode
 const asideLink =
   "shrink-0 font-mono text-[11px] uppercase tracking-widest text-white/40 transition hover:text-orange-300";
 
+/** Le vainqueur en gras et en blanc, le perdant en retrait. */
 function ResultCard({ game, locale }: { game: NightGame; locale: string }) {
   const homeWon = (game.homeScore ?? 0) > (game.awayScore ?? 0);
   const logo = (team: NightTeam) =>
     team.logoUrl && <Image src={team.logoUrl} alt="" width={24} height={24} className="shrink-0 object-contain" unoptimized />;
   const abbr = (team: NightTeam, won: boolean) => (
-    <span className={`truncate font-mono text-xs ${won ? "text-white" : "text-white/45"}`}>{team.abbr}</span>
+    <span className={`truncate font-mono text-xs ${won ? "font-bold text-white" : "text-white/40"}`}>{team.abbr}</span>
   );
   const score = (value: number | null, won: boolean) => (
-    <span className={`font-mono text-sm font-semibold tabular-nums ${won ? "text-white" : "text-white/40"}`}>{value ?? "–"}</span>
+    <span className={`font-mono text-sm tabular-nums ${won ? "font-bold text-white" : "font-normal text-white/35"}`}>{value ?? "–"}</span>
   );
   return (
     <Link
