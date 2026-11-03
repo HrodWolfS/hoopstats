@@ -1,5 +1,6 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { PLAYER_EXPLORER_CACHE_TAG } from "@/lib/stats/player-explorer-data";
 
 /**
  * POST /api/revalidate
@@ -17,6 +18,8 @@ export async function POST(request: NextRequest) {
 
   // Invalide tout le layout → toutes les routes reconstruites au prochain hit
   revalidatePath("/", "layout");
+  // Données de l'explorateur joueurs : relues dès la visite suivante.
+  revalidateTag(PLAYER_EXPLORER_CACHE_TAG, { expire: 0 });
 
   return NextResponse.json({
     revalidated: true,

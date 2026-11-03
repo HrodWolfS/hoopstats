@@ -117,3 +117,107 @@ export function LeadersPanelSkeleton() {
     </div>
   );
 }
+
+/** Skeleton pour l'en-tête d'une page : surtitre, titre, sous-titre */
+export function PageHeaderSkeleton() {
+  return (
+    <div className="space-y-3">
+      <Bone className="h-2.5 w-20" />
+      <Bone className="h-9 w-64 max-w-full" />
+      <Bone className="h-3.5 w-48 max-w-full" />
+    </div>
+  );
+}
+
+/** Skeleton générique d'une page, affiché dès le clic pendant le chargement */
+export function PageSkeleton() {
+  return (
+    <div className="space-y-7" aria-busy="true" aria-label="Chargement">
+      <PageHeaderSkeleton />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Bone key={i} className="h-20 rounded-2xl" />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <LeadersPanelSkeleton />
+        <LeadersPanelSkeleton />
+      </div>
+    </div>
+  );
+}
+
+/** Skeleton pour l'explorateur joueurs : filtres puis tableau */
+export function PlayerExplorerSkeleton() {
+  return (
+    <div className="space-y-7" aria-busy="true" aria-label="Chargement">
+      <PageHeaderSkeleton />
+      <div className="rounded-2xl border border-white/[0.07] bg-[#111114] p-4 md:p-5 space-y-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.4fr)]">
+          <Bone className="col-span-2 h-10 rounded-lg sm:col-span-1" />
+          <Bone className="h-10 rounded-lg" />
+          <Bone className="h-10 rounded-lg" />
+        </div>
+        <Bone className="h-3 w-28" />
+      </div>
+      <PlayerTableSkeleton />
+    </div>
+  );
+}
+
+/** Skeleton pour une fiche joueur */
+export function PlayerPageSkeleton() {
+  return (
+    <div className="space-y-8" aria-busy="true" aria-label="Chargement">
+      <PlayerHeaderSkeleton />
+      <PlayerTableSkeleton rows={5} />
+    </div>
+  );
+}
+
+/** Skeleton pour la liste des matchs */
+export function GameListSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="space-y-7" aria-busy="true" aria-label="Chargement">
+      <PageHeaderSkeleton />
+      <div className="grid gap-3 md:grid-cols-2">
+        {Array.from({ length: count }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-white/[0.06] bg-[#111114] p-4 space-y-3"
+          >
+            {Array.from({ length: 2 }).map((_, j) => (
+              <div key={j} className="flex items-center gap-3">
+                <Bone className="h-8 w-8 rounded-lg flex-shrink-0" />
+                <Bone className="h-3.5 flex-1" />
+                <Bone className="h-5 w-10" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Skeleton pour une fiche match ou équipe : bandeau puis panneaux */
+export function DetailPageSkeleton() {
+  return (
+    <div className="space-y-7" aria-busy="true" aria-label="Chargement">
+      <div className="rounded-2xl border border-white/[0.06] bg-[#111114] p-5 md:p-7">
+        <div className="flex items-center justify-between gap-4">
+          <Bone className="h-16 w-16 rounded-2xl flex-shrink-0" />
+          <div className="flex flex-col items-center gap-2">
+            <Bone className="h-9 w-28" />
+            <Bone className="h-3 w-16" />
+          </div>
+          <Bone className="h-16 w-16 rounded-2xl flex-shrink-0" />
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <LeadersPanelSkeleton />
+        <LeadersPanelSkeleton />
+      </div>
+    </div>
+  );
+}

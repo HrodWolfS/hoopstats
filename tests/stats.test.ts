@@ -1,4 +1,9 @@
-import { automaticMinimumGames, buildExplorerUrl, parsePlayerExplorerParams } from "@/lib/stats/player-query";
+import {
+  automaticMinimumGames,
+  buildExplorerUrl,
+  filterExplorerRows,
+  parsePlayerExplorerParams,
+} from "@/lib/stats/player-query";
 /**
  * Cas de test minimaux de la feuille de route (§ 0.3), sur les fonctions de
  * calcul qu'utilisent les pages : chaque cas reproduit une erreur qui
@@ -349,5 +354,51 @@ describe("explorateur joueurs — seuil de matchs", () => {
     expect(buildExplorerUrl("fr", auto)).not.toContain("min_mj");
     const explicit = parsePlayerExplorerParams({ saison: "2025-26", min_mj: "20" });
     expect(buildExplorerUrl("fr", explicit)).toContain("min_mj=20");
+  });
+});
+
+describe("explorateur joueurs — filtres en mémoire", () => {
+  const row = (
+    playerId: string,
+    firstName: string,
+    lastName: string,
+    position: string,
+    teamAbbr: string,
+    gamesPlayed: number,
+  ) => ({
+    playerId,
+    gamesPlayed,
+    pointsPerGame: 10,
+    player: { firstName, lastName, position },
+    team: { abbr: teamAbbr },
+  });
+  const rows = consolidatePlayerSeasons([
+    row("jokic", "Nikola", "Jokić", "C", "DEN", 5),
+    row("wemby", "Victor", "Wembanyama", "C", "SAS", 5),
+    row("fox", "De'Aaron", "Fox", "PG", "SAC", 3),
+    row("fox", "De'Aaron", "Fox", "PG", "SAS", 2),
+  ]);
+  const none = { query: "", position: "", team: "" };
+
+  it("cherche sans tenir compte de la casse ni des accents", () => {
+    const ids = (query: string) =>
+      filterExplorerRows(rows, { ...none, query }).map((r) => r.playerId);
+    expect(ids("jokic")).toEqual(["jokic"]);
+    expect(ids("VICTOR WEMB")).toEqual(["wemby"]);
+    expect(ids("")).toHaveLength(3);
+  });
+
+  it("filtre par position", () => {
+    expect(
+      filterExplorerRows(rows, { ...none, position: "PG" }).map((r) => r.playerId),
+    ).toEqual(["fox"]);
+  });
+
+  it("ne garde que le passage dans l'équipe filtrée", () => {
+    const spurs = filterExplorerRows(rows, { ...none, team: "SAS" });
+    expect(spurs.map((r) => r.playerId).sort()).toEqual(["fox", "wemby"]);
+    const fox = spurs.find((r) => r.playerId === "fox");
+    expect(fox?.isMultiTeam).toBe(false);
+    expect(fox?.gamesPlayed).toBe(2);
   });
 });

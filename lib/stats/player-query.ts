@@ -1,4 +1,8 @@
-import type { Prisma } from "@prisma/client";
+import {
+  consolidatePlayerSeasons,
+  type ConsolidatableRow,
+  type Consolidated,
+} from "@/lib/stats/season-consolidation";
 import { ALL_SEASONS, currentSeason } from "@/lib/nba";
 import {
   getPlayerMetric,
@@ -121,46 +125,43 @@ export function parsePlayerExplorerParams(
   };
 }
 
-/**
- * Filtre base de l'explorateur : saison, équipe, joueur.
- *
- * Les seuils (matchs, minutes) et la disponibilité de la métrique ne sont pas
- * filtrés en base : ils s'appliquent à la ligne consolidée d'un joueur
- * transféré, via `passesExplorerThresholds`. Filtrés par passage, ils
- * écarteraient un joueur à 40 + 30 matchs d'un seuil de 50.
- */
-export function buildPlayerExplorerWhere(
-  params: PlayerExplorerParams,
-): Prisma.PlayerSeasonWhereInput {
-  const playerFilter: Prisma.PlayerWhereInput = {
-    ...(params.position ? { position: params.position } : {}),
-    ...(params.query
-      ? {
-          OR: [
-            {
-              firstName: {
-                contains: params.query,
-                mode: "insensitive" as const,
-              },
-            },
-            {
-              lastName: {
-                contains: params.query,
-                mode: "insensitive" as const,
-              },
-            },
-          ],
-        }
-      : {}),
-  };
-  const hasPlayerFilter =
-    params.position !== "" || params.query !== "";
+type ExplorerFilterableRow = ConsolidatableRow & {
+  player: { firstName: string; lastName: string; position: string | null };
+  team: { abbr: string };
+};
 
-  return {
-    season: params.season,
-    ...(params.team ? { team: { abbr: params.team } } : {}),
-    ...(hasPlayerFilter ? { player: playerFilter } : {}),
-  };
+/** Minuscules sans accents : « jokic » trouve « Jokić ». */
+export function foldName(value: string): string {
+  return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+/**
+ * Filtre de l'explorateur sur les lignes consolidées d'une saison : joueur
+ * (prénom, nom ou nom complet, sans tenir compte des accents), position et
+ * équipe.
+ *
+ * Filtrer par équipe ne garde que le passage dans cette équipe : un joueur
+ * transféré y apparaît avec ses seules statistiques chez elle. Les seuils
+ * (matchs, minutes) s'appliquent ensuite via `passesExplorerThresholds`, à la
+ * ligne consolidée : filtrés par passage, ils écarteraient un joueur à
+ * 40 + 30 matchs d'un seuil de 50.
+ */
+export function filterExplorerRows<T extends ExplorerFilterableRow>(
+  rows: readonly Consolidated<T>[],
+  params: Pick<PlayerExplorerParams, "query" | "position" | "team">,
+): Consolidated<T>[] {
+  const query = foldName(params.query.trim());
+  const matches = rows.filter(({ player }) => {
+    if (params.position && player.position !== params.position) return false;
+    if (!query) return true;
+    return foldName(`${player.firstName} ${player.lastName}`).includes(query);
+  });
+  if (!params.team) return matches;
+  return consolidatePlayerSeasons(
+    matches.flatMap((row) =>
+      row.stints.filter((stint) => stint.team.abbr === params.team),
+    ),
+  );
 }
 
 export function passesExplorerThresholds(

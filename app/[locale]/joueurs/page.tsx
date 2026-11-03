@@ -1,5 +1,4 @@
 import { type Metadata } from "next";
-import { prisma } from "@/lib/prisma";
 import { ALL_SEASONS, currentSeason, SEASON_OPENERS, seasonsThrough } from "@/lib/nba";
 import { SeasonScope } from "@/components/layout/season-scope";
 import { FadeIn } from "@/components/ui/fade-in";
@@ -15,14 +14,14 @@ import {
 } from "@/lib/stats/context";
 import {
   automaticMinimumGames,
-  buildPlayerExplorerWhere,
   computeMetricValue,
+  filterExplorerRows,
   parsePlayerExplorerParams,
   passesExplorerThresholds,
 } from "@/lib/stats/player-query";
 import { seasonTeamGames } from "@/lib/stats/leaders";
 import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
-import { consolidateSeasonRows } from "@/lib/stats/season-totals";
+import { loadExplorerSeason, loadExplorerTeams } from "@/lib/stats/player-explorer-data";
 import { AnalyticsEvent } from "@/components/analytics/analytics-event";
 import { ShareButton } from "@/components/analytics/share-button";
 
@@ -59,48 +58,17 @@ export default async function PlayersPage({
 }) {
   const { locale } = await params;
   const parsedParams = parsePlayerExplorerParams(await searchParams);
-  const where = buildPlayerExplorerWhere(parsedParams);
-  const [stintRows, teams, mostGames] = await Promise.all([
-    prisma.playerSeason.findMany({
-      where,
-      include: {
-        player: {
-          select: {
-            firstName: true,
-            lastName: true,
-            slug: true,
-            position: true,
-            photoUrl: true,
-          },
-        },
-        team: {
-          select: {
-            abbr: true,
-            slug: true,
-            primaryColor: true,
-            secondaryColor: true,
-          },
-        },
-      },
-    }),
-    prisma.team.findMany({
-      orderBy: { abbr: "asc" },
-      select: { abbr: true, city: true, name: true },
-    }),
-    prisma.playerSeason.aggregate({
-      where: { season: parsedParams.season },
-      _max: { gamesPlayed: true },
-    }),
+  const [seasonData, teams] = await Promise.all([
+    loadExplorerSeason(parsedParams.season),
+    loadExplorerTeams(),
   ]);
-  // Une ligne par joueur : les seuils s'appliquent à la saison entière d'un
-  // joueur transféré, pas à chacun de ses passages.
-  const seasonRows = await consolidateSeasonRows(parsedParams.season, stintRows);
+  const seasonRows = filterExplorerRows(seasonData, parsedParams);
   const explorerParams = parsedParams.minimumGamesExplicit
     ? parsedParams
     : {
         ...parsedParams,
         minimumGames: automaticMinimumGames(
-          seasonTeamGames([{ gamesPlayed: mostGames._max.gamesPlayed ?? 0 }]),
+          seasonTeamGames(seasonData.flatMap((row) => row.stints)),
           parsedParams.query,
         ),
       };
@@ -135,15 +103,7 @@ export default async function PlayersPage({
 
   const previousSeason = ALL_SEASONS[ALL_SEASONS.indexOf(resolvedParams.season) + 1];
   const previousRows = previousSeason && rankedRows.length > 0
-    ? await consolidateSeasonRows(
-        previousSeason,
-        await prisma.playerSeason.findMany({
-          where: {
-            season: previousSeason,
-            playerId: { in: rankedRows.map(({ row }) => row.playerId) },
-          },
-        }),
-      )
+    ? await loadExplorerSeason(previousSeason)
     : [];
   const previousByPlayer = new Map(
     previousRows.map((row) => [row.playerId, row]),
