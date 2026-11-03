@@ -94,7 +94,7 @@ export const SHARE_RULES: { title: string; rule: string }[] = [
   },
   {
     title: "Tableaux exportables",
-    rule: "Seuls les tableaux que hoopstats calcule lui-même à partir des box scores ESPN s'exportent en CSV : tendances, tableaux de saison des Français et des rookies de la saison en cours. Les statistiques officielles NBA des saisons passées, les stats avancées importées et les box scores ne s'exportent pas.",
+    rule: "Seuls les tableaux que hoopstats calcule lui-même à partir des box scores ESPN s'exportent en CSV : tendances, tableaux de saison des Français et de la draft (rookies de la saison en cours). Les statistiques officielles NBA des saisons passées, les stats avancées importées et les box scores ne s'exportent pas.",
   },
   {
     title: "Contenu d'un export",

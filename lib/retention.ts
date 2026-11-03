@@ -199,7 +199,7 @@ export const MEASURE_RULES = [
   },
   {
     title: "Activation et temps de réponse",
-    rule: "Un onglet est « activé » la première fois qu’il obtient une réponse : fiche joueur, équipe ou match, tableau de statistiques (catégorie de classement, tendances, Français, rookies, matchs du jour), résultat de recherche choisi, comparaison complète, définition ouverte, partage ou export. Une seule fois par onglet, avec le type de réponse et une tranche de temps depuis l’arrivée : dès la page d’arrivée, moins de 30 s, 30 s à 1 min, 1 à 3 min, plus de 3 min. L’heure d’arrivée reste dans l’onglet.",
+    rule: "Un onglet est « activé » la première fois qu’il obtient une réponse : fiche joueur, équipe ou match, tableau de statistiques (catégorie de classement, tendances, Français, draft, matchs du jour), résultat de recherche choisi, comparaison complète, définition ouverte, partage ou export. Une seule fois par onglet, avec le type de réponse et une tranche de temps depuis l’arrivée : dès la page d’arrivée, moins de 30 s, 30 s à 1 min, 1 à 3 min, plus de 3 min. L’heure d’arrivée reste dans l’onglet.",
   },
   {
     title: "Retour à 7 jours (J7)",

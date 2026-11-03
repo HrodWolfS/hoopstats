@@ -11,7 +11,7 @@ import { pageType, type EventCount } from "@/lib/page-tracking";
 
 export const ACTIVATION_KINDS = {
   fiche: "Fiche joueur, équipe ou match",
-  tableau: "Classement, tendances, Français, rookies ou matchs du jour",
+  tableau: "Classement, tendances, Français, draft ou matchs du jour",
   recherche: "Résultat de recherche choisi",
   outil: "Comparaison complète, définition, partage ou export",
 } as const;
@@ -44,7 +44,7 @@ export function pageAnswerKind(pathname: string): ActivationKind | null {
   if (
     type === "tendances" ||
     type === "francais" ||
-    type === "rookies" ||
+    type === "draft" ||
     type === "matchs" ||
     type === "classements"
   ) return "tableau";

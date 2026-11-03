@@ -28,6 +28,9 @@ const nextConfig: NextConfig = {
         permanent: true,
       })),
       { source: `/fr/classements/${SEASON}`, destination: "/fr/classements?saison=:saison", permanent: true },
+      // Rookies fusionnés dans Draft (novembre 2026) : même classe, mêmes saisons.
+      { source: "/fr/rookies", destination: "/fr/draft", permanent: true },
+      { source: `/fr/rookies/saison/${SEASON}`, destination: "/fr/draft?saison=:saison", permanent: true },
     ];
   },
   images: {

@@ -27,7 +27,6 @@ const STATIC_PATHS = [
   "/fr/comparer",
   "/fr/trophees",
   "/fr/draft",
-  "/fr/rookies",
   "/fr/sources",
 ];
 

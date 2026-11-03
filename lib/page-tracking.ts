@@ -20,6 +20,7 @@ export const PAGE_TYPES = {
   classements: "Classement",
   tendances: "Tendances",
   francais: "Français",
+  // Fusionnée dans Draft (novembre 2026) ; gardée pour relire l'historique.
   rookies: "Rookies",
   comparer: "Comparer",
   // Fusionnée dans Classement (novembre 2026) ; gardée pour relire l'historique.

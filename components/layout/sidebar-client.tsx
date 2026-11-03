@@ -301,12 +301,6 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     href: "/fr/draft",
   },
   {
-    id: "rookies",
-    label: "Rookies",
-    icon: <IconRookie />,
-    href: "/fr/rookies",
-  },
-  {
     id: "best-five",
     label: "Meilleurs 5",
     icon: <IconBestFive />,

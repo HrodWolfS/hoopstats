@@ -2,15 +2,25 @@ import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { ALL_HISTORY_SEASONS, UPCOMING_SEASON } from "@/lib/nba";
-import {
-  DRAFT_2026,
-  DRAFT_2026_SOURCE,
-  type DraftPick2026,
-} from "@/lib/draft-2026";
+import { ALL_HISTORY_SEASONS, currentSeason, draftYearOf, UPCOMING_SEASON } from "@/lib/nba";
+import { DRAFT_2026, DRAFT_2026_SOURCE, type DraftPick2026 } from "@/lib/draft-2026";
+import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
+import { consolidateSeasonRows } from "@/lib/stats/season-totals";
+import { foldName } from "@/lib/stats/player-query";
+import { getPlayerMetric } from "@/lib/stats/metrics";
+import { playerStatsOrigin } from "@/lib/data-sources";
+import { tableUpdatedAt } from "@/lib/data-updates";
+import { csvFilename, isExportable } from "@/lib/export";
 import { Crumbs } from "@/components/ui/crumbs";
 import { FadeIn } from "@/components/ui/fade-in";
 import { SeasonScope } from "@/components/layout/season-scope";
+import { ShareButton } from "@/components/analytics/share-button";
+import {
+  SortablePlayerTable,
+  type SortableRow,
+} from "@/components/ui/sortable-player-table";
+
+export const revalidate = 21600;
 
 export async function generateMetadata({
   params,
@@ -21,144 +31,136 @@ export async function generateMetadata({
   // Chaque draft passée est une page à part entière : elle se déclare canonique.
   if (saison === undefined || saison === UPCOMING_SEASON || !ALL_HISTORY_SEASONS.includes(saison)) {
     return {
-      title: "Draft NBA — résultats par saison | hoopstats",
+      title: "Draft et rookies NBA — hoopstats",
       description:
-        "Consultez les résultats des Drafts NBA par saison : choix, joueurs, équipes et parcours.",
+        "Chaque classe de draft NBA, choix par choix, avec les statistiques de ses joueurs dans leur saison de rookie.",
       alternates: { canonical: "/fr/draft" },
     };
   }
-  const year = seasonToDraftYear(saison);
+  const year = draftYearOf(saison);
   return {
-    title: `Draft NBA ${year} — tous les choix | hoopstats`,
-    description: `Résultats de la Draft NBA ${year} (saison ${saison}) : choix par choix, joueurs, équipes et parcours.`,
+    title: `Draft NBA ${year} et rookies ${saison} | hoopstats`,
+    description: `La Draft NBA ${year} choix par choix et les statistiques de ses rookies en ${saison}.`,
     alternates: { canonical: `/fr/draft?saison=${saison}` },
   };
 }
 
-type DraftRow = DraftPick2026 & {
-  slug?: string;
+const FALLBACK_TEAM = {
+  abbr: "—",
+  slug: "",
+  primaryColor: "#666666",
+  secondaryColor: "#444444",
 };
 
-function seasonToDraftYear(season: string): number {
-  return Number.parseInt(season.split("-")[0], 10);
+/** Liste officielle connue sans passer par la base (la draft 2026 avant ses premiers matchs). */
+function staticPicks(draftYear: number): DraftPick2026[] {
+  return draftYear === 2026 ? DRAFT_2026 : [];
 }
 
-async function getDraft(season: string): Promise<DraftRow[]> {
-  const draftYear = seasonToDraftYear(season);
+/**
+ * Classe affichée sans paramètre : la dernière draft, dès qu'on en connaît les
+ * choix (en base ou dans la liste officielle) ; sinon la classe précédente.
+ */
+async function defaultDraftSeason(): Promise<string> {
+  for (const season of [UPCOMING_SEASON, currentSeason()]) {
+    const draftYear = draftYearOf(season);
+    if (staticPicks(draftYear).length > 0) return season;
+    if ((await prisma.player.count({ where: { draftYear } })) > 0) return season;
+  }
+  return ALL_HISTORY_SEASONS[ALL_HISTORY_SEASONS.indexOf(currentSeason()) + 1] ?? currentSeason();
+}
 
-  if (draftYear === 2026) return DRAFT_2026;
-
+async function getDraftClass(season: string): Promise<SortableRow[]> {
+  // Depuis Player : tous les draftés, même ceux qui n'ont pas encore joué.
   const players = await prisma.player.findMany({
-    where: { draftYear, draftPick: { not: null } },
-    orderBy: { draftPick: "asc" },
-    select: {
-      slug: true,
-      firstName: true,
-      lastName: true,
-      draftPick: true,
-      college: true,
+    where: { draftYear: draftYearOf(season) },
+    include: {
       seasons: {
         where: { season },
-        take: 1,
-        select: { team: { select: { abbr: true, city: true, name: true } } },
+        include: {
+          team: {
+            select: { abbr: true, slug: true, primaryColor: true, secondaryColor: true },
+          },
+        },
       },
     },
+    orderBy: { draftPick: "asc" },
   });
 
-  return players.map((player) => {
-    const team = player.seasons[0]?.team;
+  // Un rookie transféré en cours de saison : une seule ligne, saison entière.
+  const rookieSeasons = new Map(
+    (await consolidateSeasonRows(season, players.flatMap((p) => p.seasons))).map(
+      (row) => [row.playerId, row],
+    ),
+  );
+
+  return players.map((p) => {
+    const ps = rookieSeasons.get(p.id) ?? null;
+    const team = ps?.team ?? FALLBACK_TEAM;
     return {
-      pick: player.draftPick as number,
-      player: `${player.firstName} ${player.lastName}`,
-      slug: player.slug,
-      origin: player.college ?? undefined,
-      team: team ? `${team.city} ${team.name}` : "Équipe non renseignée",
-      teamAbbr: team?.abbr ?? "—",
+      id: p.id,
+      playerSlug: p.slug,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      position: p.position,
+      photoUrl: p.photoUrl,
+      college: p.college,
+      teamAbbr: ps?.isMultiTeam ? MULTI_TEAM_ABBR : team.abbr,
+      teamSlug: team.slug,
+      primaryColor: team.primaryColor,
+      secondaryColor: team.secondaryColor,
+      draftPick: p.draftPick,
+      gamesPlayed: ps?.gamesPlayed ?? 0,
+      pointsPerGame: ps?.pointsPerGame ?? 0,
+      reboundsPerGame: ps?.reboundsPerGame ?? 0,
+      assistsPerGame: ps?.assistsPerGame ?? 0,
+      trueShooting: ps?.trueShooting ?? null,
     };
   });
 }
 
-function DraftRound({
-  rows,
-  start,
-  end,
-  locale,
-  teamLabel,
-}: {
-  rows: DraftRow[];
-  start: number;
-  end: number;
-  locale: string;
-  teamLabel: string;
-}) {
-  const picks = rows.filter((row) => row.pick >= start && row.pick <= end);
-  if (picks.length === 0) return null;
+const COLUMNS = [
+  { key: "pick" as const, label: "Pick" },
+  { key: "gamesPlayed" as const, label: getPlayerMetric("gamesPlayed").shortLabel },
+  { key: "pointsPerGame" as const, label: getPlayerMetric("pointsPerGame").shortLabel },
+  { key: "reboundsPerGame" as const, label: getPlayerMetric("reboundsPerGame").shortLabel },
+  { key: "assistsPerGame" as const, label: getPlayerMetric("assistsPerGame").shortLabel, show: "sm" as const },
+  { key: "trueShooting" as const, label: getPlayerMetric("trueShooting").shortLabel, show: "sm" as const },
+];
 
+/** Choix de la liste officielle absents de la base : pas encore de fiche NBA. */
+function PendingPicks({ picks }: { picks: DraftPick2026[] }) {
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="font-display font-semibold text-xl tracking-tight">
-          {start === 1 ? "Premier tour" : "Deuxième tour"}
+          Pas encore en NBA
         </h2>
         <span className="text-[11px] font-mono uppercase tracking-widest text-white/30">
-          Choix {start}–{end}
+          {picks.length} choix
         </span>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111114]">
-        <div className="hidden grid-cols-[4rem_1.25fr_1fr_1fr] gap-4 border-b border-white/[0.06] px-5 py-3 text-[10px] font-mono uppercase tracking-widest text-white/30 sm:grid">
-          <span>Pick</span>
-          <span>Joueur</span>
-          <span>{teamLabel}</span>
-          <span>Parcours</span>
-        </div>
-        <ol className="divide-y divide-white/[0.05]">
-          {picks.map((pick) => (
-            <li
-              key={`${pick.pick}-${pick.player}`}
-              className="grid grid-cols-[3rem_1fr] gap-x-3 gap-y-1 px-4 py-4 sm:grid-cols-[4rem_1.25fr_1fr_1fr] sm:items-center sm:gap-4 sm:px-5"
-            >
-              <span
-                className={`font-display text-xl font-bold tabular-nums ${pick.pick <= 3 ? "text-orange-300" : "text-white/35"}`}
-              >
-                #{pick.pick}
-              </span>
-              <div className="min-w-0">
-                {pick.slug ? (
-                  <Link
-                    href={`/${locale}/joueurs/${pick.slug}`}
-                    className="font-display font-semibold text-white hover:text-orange-300"
-                  >
-                    {pick.player}
-                  </Link>
-                ) : (
-                  <div className="font-display font-semibold text-white">
-                    {pick.player}
-                  </div>
-                )}
-                {pick.trade && (
-                  <div className="mt-0.5 text-[11px] text-orange-300/70 sm:hidden">
-                    {pick.trade}
-                  </div>
-                )}
+      <p className="text-xs text-white/35">
+        Draftés mais sans match NBA cette saison (G League, Europe, université ou non signés).
+      </p>
+      <ol className="divide-y divide-white/[0.05] overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111114]">
+        {picks.map((pick) => (
+          <li
+            key={pick.pick}
+            className="grid grid-cols-[3rem_1fr_auto] items-baseline gap-x-3 px-4 py-3 sm:px-5"
+          >
+            <span className="font-display font-bold tabular-nums text-white/35">#{pick.pick}</span>
+            <div className="min-w-0">
+              <div className="font-display font-semibold text-white/80 truncate">{pick.player}</div>
+              <div className="text-[11px] text-white/35 truncate">
+                {pick.origin ?? "—"}
+                {pick.trade && <span className="text-orange-300/70"> · {pick.trade}</span>}
               </div>
-              <div className="col-start-2 text-sm text-white/55 sm:col-start-auto">
-                <span className="mr-2 font-mono text-[11px] text-white/30">
-                  {pick.teamAbbr}
-                </span>
-                <span className="hidden lg:inline">{pick.team}</span>
-              </div>
-              <div className="col-start-2 min-w-0 text-xs text-white/35 sm:col-start-auto">
-                <div>{pick.origin ?? "—"}</div>
-                {pick.trade && (
-                  <div className="mt-0.5 hidden text-orange-300/70 sm:block">
-                    {pick.trade}
-                  </div>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
+            </div>
+            <span className="font-mono text-[11px] text-white/40">{pick.teamAbbr}</span>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -170,85 +172,116 @@ export default async function DraftPage({
 }) {
   const { locale, saison } = await params;
   if (saison !== undefined && !ALL_HISTORY_SEASONS.includes(saison)) notFound();
-  const season = saison ?? UPCOMING_SEASON;
-  const draftYear = seasonToDraftYear(season);
-  const rows = await getDraft(season);
-  const firstPick = rows.find((row) => row.pick === 1);
+  const defaultSeason = await defaultDraftSeason();
+  const season = saison ?? defaultSeason;
+  const draftYear = draftYearOf(season);
+  const rows = await getDraftClass(season);
+
+  // Un choix est connu par son numéro, ou par son nom (apostrophes droites ou typographiques).
+  const fold = (name: string) => foldName(name).replace(/[’']/g, "");
+  const knownPicks = new Set(rows.map((row) => row.draftPick));
+  const knownNames = new Set(rows.map((row) => fold(`${row.firstName} ${row.lastName}`)));
+  const pending = staticPicks(draftYear).filter(
+    (pick) => !knownPicks.has(pick.pick) && !knownNames.has(fold(pick.player)),
+  );
+  const firstPick =
+    rows.find((row) => row.draftPick === 1) ?? staticPicks(draftYear).find((pick) => pick.pick === 1);
+  const firstPickName = firstPick
+    ? "player" in firstPick ? firstPick.player : `${firstPick.firstName} ${firstPick.lastName}`
+    : null;
+  const played = rows.filter((row) => row.gamesPlayed > 0).length;
+
+  const origin = playerStatsOrigin(season);
+  const csv = isExportable([origin])
+    ? {
+        title: `Draft NBA ${draftYear} · rookies ${season} · saison régulière, par match`,
+        filename: csvFilename(["draft", season]),
+        dimension: "draft",
+        updatedAt: await tableUpdatedAt([origin]),
+      }
+    : undefined;
 
   return (
     <div className="space-y-8">
+      <SeasonScope seasons={ALL_HISTORY_SEASONS} season={season} defaultSeason={defaultSeason} />
       <FadeIn>
-      <SeasonScope seasons={ALL_HISTORY_SEASONS} season={season} defaultSeason={UPCOMING_SEASON} />
-        <Crumbs
-          items={[
-            { label: "Accueil", href: `/${locale}` },
-            { label: `Draft ${draftYear}` },
-          ]}
-        />
+        <div className="flex items-center justify-between gap-3">
+          <Crumbs
+            items={[
+              { label: "Accueil", href: `/${locale}` },
+              { label: `Draft ${draftYear}` },
+            ]}
+          />
+          <ShareButton dimension="draft" />
+        </div>
         <div className="mt-4 rounded-3xl border border-orange-500/20 bg-gradient-to-br from-orange-500/[0.12] via-[#111114] to-[#111114] p-6 sm:p-8">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-orange-300">
-            Saison {season} · Draft NBA {draftYear}
+            Classe {draftYear} · rookies {season}
           </div>
           <h1 className="font-display text-4xl font-bold tracking-[-0.03em] sm:text-5xl">
             Draft {draftYear}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/45">
-            Utilisez le sélecteur de saison pour parcourir les différentes
-            classes de Draft disponibles.
+            Les choix de la draft et ce qu&apos;ils donnent dans leur saison de
+            rookie. Triez par colonne ; le sélecteur de saison change de classe.
           </p>
-          <div className="mt-6 flex flex-wrap gap-5">
-            {firstPick && (
+          <div className="mt-6 flex flex-wrap gap-x-8 gap-y-4">
+            {firstPickName && (
               <div>
-                <div className="font-display text-3xl font-bold text-orange-300">
-                  {firstPick.player}
-                </div>
+                <div className="font-display text-3xl font-bold text-orange-300">{firstPickName}</div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
-                  N°1 · {firstPick.teamAbbr}
+                  Choix n°1
                 </div>
               </div>
             )}
             <div>
-              <div className="font-display text-3xl font-bold">
-                {rows.length}
-              </div>
+              <div className="font-display text-3xl font-bold">{rows.length + pending.length}</div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
-                joueurs répertoriés
+                joueurs de la classe
+              </div>
+            </div>
+            <div>
+              <div className="font-display text-3xl font-bold">{played}</div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
+                ont joué en {season}
               </div>
             </div>
           </div>
         </div>
       </FadeIn>
 
-      {rows.length > 0 ? (
-        <>
-          <FadeIn delay={0.08}>
-            <DraftRound
-              rows={rows}
-              start={1}
-              end={30}
-              locale={locale}
-              teamLabel={draftYear === 2026 ? "Équipe à la Draft" : "Équipe rookie"}
-            />
-          </FadeIn>
-          <FadeIn delay={0.12}>
-            <DraftRound
-              rows={rows}
-              start={31}
-              end={60}
-              locale={locale}
-              teamLabel={draftYear === 2026 ? "Équipe à la Draft" : "Équipe rookie"}
-            />
-          </FadeIn>
-        </>
-      ) : (
+      {rows.length > 0 && (
+        <FadeIn delay={0.08}>
+          <SortablePlayerTable
+            rows={rows}
+            columns={COLUMNS}
+            defaultSort="pick"
+            defaultDir="asc"
+            locale={locale}
+            season={season}
+            liveSeason={currentSeason()}
+            showCollege
+            csv={csv}
+            footerNote={`Classe ${draftYear} · statistiques de la saison ${season} · cliquer sur une colonne pour trier`}
+          />
+        </FadeIn>
+      )}
+
+      {pending.length > 0 && (
+        <FadeIn delay={0.12}>
+          <PendingPicks picks={pending} />
+        </FadeIn>
+      )}
+
+      {rows.length === 0 && pending.length === 0 && (
         <p className="py-12 text-center text-sm font-mono text-white/40">
-          Aucune donnée de Draft disponible pour la saison {season}.
+          Aucune donnée de draft disponible pour la saison {season}.
         </p>
       )}
 
-      {draftYear === 2026 && (
+      {staticPicks(draftYear).length > 0 && (
         <p className="text-center text-xs text-white/30">
-          Source :{" "}
+          Liste des choix :{" "}
           <Link
             href={DRAFT_2026_SOURCE}
             target="_blank"
@@ -257,8 +290,7 @@ export default async function DraftPage({
           >
             NBA.com — résultats officiels
           </Link>
-          . Les équipes indiquées sont celles ayant effectué le choix ; les
-          transferts sont précisés séparément.
+          . Équipe affichée : celle qui a drafté ; les transferts sont précisés.
         </p>
       )}
     </div>
