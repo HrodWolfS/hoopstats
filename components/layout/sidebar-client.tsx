@@ -247,10 +247,14 @@ export type NavItem = {
   disabled?: boolean;
 };
 
+/**
+ * Ordre du menu (barre latérale et menu mobile) : du plus consulté au moins
+ * consulté, estimé pour l'instant (saison régulière en cours) ; à revoir avec
+ * les visites réelles du suivi de pages.
+ */
 export const ALL_NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Accueil", icon: <IconHome />, href: "/fr" },
   { id: "matches", label: "Matchs", icon: <IconMatches />, href: "/fr/matchs" },
-  { id: "teams", label: "Équipes", icon: <IconTeams />, href: "/fr/equipes" },
   { id: "standings", label: "Classement", icon: <IconStandings />, href: "/fr/classements" },
   {
     id: "players",
@@ -258,35 +262,12 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     icon: <IconPlayers />,
     href: "/fr/joueurs",
   },
-  {
-    id: "trends",
-    label: "Tendances",
-    icon: <IconTrends />,
-    href: "/fr/tendances",
-  },
+  { id: "teams", label: "Équipes", icon: <IconTeams />, href: "/fr/equipes" },
   {
     id: "french",
     label: "Français en NBA",
     icon: <IconFrench />,
     href: "/fr/francais",
-  },
-  {
-    id: "guides",
-    label: "Guides stats",
-    icon: <IconBestFive />,
-    href: "/fr/guides",
-  },
-  {
-    id: "playoffs",
-    label: "Playoffs",
-    icon: <IconPlayoffs />,
-    href: "/fr/playoffs",
-  },
-  {
-    id: "trophees",
-    label: "Trophées",
-    icon: <IconTrophy />,
-    href: "/fr/trophees",
   },
   {
     id: "compare",
@@ -295,16 +276,40 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     href: "/fr/comparer",
   },
   {
+    id: "trends",
+    label: "Tendances",
+    icon: <IconTrends />,
+    href: "/fr/tendances",
+  },
+  {
     id: "draft",
     label: "Draft",
     icon: <IconRookie />,
     href: "/fr/draft",
   },
   {
+    id: "trophees",
+    label: "Trophées",
+    icon: <IconTrophy />,
+    href: "/fr/trophees",
+  },
+  {
+    id: "playoffs",
+    label: "Playoffs",
+    icon: <IconPlayoffs />,
+    href: "/fr/playoffs",
+  },
+  {
     id: "best-five",
     label: "Meilleurs 5",
     icon: <IconBestFive />,
     href: "/fr/meilleurs-5",
+  },
+  {
+    id: "guides",
+    label: "Guides stats",
+    icon: <IconBestFive />,
+    href: "/fr/guides",
   },
 ];
 
