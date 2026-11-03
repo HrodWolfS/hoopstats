@@ -102,7 +102,7 @@ function IconFrench() {
   );
 }
 
-function IconSeasons() {
+function IconStandings() {
   return (
     <svg
       width="14"
@@ -112,8 +112,7 @@ function IconSeasons() {
       stroke="currentColor"
       strokeWidth="1.8"
     >
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <path d="M16 2v4M8 2v4M3 10h18" />
+      <path d="M4 6h2M4 12h2M4 18h2M9 6h11M9 12h11M9 18h11" />
     </svg>
   );
 }
@@ -252,17 +251,12 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Accueil", icon: <IconHome />, href: "/fr" },
   { id: "matches", label: "Matchs", icon: <IconMatches />, href: "/fr/matchs" },
   { id: "teams", label: "Équipes", icon: <IconTeams />, href: "/fr/equipes" },
+  { id: "standings", label: "Classement", icon: <IconStandings />, href: "/fr/classements" },
   {
     id: "players",
     label: "Joueurs",
     icon: <IconPlayers />,
     href: "/fr/joueurs",
-  },
-  {
-    id: "leaderboards",
-    label: "Classements",
-    icon: <IconTrophy />,
-    href: "/fr/classements",
   },
   {
     id: "trends",
@@ -293,12 +287,6 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     label: "Trophées",
     icon: <IconTrophy />,
     href: "/fr/trophees",
-  },
-  {
-    id: "seasons",
-    label: "Saisons",
-    icon: <IconSeasons />,
-    href: "/fr/saisons",
   },
   {
     id: "compare",

@@ -96,18 +96,17 @@ const JOURNEYS: Journey[] = [
     },
   },
   {
-    name: "Ouvrir un classement",
+    name: "Ouvrir le classement",
     async run(page) {
       await open(page, "/fr/classements");
-      const link = page.locator('a[href^="/fr/classements/"]').first();
-      await link.waitFor({ timeout: TIMEOUT }).catch(() => fail("aucun lien de classement"));
-      await link.tap();
-      await waitForPath(page, (url) => /^\/fr\/classements\/[^/]+\/[^/]+$/.test(url.pathname), "page de classement");
-      // Avant le premier match de la saison, le classement annonce qu'il est vide.
-      const rows = await page.getByRole("row").count();
-      const notStarted = await page.getByText(/Aucun match de saison régulière joué/).count();
-      if (rows < 2 && !notStarted) fail("classement vide");
-      await assertNoOverflow(page, "page de classement");
+      // Deux conférences de 15 équipes, ou le message d'une saison sans données.
+      const teams = await page.locator('table a[href^="/fr/equipes/"]').count();
+      const empty = await page.getByText(/Aucune donnée disponible/).count();
+      if (teams < 30 && !empty) fail(`classement incomplet (${teams} équipes)`);
+      await assertNoOverflow(page, "classement");
+      if (empty) return;
+      await page.locator('table a[href^="/fr/equipes/"]').first().tap();
+      await waitForPath(page, (url) => /^\/fr\/equipes\/[^/]+$/.test(url.pathname), "fiche équipe");
     },
   },
   {

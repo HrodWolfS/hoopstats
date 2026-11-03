@@ -44,7 +44,7 @@ const QUERY_ROUTES: QueryRoute[] = [
     accepts: isSeasonParam,
   },
   {
-    path: /^\/fr\/(equipes|rookies|playoffs|saisons|draft|trophees|tendances)$/,
+    path: /^\/fr\/(equipes|rookies|playoffs|classements|draft|trophees|tendances)$/,
     param: "saison",
     segment: "saison",
     accepts: isSeasonParam,

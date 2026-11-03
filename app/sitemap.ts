@@ -1,7 +1,6 @@
 import { type MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
-import { ALL_HISTORY_SEASONS, ALL_SEASONS, currentSeason, draftYearOf, previousSeason, UPCOMING_SEASON } from "@/lib/nba";
-import { LEADERBOARDS } from "@/lib/stats/leaders";
+import { ALL_HISTORY_SEASONS, currentSeason, draftYearOf, previousSeason, UPCOMING_SEASON } from "@/lib/nba";
 import { GUIDES } from "@/lib/guides";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://hoopstats.fr";
@@ -66,7 +65,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const additionalStaticRoutes = [
     "matchs",
     "classements",
-    "saisons",
     "playoffs",
     "draft",
     "rookies",
@@ -105,17 +103,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  // La saison suivante n'a aucun leader avant son premier match : rien à indexer.
-  const leaderboardSeasons = ALL_SEASONS.filter((season) => season <= liveSeason);
-  const leaderboardRoutes: MetadataRoute.Sitemap = leaderboardSeasons.flatMap((season) =>
-    LEADERBOARDS.map((leaderboard) => ({
-      url: `${BASE_URL}/fr/classements/${season}/${leaderboard.slug}`,
-      lastModified:
-        season === liveSeason ? contentUpdatedAt : seasonArchiveDate(season),
-      changeFrequency: season === liveSeason ? ("daily" as const) : ("yearly" as const),
-      priority: season === liveSeason ? 0.8 : 0.6,
-    })),
-  );
   // Saisons passées : chaque page de saison se déclare canonique. Seules les
   // saisons qui ont du contenu en base sont listées ; l'adresse nue (saison
   // par défaut) est déjà dans les routes statiques.
@@ -128,6 +115,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const teamSeasonRoutes: MetadataRoute.Sitemap = teamSeasons.map((row) =>
     archive(`equipes/${row.team.slug}`, row.season),
   );
+  const standingSeasonRoutes: MetadataRoute.Sitemap = [...new Set(teamSeasons.map((row) => row.season))]
+    .map((season) => archive("classements", season));
   const playoffSeasonList = playoffSeasons.map((row) => row.season);
   const defaultPlayoffSeason = playoffSeasonList.includes(liveSeason) ? liveSeason : previousSeason(liveSeason);
   const playoffRoutes: MetadataRoute.Sitemap = playoffSeasonList
@@ -154,8 +143,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...teamRoutes,
     ...playerRoutes,
     ...gameRoutes,
-    ...leaderboardRoutes,
     ...teamSeasonRoutes,
+    ...standingSeasonRoutes,
     ...playoffRoutes,
     ...draftRoutes,
     ...trophySeasonRoutes,

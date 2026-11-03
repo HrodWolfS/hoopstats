@@ -56,7 +56,7 @@ Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
 - Transfert Neon (décision 015) : surveiller la consommation dans la console
   Neon chaque semaine de novembre ; limite gratuite 5 Go par mois, à revoir
   au-delà de 2 Go à mi-novembre.
-- Colonne NET de la page Saisons toujours vide : `netRating` absent en base
+- Colonne Net de la page Classement (ex-Saisons) toujours vide : `netRating` absent en base
   pour les 30 équipes de 2023-24 à 2025-26 (constaté le 10 oct., antérieur à
   la règle d'arrondi).
 
@@ -80,6 +80,8 @@ Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
 | 2 nov. | Logo « Pourcentage » (signe % : ballon orange et cercle) : kit complet dans `design/logo/` (variantes, assemblages, icônes, guide d'usage) ; intégré au site — favicon, `app/icon.svg`, `app/apple-icon.png`, manifeste (`app/manifest.ts`, icônes dans `public/icons/`), symbole à la place de la tuile « h. » de la barre latérale et du menu mobile. Recherche d'antériorité INPI à faire avant tout dépôt. |
 | 3 nov. | Correctifs visuels : « Meilleurs du match » — la valeur passe devant le nom, plus grande et en orange. Explorateur joueurs — la recherche renvoyait « aucun joueur » car le seuil par défaut de 10 matchs vidait tout en début de saison : seuil automatique (10 au plus, la moitié des matchs déjà joués) et aucun seuil pour une recherche par nom ; recherche à chaque frappe ; seuls joueur, saison et statistique restent visibles, le reste sous « Plus de filtres » (chevron) ; chaque changement s'applique sans bouton. |
 | 3 nov. | Vitesse : écrans de chargement (squelettes) affichés dès le clic — générique, explorateur joueurs, fiche joueur, matchs, fiche match, fiche équipe. Explorateur joueurs : données de la saison mises en cache (6 h, expirées par la fin de synchro via `/api/revalidate`) ; recherche (sans accents, nom complet), position, équipe et tri se font en mémoire — plus de lecture Neon à chaque visite ni à chaque frappe (était le seul écran à ~2,3 s). 3 tests. Points ouverts : région Neon à vérifier face aux fonctions Vercel (iad1) ; hoopstats.fr ne résout pas (DNS). |
+| 3 nov. | Neon et Vercel placés tous deux à Francfort par l'utilisateur (point ouvert de la région levé). |
+| 3 nov. | Classement : les pages Classements (meilleurs joueurs par statistique, doublon de l'explorateur) et Saisons fusionnent en une page **Classement** par conférence (`/fr/classements`, saisons passées en `/fr/classements/saison/[saison]`) : logo de chaque équipe, trait pointillé « Playoffs » après la 6e place et « Play-in » après la 10e (top 8 seulement avant 2020-21), colonne Écart (matchs de retard), badges de parcours en playoffs gardés. Logos : `Team.logoUrl` vide en base, repli sur le logo officiel déduit de l'abréviation (`lib/team-logos.ts`) dans `TeamMono`, donc partout sur le site. Anciennes adresses redirigées en 308 (`/fr/saisons…` → classement ; `/fr/classements/[saison]/[stat]` → explorateur sur la bonne statistique). Menu : « Classement » après Équipes, « Saisons » retiré. Vérifié à 390 px : 30 logos chargés, pas de débordement. |
 
 ---
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { readable } from "@/lib/color";
+import { teamLogoUrl } from "@/lib/team-logos";
 
 type Size = "xs" | "sm" | "md" | "lg" | "xl" | "hero";
 
@@ -50,7 +51,9 @@ export function TeamMono({
 
   const s = SIZES[size];
   const fg = readable(secondaryColor);
-  const useLogo = !!logoUrl && !imgError;
+  // Logo en base, sinon logo officiel déduit de l'abréviation.
+  const src = logoUrl || teamLogoUrl(abbr);
+  const useLogo = !!src && !imgError;
 
   return (
     <div
@@ -67,7 +70,7 @@ export function TeamMono({
       {useLogo ? (
         <div className={`relative w-full h-full ${LOGO_PADDING[size]}`}>
           <Image
-            src={logoUrl}
+            src={src}
             alt={abbr}
             width={s.px}
             height={s.px}

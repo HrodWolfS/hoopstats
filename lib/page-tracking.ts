@@ -17,11 +17,12 @@ export const PAGE_TYPES = {
   equipe: "Fiche équipe",
   matchs: "Matchs du jour",
   match: "Fiche match",
-  classements: "Classements",
+  classements: "Classement",
   tendances: "Tendances",
   francais: "Français",
   rookies: "Rookies",
   comparer: "Comparer",
+  // Fusionnée dans Classement (novembre 2026) ; gardée pour relire l'historique.
   saisons: "Saisons",
   playoffs: "Playoffs",
   draft: "Draft",
@@ -41,8 +42,7 @@ export type PageType = keyof typeof PAGE_TYPES;
 const LIST_SUBPATHS: Record<string, string[]> = {
   matchs: ["jour", "equipe"],
   equipes: ["saison"],
-  saisons: ["saison"],
-  classements: [],
+  classements: ["saison"],
 };
 
 const DETAIL_TYPE: Partial<Record<string, PageType>> = {
@@ -200,7 +200,7 @@ export function validatePageTracking(): string[] {
     ["/fr/equipes/spurs", "equipe"],
     ["/fr/matchs/jour/2026-10-08", "matchs"],
     ["/fr/matchs/401585000", "match"],
-    ["/fr/classements/2024-25", "classements"],
+    ["/fr/classements/saison/2024-25", "classements"],
     ["/fr/politique-confidentialite", "legal"],
     ["/fr/pilotage", "autre"],
     ["/fr/inconnu/x", "autre"],

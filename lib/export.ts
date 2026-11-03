@@ -90,11 +90,11 @@ export const SHARE_RULES: { title: string; rule: string }[] = [
   },
   {
     title: "Cartes sociales",
-    rule: "Les classements, les tendances et les fiches match ont une image de partage : la valeur, son contexte (saison, statistique, fenêtre), la date des données et la marque hoopstats. Une fiche match n'affiche le score que s'il passe le contrôle de cohérence.",
+    rule: "Les tendances et les fiches match ont une image de partage : la valeur, son contexte (saison, statistique, fenêtre), la date des données et la marque hoopstats. Une fiche match n'affiche le score que s'il passe le contrôle de cohérence.",
   },
   {
     title: "Tableaux exportables",
-    rule: "Seuls les tableaux que hoopstats calcule lui-même à partir des box scores ESPN s'exportent en CSV : tendances, classements de la saison en cours, tableaux de saison des Français et des rookies de la saison en cours. Les statistiques officielles NBA des saisons passées, les stats avancées importées et les box scores ne s'exportent pas.",
+    rule: "Seuls les tableaux que hoopstats calcule lui-même à partir des box scores ESPN s'exportent en CSV : tendances, tableaux de saison des Français et des rookies de la saison en cours. Les statistiques officielles NBA des saisons passées, les stats avancées importées et les box scores ne s'exportent pas.",
   },
   {
     title: "Contenu d'un export",

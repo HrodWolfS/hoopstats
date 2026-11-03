@@ -13,7 +13,6 @@
 
 import { appendFileSync } from "node:fs";
 import { chromium, type Page } from "playwright";
-import { currentSeason } from "../lib/nba";
 
 const BASE_URL = (process.argv[2] ?? "https://hoopstats-kappa.vercel.app").replace(/\/$/, "");
 const WIDTHS = [320, 390];
@@ -24,9 +23,6 @@ const STATIC_PATHS = [
   "/fr/equipes",
   "/fr/matchs",
   "/fr/classements",
-  `/fr/classements/${currentSeason()}/points`,
-  `/fr/classements/${currentSeason()}/true-shooting`,
-  "/fr/saisons",
   "/fr/playoffs",
   "/fr/comparer",
   "/fr/trophees",

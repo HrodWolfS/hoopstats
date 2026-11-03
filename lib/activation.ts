@@ -37,18 +37,17 @@ export function timeBucket(elapsedMs: number): Exclude<TimeBucket, "direct"> {
   return "gt180";
 }
 
-/**
- * Page qui répond à une question. L'index des classements n'est qu'un menu :
- * seule une catégorie (/classements/2025-26/points) compte.
- */
+/** Page qui répond à une question : fiche, tableau ou classement des conférences. */
 export function pageAnswerKind(pathname: string): ActivationKind | null {
   const type = pageType(pathname);
   if (type === "joueur" || type === "equipe" || type === "match") return "fiche";
-  if (type === "tendances" || type === "francais" || type === "rookies" || type === "matchs") return "tableau";
-  if (type === "classements") {
-    const segments = pathname.split(/[?#]/)[0].split("/").filter(Boolean);
-    return segments.length >= 4 ? "tableau" : null;
-  }
+  if (
+    type === "tendances" ||
+    type === "francais" ||
+    type === "rookies" ||
+    type === "matchs" ||
+    type === "classements"
+  ) return "tableau";
   return null;
 }
 
@@ -108,9 +107,8 @@ export function validateActivation(): string[] {
     ["/fr/joueurs/victor-wembanyama", "fiche"],
     ["/fr/matchs/401585000", "fiche"],
     ["/fr/matchs/jour/2026-10-08", "tableau"],
-    ["/fr/classements", null],
-    ["/fr/classements/2025-26", null],
-    ["/fr/classements/2025-26/points", "tableau"],
+    ["/fr/classements", "tableau"],
+    ["/fr/classements?saison=2024-25", "tableau"],
     ["/fr/tendances", "tableau"],
     ["/fr/comparer", null],
   ];
