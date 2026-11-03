@@ -1,3 +1,4 @@
+import { automaticMinimumGames, buildExplorerUrl, parsePlayerExplorerParams } from "@/lib/stats/player-query";
 /**
  * Cas de test minimaux de la feuille de route (§ 0.3), sur les fonctions de
  * calcul qu'utilisent les pages : chaque cas reproduit une erreur qui
@@ -328,5 +329,25 @@ describe("True Shooting", () => {
     ])!;
     // 40 / (2 × (30 + 0,44 × 10))
     expect(season.trueShooting).toBeCloseTo(40 / (2 * 34.4), 10);
+  });
+});
+
+describe("explorateur joueurs — seuil de matchs", () => {
+  it("suit l'avancement de la saison sans dépasser 10", () => {
+    expect(automaticMinimumGames(6, "")).toBe(3);
+    expect(automaticMinimumGames(0, "")).toBe(0);
+    expect(automaticMinimumGames(60, "")).toBe(10);
+  });
+
+  it("ne filtre pas une recherche par nom", () => {
+    expect(automaticMinimumGames(60, "victor")).toBe(0);
+  });
+
+  it("ne fige pas le seuil automatique dans l'URL", () => {
+    const auto = parsePlayerExplorerParams({ saison: "2025-26" });
+    expect(auto.minimumGamesExplicit).toBe(false);
+    expect(buildExplorerUrl("fr", auto)).not.toContain("min_mj");
+    const explicit = parsePlayerExplorerParams({ saison: "2025-26", min_mj: "20" });
+    expect(buildExplorerUrl("fr", explicit)).toContain("min_mj=20");
   });
 });

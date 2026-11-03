@@ -66,7 +66,7 @@ export function PlayerExplorerTable({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <ContextCard label="Cohorte qualifiée" value={`${population.total} joueurs`} />
+        <ContextCard label="Cohorte qualifiée" value={`${population.total} joueur${population.total > 1 ? "s" : ""}`} />
         <ContextCard label="Moyenne" value={formatMetric(params.metric, population.mean, params.mode)} />
         <ContextCard label="Médiane" value={formatMetric(params.metric, population.median, params.mode)} />
         <ContextCard

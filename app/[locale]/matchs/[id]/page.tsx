@@ -863,21 +863,27 @@ function GameLeaders({
   const cell = (side: "away" | "home", key: (typeof LEADER_STATS)[number]["key"]) => {
     const leader = leaders[side][key];
     if (!leader) return <span className="text-white/25">—</span>;
+    // Valeur détachée du nom : en tête de cellule, plus grande, en couleur,
+    // pour se lire d'un coup d'œil sans la confondre avec le nom.
     return (
-      <span className="[overflow-wrap:anywhere]">
-        {leader.players.map((player, index) => (
-          <span key={player.name}>
-            {index > 0 && ", "}
-            {player.slug ? (
-              <Link href={`/${locale}/joueurs/${player.slug}`} className="text-white/80 hover:text-orange-300 hover:underline">
-                {player.name}
-              </Link>
-            ) : (
-              <span className="text-white/80">{player.name}</span>
-            )}
-          </span>
-        ))}{" "}
-        <span className="font-mono tabular-nums text-white">{leader.value}</span>
+      <span className="flex items-baseline gap-2.5">
+        <span className="shrink-0 min-w-[2ch] font-display text-lg font-semibold leading-none tabular-nums text-orange-300">
+          {leader.value}
+        </span>
+        <span className="min-w-0 text-[13px] leading-snug text-white/65 [overflow-wrap:anywhere]">
+          {leader.players.map((player, index) => (
+            <span key={player.name}>
+              {index > 0 && ", "}
+              {player.slug ? (
+                <Link href={`/${locale}/joueurs/${player.slug}`} className="hover:text-orange-300 hover:underline">
+                  {player.name}
+                </Link>
+              ) : (
+                player.name
+              )}
+            </span>
+          ))}
+        </span>
       </span>
     );
   };

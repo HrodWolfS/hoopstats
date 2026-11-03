@@ -1,5 +1,4 @@
 import { type Metadata } from "next";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ALL_SEASONS, currentSeason, SEASON_OPENERS, seasonsThrough } from "@/lib/nba";
 import { SeasonScope } from "@/components/layout/season-scope";
@@ -8,18 +7,20 @@ import {
   PlayerExplorerTable,
   type PlayerExplorerRow,
 } from "@/components/player/player-explorer-table";
+import { PlayerExplorerFilters } from "@/components/player/player-explorer-filters";
 import { getPlayerMetric } from "@/lib/stats/metrics";
 import {
   calculateMetricContext,
   calculatePopulationSummary,
 } from "@/lib/stats/context";
 import {
+  automaticMinimumGames,
   buildPlayerExplorerWhere,
   computeMetricValue,
   parsePlayerExplorerParams,
   passesExplorerThresholds,
-  PLAYER_EXPLORER_METRICS,
 } from "@/lib/stats/player-query";
+import { seasonTeamGames } from "@/lib/stats/leaders";
 import { MULTI_TEAM_ABBR } from "@/lib/stats/season-consolidation";
 import { consolidateSeasonRows } from "@/lib/stats/season-totals";
 import { AnalyticsEvent } from "@/components/analytics/analytics-event";
@@ -48,10 +49,6 @@ export async function generateMetadata({
 }
 
 const PAGE_SIZE = 50;
-const POSITIONS = ["G", "PG", "SG", "F", "SF", "PF", "C"];
-
-const inputClass =
-  "h-10 rounded-lg border border-white/[0.08] bg-black/20 px-3 text-sm text-white/70 outline-none transition focus:border-orange-500/40 focus:ring-2 focus:ring-orange-500/10";
 
 export default async function PlayersPage({
   params,
@@ -61,9 +58,9 @@ export default async function PlayersPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
-  const explorerParams = parsePlayerExplorerParams(await searchParams);
-  const where = buildPlayerExplorerWhere(explorerParams);
-  const [stintRows, teams] = await Promise.all([
+  const parsedParams = parsePlayerExplorerParams(await searchParams);
+  const where = buildPlayerExplorerWhere(parsedParams);
+  const [stintRows, teams, mostGames] = await Promise.all([
     prisma.playerSeason.findMany({
       where,
       include: {
@@ -90,12 +87,26 @@ export default async function PlayersPage({
       orderBy: { abbr: "asc" },
       select: { abbr: true, city: true, name: true },
     }),
+    prisma.playerSeason.aggregate({
+      where: { season: parsedParams.season },
+      _max: { gamesPlayed: true },
+    }),
   ]);
   // Une ligne par joueur : les seuils s'appliquent à la saison entière d'un
   // joueur transféré, pas à chacun de ses passages.
-  const allRows = (
-    await consolidateSeasonRows(explorerParams.season, stintRows)
-  ).filter((row) => passesExplorerThresholds(row, explorerParams));
+  const seasonRows = await consolidateSeasonRows(parsedParams.season, stintRows);
+  const explorerParams = parsedParams.minimumGamesExplicit
+    ? parsedParams
+    : {
+        ...parsedParams,
+        minimumGames: automaticMinimumGames(
+          seasonTeamGames([{ gamesPlayed: mostGames._max.gamesPlayed ?? 0 }]),
+          parsedParams.query,
+        ),
+      };
+  const allRows = seasonRows.filter((row) =>
+    passesExplorerThresholds(row, explorerParams),
+  );
   const total = allRows.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(explorerParams.page, totalPages);
@@ -217,158 +228,12 @@ export default async function PlayersPage({
       </FadeIn>
 
       <FadeIn delay={0.04}>
-        <form
-          method="get"
-          action={`/${locale}/joueurs`}
-          className="rounded-2xl border border-white/[0.07] bg-[#111114] p-4 md:p-5 space-y-4"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="space-y-1.5 sm:col-span-2">
-              <span className="text-[10px] uppercase tracking-wider text-white/30 font-mono">
-                Joueur
-              </span>
-              <input
-                className={`${inputClass} w-full`}
-                type="search"
-                name="q"
-                defaultValue={resolvedParams.query}
-                placeholder="Nom ou prénom…"
-              />
-            </label>
-            <FilterSelect
-              label="Saison"
-              name="saison"
-              value={resolvedParams.season}
-              options={(seasons.includes(resolvedParams.season) ? seasons : [resolvedParams.season, ...seasons]).map((season) => ({ value: season, label: season }))}
-            />
-            <FilterSelect
-              label="Équipe"
-              name="equipe"
-              value={resolvedParams.team}
-              options={[
-                { value: "", label: "Toutes" },
-                ...teams.map((team) => ({
-                  value: team.abbr,
-                  label: `${team.abbr} — ${team.city} ${team.name}`,
-                })),
-              ]}
-            />
-            <FilterSelect
-              label="Position"
-              name="position"
-              value={resolvedParams.position}
-              options={[
-                { value: "", label: "Toutes" },
-                ...POSITIONS.map((position) => ({
-                  value: position,
-                  label: position,
-                })),
-              ]}
-            />
-            <FilterSelect
-              label="Statistique"
-              name="stat"
-              value={resolvedParams.metric}
-              options={PLAYER_EXPLORER_METRICS.map((metric) => ({
-                value: metric,
-                label: `${getPlayerMetric(metric).shortLabel} — ${getPlayerMetric(metric).label}`,
-              }))}
-            />
-            <FilterSelect
-              label="Mode"
-              name="mode"
-              value={resolvedParams.mode}
-              options={[
-                { value: "perGame", label: "Par match" },
-                { value: "total", label: "Total estimé" },
-                { value: "per36", label: "Par 36 minutes" },
-              ]}
-            />
-            <FilterSelect
-              label="Ordre"
-              name="ordre"
-              value={resolvedParams.direction}
-              options={[
-                { value: "desc", label: "Décroissant" },
-                { value: "asc", label: "Croissant" },
-              ]}
-            />
-            <label className="space-y-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-white/30 font-mono">
-                Minimum de matchs
-              </span>
-              <input
-                className={`${inputClass} w-full tabular-nums`}
-                type="number"
-                name="min_mj"
-                min="0"
-                max="82"
-                defaultValue={resolvedParams.minimumGames}
-              />
-            </label>
-            <label className="space-y-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-white/30 font-mono">
-                Minutes par match min.
-              </span>
-              <input
-                className={`${inputClass} w-full tabular-nums`}
-                type="number"
-                name="min_min"
-                min="0"
-                max="48"
-                defaultValue={resolvedParams.minimumMinutes}
-              />
-            </label>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <p className="text-[11px] text-white/25 font-mono">
-              Les filtres sont conservés dans l’URL et peuvent être partagés.
-            </p>
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/${locale}/joueurs`}
-                className="h-10 inline-flex items-center rounded-lg px-4 text-xs text-white/40 hover:text-white/70 transition"
-              >
-                Réinitialiser
-              </Link>
-              <button
-                type="submit"
-                className="h-10 rounded-lg bg-orange-600 px-5 text-sm font-medium text-white hover:bg-orange-500 transition shadow-lg shadow-orange-950/20"
-              >
-                Appliquer
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 border-t border-white/[0.05] pt-4">
-            <CriteriaPill label="Saison" value={resolvedParams.season} />
-            <CriteriaPill label="Stat" value={activeMetric.shortLabel} accent />
-            <CriteriaPill
-              label="Mode"
-              value={
-                resolvedParams.mode === "total"
-                  ? "Total estimé"
-                  : resolvedParams.mode === "per36"
-                    ? "Par 36"
-                    : "Par match"
-              }
-            />
-            {resolvedParams.team && (
-              <CriteriaPill label="Équipe" value={resolvedParams.team} />
-            )}
-            {resolvedParams.position && (
-              <CriteriaPill label="Position" value={resolvedParams.position} />
-            )}
-            {resolvedParams.query && (
-              <CriteriaPill label="Recherche" value={resolvedParams.query} />
-            )}
-            <CriteriaPill
-              label="Échantillon"
-              value={`${resolvedParams.minimumGames} MJ${resolvedParams.minimumMinutes > 0 ? ` · ${resolvedParams.minimumMinutes} min` : ""}`}
-            />
-          </div>
-        </form>
+        <PlayerExplorerFilters
+          locale={locale}
+          params={resolvedParams}
+          seasons={seasons}
+          teams={teams}
+        />
       </FadeIn>
 
       {tableRows.length === 0 ? (
@@ -386,7 +251,9 @@ export default async function PlayersPage({
             <>
               <p className="text-white/50">Aucun joueur ne correspond à ces critères.</p>
               <p className="text-xs text-white/25">
-                Essaie une autre saison ou réduis le minimum de matchs.
+                {resolvedParams.query
+                  ? `Aucun nom ne contient « ${resolvedParams.query} » en ${resolvedParams.season} : vérifie l’orthographe ou change de saison.`
+                  : "Essaie une autre saison ou réduis le minimum de matchs."}
               </p>
             </>
           )}
@@ -405,55 +272,5 @@ export default async function PlayersPage({
         </FadeIn>
       )}
     </div>
-  );
-}
-
-function CriteriaPill({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-mono ${
-        accent
-          ? "border-orange-500/20 bg-orange-500/[0.08] text-orange-300"
-          : "border-white/[0.07] bg-white/[0.025] text-white/45"
-      }`}
-    >
-      <span className="text-white/25">{label}</span>
-      {value}
-    </span>
-  );
-}
-
-function FilterSelect({
-  label,
-  name,
-  value,
-  options,
-}: {
-  label: string;
-  name: string;
-  value: string;
-  options: Array<{ value: string; label: string }>;
-}) {
-  return (
-    <label className="space-y-1.5">
-      <span className="text-[10px] uppercase tracking-wider text-white/30 font-mono">
-        {label}
-      </span>
-      <select className={`${inputClass} w-full`} name={name} defaultValue={value}>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }

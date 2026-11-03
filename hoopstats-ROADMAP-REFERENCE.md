@@ -78,6 +78,7 @@ Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
 | 1er nov. | Reprise après la pause Neon : base de nouveau joignable ; branche `reduction-transfert-neon` mise en ligne (fiches d'équipes et classements créés à la première visite, CI sans lecture de la base) ; 90 matchs du 20 octobre au 1er novembre rattrapés avec leurs feuilles de match ; synchro quotidienne réactivée. |
 | 1er nov. | Synchro du matin avancée d'une heure après le passage à l'heure d'hiver : crons Vercel dans l'heure de 5 h et de 7 h à Paris (04:00 et 06:00 UTC) ; secours GitHub inchangés (05:23 et 07:43 UTC). |
 | 2 nov. | Logo « Pourcentage » (signe % : ballon orange et cercle) : kit complet dans `design/logo/` (variantes, assemblages, icônes, guide d'usage) ; intégré au site — favicon, `app/icon.svg`, `app/apple-icon.png`, manifeste (`app/manifest.ts`, icônes dans `public/icons/`), symbole à la place de la tuile « h. » de la barre latérale et du menu mobile. Recherche d'antériorité INPI à faire avant tout dépôt. |
+| 3 nov. | Correctifs visuels : « Meilleurs du match » — la valeur passe devant le nom, plus grande et en orange. Explorateur joueurs — la recherche renvoyait « aucun joueur » car le seuil par défaut de 10 matchs vidait tout en début de saison : seuil automatique (10 au plus, la moitié des matchs déjà joués) et aucun seuil pour une recherche par nom ; recherche à chaque frappe ; seuls joueur, saison et statistique restent visibles, le reste sous « Plus de filtres » (chevron) ; chaque changement s'applique sans bouton. |
 
 ---
 

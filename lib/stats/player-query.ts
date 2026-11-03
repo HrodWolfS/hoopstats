@@ -36,6 +36,8 @@ export type PlayerExplorerParams = {
   direction: SortDirection;
   mode: MetricDisplayMode;
   minimumGames: number;
+  /** `min_mj` donné dans l'URL ; sinon le seuil suit l'avancement de la saison. */
+  minimumGamesExplicit: boolean;
   minimumMinutes: number;
   page: number;
 };
@@ -59,6 +61,18 @@ const COUNTING_METRICS = new Set<PlayerExplorerMetric>([
   "stealsPerGame",
   "blocksPerGame",
 ]);
+
+const DEFAULT_MINIMUM_GAMES = 10;
+
+/**
+ * Seuil de matchs quand l'URL n'en donne pas : 10, mais pas plus de la moitié
+ * des matchs déjà joués, sinon l'explorateur reste vide en début de saison.
+ * Une recherche par nom vise un joueur précis : aucun seuil.
+ */
+export function automaticMinimumGames(teamGames: number, query: string): number {
+  if (query) return 0;
+  return Math.min(DEFAULT_MINIMUM_GAMES, Math.ceil(teamGames / 2));
+}
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -100,7 +114,8 @@ export function parsePlayerExplorerParams(
       requestedDirection === "asc" || requestedDirection === "desc"
         ? requestedDirection
         : defaultDirection,
-    minimumGames: boundedInteger(first(input.min_mj), 10, 0, 82),
+    minimumGames: boundedInteger(first(input.min_mj), DEFAULT_MINIMUM_GAMES, 0, 82),
+    minimumGamesExplicit: first(input.min_mj).trim() !== "",
     minimumMinutes: boundedInteger(first(input.min_min), 0, 0, 48),
     page: boundedInteger(first(input.page), 1, 1, 10_000),
   };
@@ -169,7 +184,7 @@ export function buildExplorerUrl(
   query.set("stat", next.metric);
   query.set("ordre", next.direction);
   query.set("mode", next.mode);
-  query.set("min_mj", String(next.minimumGames));
+  if (next.minimumGamesExplicit) query.set("min_mj", String(next.minimumGames));
   if (next.minimumMinutes > 0) {
     query.set("min_min", String(next.minimumMinutes));
   }
