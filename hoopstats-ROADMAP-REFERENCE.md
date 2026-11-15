@@ -8,7 +8,7 @@
 
 ---
 
-## État d'avancement au 10 octobre 2026
+## État d'avancement au 15 novembre 2026
 
 À mettre à jour à chaque étape terminée : cases, reste à faire, journal.
 
@@ -86,6 +86,7 @@ Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
 | 3 nov. | Menu réordonné du plus consulté au moins consulté (estimation en attendant les visites réelles du suivi de pages) : Accueil, Matchs, Classement, Joueurs, Équipes, Français en NBA, Comparer, Tendances, Draft, Trophées, Playoffs, Meilleurs 5, Guides stats. Même ordre dans la barre latérale et le menu mobile (une seule liste). À revoir avec les chiffres de consultation. |
 | 3 nov. | Accueil, « Résultats » : le vainqueur de chaque match ressortait mal. Son abréviation et son score passent en gras et en blanc ; le perdant reste en retrait (gris, graisse normale). Vérifié sur ordinateur et à 390 px, pas de débordement. |
 | 5 nov. | Matchs encore « En cours » vers 7 h 30 : les synchros partaient bien à l'heure (5 h 37 et 7 h 38 à Paris), mais les matchs de la côte Ouest (début 3 h 30 – 4 h 30 à Paris) finissent entre 5 h 45 et 7 h ; le 5 novembre, 4 matchs n'étaient pas finis à 5 h 37 (dont MIA @ LAC en prolongation). Troisième cron Vercel ajouté dans l'heure de 05:00 UTC : synchros vers 5 h 40, 6 h 40 et 7 h 40 à Paris (une heure de plus l'été). Coût Neon estimé faible (lecture de la nuit, comptages et saison en cours), à surveiller dans la console. |
+| 15 nov. | Contrôle mobile en échec après les trois synchros du matin : la fiche joueur prise sur l'accueil (Giannis Antetokounmpo ce jour-là) débordait de 6 px à 320 px — le fil d'Ariane « Accueil / Joueurs / nom » ne rétrécissait pas et poussait le bouton Partager hors de l'écran (aucun changement de code, seulement un nom long). Le dernier libellé du fil d'Ariane se tronque désormais (« Giannis Ant… », nom complet au survol), sur toutes les pages qui l'utilisent. `check:mobile` local : 26 pages sans débordement à 320 et 390 px. |
 
 ---
 
