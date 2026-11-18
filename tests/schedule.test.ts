@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  boxScoreNeedsResync,
   capitalizeFirst,
   checkScore,
   dayBounds,
@@ -114,6 +115,38 @@ describe("contrôle des scores", () => {
     expect(
       checkScore({ ...base, homeScore: 120, homeLinescores: [30, 25, 28, 21, 16], awayScore: 115, awayLinescores: [26, 26, 26, 26, 11], homePlayerPoints: 120, awayPlayerPoints: 115 }),
     ).toEqual([]);
+  });
+});
+
+describe("box score à relire", () => {
+  const stored = {
+    homeScore: 105,
+    awayScore: 117,
+    homeAbbr: "DEN",
+    awayAbbr: "PHX",
+    homeLinescores: [24, 29, 29, 23],
+    awayLinescores: [20, 36, 34, 27],
+    players: [
+      { teamAbbr: "DEN", pts: 100 },
+      { teamAbbr: "DEN", pts: 5 },
+      { teamAbbr: "PHX", pts: 117 },
+      { teamAbbr: "PHX", pts: null },
+    ],
+  };
+
+  it("garde un box score cohérent", () => {
+    expect(boxScoreNeedsResync(stored)).toBe(false);
+  });
+
+  it("relit un box score corrigé depuis par ESPN", () => {
+    // Cas réel : DEN-PHX, 2e quart-temps de Denver enregistré à 28 au lieu de 29.
+    expect(boxScoreNeedsResync({ ...stored, homeLinescores: [24, 28, 29, 23] })).toBe(true);
+    // Cas réel : ORL-UTA, joueurs du Jazz à 106 pour 108 marqués.
+    expect(boxScoreNeedsResync({ ...stored, players: stored.players.slice(1) })).toBe(true);
+  });
+
+  it("ne relit pas pour un score final absent, que le box score ne corrige pas", () => {
+    expect(boxScoreNeedsResync({ ...stored, homeScore: null })).toBe(false);
   });
 });
 

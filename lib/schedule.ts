@@ -229,6 +229,39 @@ export function hasBlockingIssue(issues: readonly ScoreIssue[]): boolean {
   return issues.some((issue) => BLOCKING_SCORE_ISSUES.includes(issue));
 }
 
+/** Box score enregistré d'un match terminé, tel que la base le garde. */
+export type StoredBoxScore = {
+  homeScore: number | null;
+  awayScore: number | null;
+  homeAbbr: string;
+  awayAbbr: string;
+  homeLinescores: unknown;
+  awayLinescores: unknown;
+  players: { teamAbbr: string; pts: number | null }[];
+};
+
+const BOX_SCORE_ISSUES: readonly ScoreIssue[] = ["linescore_mismatch", "linescore_length", "player_points_mismatch"];
+
+/**
+ * ESPN corrige parfois un box score après coup (un quart-temps, les points
+ * d'un joueur). Celui qu'on a enregistré ne colle alors plus au score final et
+ * doit être relu : DEN-PHX gardait 28 au lieu de 29 dans un quart-temps et
+ * bloquait le contrôle de santé (17 novembre 2026).
+ */
+export function boxScoreNeedsResync(game: StoredBoxScore): boolean {
+  const points = (abbr: string) =>
+    game.players.filter((row) => row.teamAbbr === abbr).reduce((total, row) => total + (row.pts ?? 0), 0);
+  return checkScore({
+    status: "final",
+    homeScore: game.homeScore,
+    awayScore: game.awayScore,
+    homeLinescores: linescoreValues(game.homeLinescores),
+    awayLinescores: linescoreValues(game.awayLinescores),
+    homePlayerPoints: points(game.homeAbbr),
+    awayPlayerPoints: points(game.awayAbbr),
+  }).some((issue) => BOX_SCORE_ISSUES.includes(issue));
+}
+
 // ── Meilleurs du match ────────────────────────────────────────────────────────
 
 export const LEADER_STATS = [

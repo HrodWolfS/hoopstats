@@ -8,7 +8,7 @@
 
 ---
 
-## État d'avancement au 15 novembre 2026
+## État d'avancement au 18 novembre 2026
 
 À mettre à jour à chaque étape terminée : cases, reste à faire, journal.
 
@@ -87,6 +87,7 @@ Contrôles programmés les 2 et 3 novembre à 9 h (lecture seule).
 | 3 nov. | Accueil, « Résultats » : le vainqueur de chaque match ressortait mal. Son abréviation et son score passent en gras et en blanc ; le perdant reste en retrait (gris, graisse normale). Vérifié sur ordinateur et à 390 px, pas de débordement. |
 | 5 nov. | Matchs encore « En cours » vers 7 h 30 : les synchros partaient bien à l'heure (5 h 37 et 7 h 38 à Paris), mais les matchs de la côte Ouest (début 3 h 30 – 4 h 30 à Paris) finissent entre 5 h 45 et 7 h ; le 5 novembre, 4 matchs n'étaient pas finis à 5 h 37 (dont MIA @ LAC en prolongation). Troisième cron Vercel ajouté dans l'heure de 05:00 UTC : synchros vers 5 h 40, 6 h 40 et 7 h 40 à Paris (une heure de plus l'été). Coût Neon estimé faible (lecture de la nuit, comptages et saison en cours), à surveiller dans la console. |
 | 15 nov. | Contrôle mobile en échec après les trois synchros du matin : la fiche joueur prise sur l'accueil (Giannis Antetokounmpo ce jour-là) débordait de 6 px à 320 px — le fil d'Ariane « Accueil / Joueurs / nom » ne rétrécissait pas et poussait le bouton Partager hors de l'écran (aucun changement de code, seulement un nom long). Le dernier libellé du fil d'Ariane se tronque désormais (« Giannis Ant… », nom complet au survol), sur toutes les pages qui l'utilisent. `check:mobile` local : 26 pages sans débordement à 320 et 390 px. |
+| 18 nov. | Toutes les synchros du 17 et du 18 novembre en échec : la synchro passait, mais le contrôle de santé strict bloquait sur DEN-PHX (somme des quarts-temps de Denver 104 pour 105 marqués) et signalait ORL-UTA (joueurs du Jazz 106 pour 108). ESPN avait corrigé ces box scores après coup, et un box score enregistré n'était jamais relu. La synchro relit désormais les box scores des 7 derniers jours qui ne collent plus au score final (quarts-temps ou points joueurs) ; les deux matchs sont repris, une seconde passe ne relit rien. Contrôle de santé strict local : 0 échec, 0 avertissement. |
 
 ---
 

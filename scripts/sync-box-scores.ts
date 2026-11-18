@@ -1,8 +1,9 @@
 /**
  * Sync des box scores ESPN pour les matchs terminés
  *
- * Pour chaque Game `status = "final"` sans GameBoxScore associé,
- * fetch le summary ESPN et persiste :
+ * Pour chaque Game `status = "final"` sans GameBoxScore associé (et, en
+ * --recent, chaque box score qu'ESPN a corrigé depuis : quart-temps ou points
+ * joueurs qui ne donnent plus le score final), fetch le summary ESPN et persiste :
  *   - GameBoxScore (totaux équipe + linescores)
  *   - PlayerBoxScore (1 ligne par joueur par match)
  *   - Player, pour un joueur inconnu croisé en match officiel (rookie,
@@ -14,8 +15,9 @@
  *   pnpm tsx scripts/sync-box-scores.ts --force    → re-sync même si déjà présent
  */
 
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { fetchEspnAthlete } from "../lib/espn-athlete";
+import { boxScoreNeedsResync } from "../lib/schedule";
 import { COMPETITIVE_PHASES } from "../lib/season-phase";
 import { playerSlug } from "../lib/slugs";
 import {
@@ -346,6 +348,35 @@ export async function createPlayerFromEspn(
 
 // ── Sync principal ────────────────────────────────────────────────────────────
 
+/** Matchs récents dont le box score enregistré ne colle plus au score final. */
+async function staleBoxScoreGameIds(since: Date): Promise<string[]> {
+  const games = await prisma.game.findMany({
+    where: { status: "final", gameDate: { gte: since }, boxScore: { isNot: null } },
+    select: {
+      id: true,
+      homeScore: true,
+      awayScore: true,
+      homeTeam: { select: { abbr: true } },
+      awayTeam: { select: { abbr: true } },
+      boxScore: { select: { homeLinescores: true, awayLinescores: true } },
+      playerBoxScores: { select: { teamAbbr: true, pts: true } },
+    },
+  });
+  return games
+    .filter((game) =>
+      boxScoreNeedsResync({
+        homeScore: game.homeScore,
+        awayScore: game.awayScore,
+        homeAbbr: game.homeTeam.abbr,
+        awayAbbr: game.awayTeam.abbr,
+        homeLinescores: game.boxScore?.homeLinescores,
+        awayLinescores: game.boxScore?.awayLinescores,
+        players: game.playerBoxScores,
+      }),
+    )
+    .map((game) => game.id);
+}
+
 export async function syncBoxScores(
   opts: {
     recent?: boolean;
@@ -353,19 +384,19 @@ export async function syncBoxScores(
     concurrency?: number;
   } = {},
 ): Promise<{ synced: number; skipped: number; errors: number }> {
-  const where: {
-    status: string;
-    gameDate?: { gte: Date };
-    boxScore?: { is: null };
-  } = { status: "final" };
+  const where: Prisma.GameWhereInput = { status: "final" };
+  const since = opts.recent
+    ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    : null;
+  if (since) where.gameDate = { gte: since };
 
-  if (opts.recent) {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    where.gameDate = { gte: sevenDaysAgo };
-  }
-
+  let resyncCount = 0;
   if (!opts.force) {
-    where.boxScore = { is: null };
+    // Sans box score, ou (synchro récente) box score qu'ESPN a corrigé depuis :
+    // sinon il resterait figé et faux (DEN-PHX, 17 novembre 2026).
+    const stale = since ? await staleBoxScoreGameIds(since) : [];
+    resyncCount = stale.length;
+    where.OR = [{ boxScore: { is: null } }, { id: { in: stale } }];
   }
 
   const games = await prisma.game.findMany({
@@ -385,7 +416,10 @@ export async function syncBoxScores(
     return { synced: 0, skipped: 0, errors: 0 };
   }
 
-  console.log(`📊 ${games.length} matchs à synchroniser`);
+  console.log(
+    `📊 ${games.length} matchs à synchroniser` +
+      (resyncCount ? ` (dont ${resyncCount} box score(s) corrigé(s) par ESPN à relire)` : ""),
+  );
 
   const identityCandidates: IdentityCandidate[] = await prisma.player.findMany({
     select: { id: true, espnId: true, firstName: true, lastName: true },
